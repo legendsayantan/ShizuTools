@@ -1,6 +1,8 @@
 package com.legendsayantan.adbtools.lib
 
 import android.app.Activity
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.graphics.Color
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
@@ -35,6 +37,10 @@ class Utils {
 
         fun Activity.initialiseStatusBar(){
             window.statusBarColor = ColorUtils.blendARGB(ContextCompat.getColor(this, R.color.green), Color.BLACK, 0.5f)
+        }
+
+        fun PackageManager.getAllInstalledApps(): List<ApplicationInfo> {
+            return getInstalledApplications(PackageManager.GET_META_DATA)
         }
 
     }

@@ -16,12 +16,15 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.setPadding
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textview.MaterialTextView
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.legendsayantan.adbtools.adapters.DebloatAdapter
 import com.legendsayantan.adbtools.data.AppData
 import com.legendsayantan.adbtools.lib.ShizukuShell
 import com.legendsayantan.adbtools.lib.Utils.Companion.extractUrls
+import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -49,7 +52,7 @@ class DebloatActivity : AppCompatActivity() {
                 var dialog: AlertDialog? = null
                 val app = apps[position]
                 //show dialog
-                val links = TextView(this)
+                val links = MaterialTextView(this)
                 links.text = "Links :"
                 val listOfLinks = app.description.extractUrls()
                 val linkView = ListView(this)
@@ -72,7 +75,7 @@ class DebloatActivity : AppCompatActivity() {
                             shell!!.exec()
                             if(output.isEmpty()) {
                                 apps = apps.filter { it.id != app.id }
-                                list.adapter = DebloatAdapter(applicationContext, apps)
+                                list.adapter = DebloatAdapter(this@DebloatActivity, apps)
                                 Toast.makeText(applicationContext, "Uninstalled ${app.name}", Toast.LENGTH_LONG).show()
                             }
                             dialog?.dismiss()
@@ -89,7 +92,7 @@ class DebloatActivity : AppCompatActivity() {
                 if (listOfLinks.isNotEmpty()) dialogView.addView(links)
                 dialogView.addView(linkView)
                 dialogView.addView(btnContainer)
-                dialog = AlertDialog.Builder(this)
+                dialog = MaterialAlertDialogBuilder(this)
                     .setView(dialogView)
                     .setCancelable(true)
                     .setTitle(app.name)
@@ -106,7 +109,7 @@ class DebloatActivity : AppCompatActivity() {
                 //database available
                 runOnUiThread {
                     info("Scanning local apps")
-                    val localApps = getAllInstalledApps(packageManager)
+                    val localApps = packageManager.getAllInstalledApps()
                     val finalApp = arrayListOf<AppData>()
                     Thread {
                         localApps.forEach { app ->
@@ -129,7 +132,7 @@ class DebloatActivity : AppCompatActivity() {
                         }
                         runOnUiThread {
                             apps = finalApp.sortedWith(compareBy { it.name })
-                            list.adapter = DebloatAdapter(applicationContext, apps)
+                            list.adapter = DebloatAdapter(this@DebloatActivity, apps)
                             setListListener()
                         }
                     }.start()
@@ -174,9 +177,7 @@ class DebloatActivity : AppCompatActivity() {
         return Gson().fromJson(this, object : TypeToken<ArrayList<AppData?>?>() {}.type)
     }
 
-    fun getAllInstalledApps(packageManager: PackageManager): List<ApplicationInfo> {
-        return packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-    }
+
 
     fun info(string: String) {
         findViewById<TextView>(R.id.infoView).text = string
