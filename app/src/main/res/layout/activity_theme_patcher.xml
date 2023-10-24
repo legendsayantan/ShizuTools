@@ -36,53 +36,13 @@
             android:layout_height="wrap_content"
             android:layout_margin="10dp"
             android:gravity="center"
-            android:text="Pick any premium theme/font/live wallpaper from the theme store, then take a short Free Trial."
+            android:text="Pick any premium theme / font / wallpaper from the theme store, then take a short Free Trial."
             android:textSize="18dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/launchThemeStore"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Launch Theme Store" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/patchedState"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <com.google.android.material.textview.MaterialTextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="15dp"
-            android:gravity="center"
-            android:text="ThemePatcher"
-            android:textSize="23dp" />
-
-        <ImageView
-            android:id="@+id/imageView"
-            android:layout_width="match_parent"
-            android:layout_height="100dp"
-            app:srcCompat="@drawable/baseline_verified_24"
-            app:tint="@color/green" />
-
-        <com.google.android.material.textview.MaterialTextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="10dp"
-            android:gravity="center"
-            android:text="Trial item was patched as permanent."
-            android:textSize="18dp" />
-
-        <com.google.android.material.textview.MaterialTextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="10dp"
-            android:gravity="center"
-            android:text="Restart the tool to patch again." />
+            android:text="Start" />
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

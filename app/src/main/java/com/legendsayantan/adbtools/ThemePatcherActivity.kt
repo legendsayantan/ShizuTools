@@ -1,15 +1,15 @@
 package com.legendsayantan.adbtools
 
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
 import com.legendsayantan.adbtools.lib.ShizukuShell
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
+import com.legendsayantan.adbtools.lib.Utils.Companion.postNotification
 import java.util.Timer
 import kotlin.concurrent.schedule
 
@@ -42,51 +42,58 @@ class ThemePatcherActivity : AppCompatActivity() {
         shell =
             ShizukuShell(output, "pm grant $packageName android.permission.WRITE_SECURE_SETTINGS")
         shell.exec()
-        findViewById<LinearLayout>(R.id.noTrial).visibility = LinearLayout.VISIBLE
-        findViewById<LinearLayout>(R.id.patchedState).visibility = LinearLayout.GONE
-        var themeStores = packageManager.getAllInstalledApps().filter { it.packageName.contains("theme") }
-        if(themeStores.any { it.loadLabel(packageManager).contains("theme") }) themeStores = themeStores.filter { it.loadLabel(packageManager).contains("theme") }
-        if(themeStores.any { it.packageName.contains("store") }) themeStores = themeStores.filter { it.packageName.contains("store") }
-        if(isOnTrial()){
-            patchAll {
-                findViewById<LinearLayout>(R.id.noTrial).visibility = LinearLayout.GONE
-                findViewById<LinearLayout>(R.id.patchedState).visibility = LinearLayout.VISIBLE
+        shell = ShizukuShell(output, "pm grant $packageName android.permission.POST_NOTIFICATIONS")
+        shell.exec()
+        var themeStores =
+            packageManager.getAllInstalledApps().filter { it.packageName.contains("theme") }
+        if (themeStores.any { it.loadLabel(packageManager).contains("theme") }) themeStores =
+            themeStores.filter { it.loadLabel(packageManager).contains("theme") }
+        if (themeStores.any { it.packageName.contains("store") }) themeStores =
+            themeStores.filter { it.packageName.contains("store") }
+        if (isOnTrial()) {
+            startPatcher(themeStores[0].packageName) {
+                postPatchNotification()
             }
-        }else{
-            val themeStoreBtn = findViewById<MaterialButton>(R.id.launchThemeStore)
-            themeStoreBtn.setOnClickListener {
-                //start via intent
-                val intent = packageManager.getLaunchIntentForPackage(themeStores[0].packageName)
-                intent?.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                startActivity(intent)
-                startPatcher {
-                    findViewById<LinearLayout>(R.id.noTrial).visibility = LinearLayout.GONE
-                    findViewById<LinearLayout>(R.id.patchedState).visibility = LinearLayout.VISIBLE
-                    output.forEach {
-                        Toast.makeText(applicationContext, it, Toast.LENGTH_SHORT).show()
-                    }
+        }
+        val themeStoreBtn = findViewById<MaterialButton>(R.id.launchThemeStore)
+        themeStoreBtn.setOnClickListener {
+            //start via intent
+            val intent = packageManager.getLaunchIntentForPackage(themeStores[0].packageName)
+            intent?.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(intent)
+            startPatcher(themeStores[0].packageName) {
+                postPatchNotification()
+                output.forEach {
+                    Toast.makeText(applicationContext, it, Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
-    private fun startPatcher(patched: () -> Unit) {
+    private fun startPatcher(storepackage: String, patched: () -> Unit) {
         Toast.makeText(this, "Waiting for trial item...", Toast.LENGTH_SHORT).show()
         Thread {
             while (!isOnTrial()) {
                 Thread.sleep(1000)
             }
-            patchAll(patched)
+            runOnUiThread {
+                postNotification(
+                    "ThemePatcher",
+                    "Trial item detected, generating patch..", success = false
+                )
+            }
+            Timer().schedule(7000) {
+                patchAll(storepackage, patched)
+            }
         }.start()
     }
 
-    private fun patchAll(done: () -> Unit) {
+    private fun patchAll(storepackage: String, done: () -> Unit) {
         if (isOnTrial()) {
             //patch
-            shell = ShizukuShell(output, "am force-stop com.heytap.themestore")
+            shell = ShizukuShell(output, "am force-stop $storepackage")
             shell.exec()
-            shell = ShizukuShell(output, "am force-stop com.nearme.themestore")
-            shell.exec()
+
             zeroByDefault.forEach {
                 shell = ShizukuShell(output, "settings put system $it 0")
                 shell.exec()
@@ -133,4 +140,16 @@ class ThemePatcherActivity : AppCompatActivity() {
         }
         return false
     }
+
+    private fun postPatchNotification() {
+        postNotification(
+            "ThemePatcher",
+            "Selected item was patched as permanent.",
+            success = true
+        )
+    }
+
+
+
+
 }

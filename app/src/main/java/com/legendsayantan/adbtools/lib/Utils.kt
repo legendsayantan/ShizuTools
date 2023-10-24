@@ -1,9 +1,16 @@
 package com.legendsayantan.adbtools.lib
 
+import android.Manifest
 import android.app.Activity
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.legendsayantan.adbtools.R
@@ -41,6 +48,34 @@ class Utils {
 
         fun PackageManager.getAllInstalledApps(): List<ApplicationInfo> {
             return getInstalledApplications(PackageManager.GET_META_DATA)
+        }
+
+        fun Context.postNotification(title: String, message: String, success: Boolean = true) {
+            val channelId = "notifications"
+
+            // Create a notification channel (for Android 8.0 and higher).
+            val channel = NotificationChannel(
+                channelId,
+                "Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+
+            // Create the notification using NotificationCompat.
+            val notificationBuilder = NotificationCompat.Builder(applicationContext, channelId)
+                .setSmallIcon(if(success)R.drawable.baseline_verified_24 else R.drawable.outline_info_24) // Replace with your notification icon.
+                .setContentTitle(title) // Replace with your notification title.
+                .setContentText(message)
+                .setOngoing(false)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+
+            // Show the notification.
+            with(NotificationManagerCompat.from(applicationContext)) {
+                if (ActivityCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                    notify(0, notificationBuilder.build())
+                }
+            }
         }
 
     }
