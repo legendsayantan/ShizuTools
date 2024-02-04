@@ -8,12 +8,14 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Environment
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.legendsayantan.adbtools.R
+import java.io.File
 
 /**
  * @author legendsayantan
@@ -76,6 +78,18 @@ class Utils {
                     notify(0, notificationBuilder.build())
                 }
             }
+        }
+
+        fun Context.commandOutputPath():String{
+            return File(Environment.getExternalStorageDirectory(), "/Android/data/${packageName}/output.txt").absolutePath
+        }
+
+        fun Context.lastCommandOutput():String{
+            return File(Environment.getExternalStorageDirectory(), "/Android/data/${packageName}/output.txt").readText()
+        }
+
+        fun Context.clearCommandOutputs(){
+            File(Environment.getExternalStorageDirectory(), "/Android/data/${packageName}/output.txt").delete()
         }
 
     }

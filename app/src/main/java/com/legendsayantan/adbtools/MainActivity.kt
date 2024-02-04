@@ -13,7 +13,11 @@ class MainActivity : AppCompatActivity() {
         initialiseStatusBar()
         val cardDebloat = findViewById<MaterialCardView>(R.id.cardDebloat)
         val cardThemePatcher = findViewById<MaterialCardView>(R.id.cardThemePatcher)
+        val cardLookBack = findViewById<MaterialCardView>(R.id.cardLookBack)
+        val cardMixedAudio = findViewById<MaterialCardView>(R.id.cardMixedAudio)
         cardDebloat.setOnClickListener { startActivity(Intent(applicationContext,DebloatActivity::class.java)) }
         cardThemePatcher.setOnClickListener { startActivity(Intent(applicationContext,ThemePatcherActivity::class.java)) }
+        cardLookBack.setOnClickListener { startActivity(Intent(applicationContext,LookbackActivity::class.java)) }
+        cardMixedAudio.setOnClickListener { startActivity(Intent(applicationContext,MixedAudioActivity::class.java)) }
     }
 }

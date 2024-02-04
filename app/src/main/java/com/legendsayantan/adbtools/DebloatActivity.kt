@@ -23,9 +23,12 @@ import com.google.gson.reflect.TypeToken
 import com.legendsayantan.adbtools.adapters.DebloatAdapter
 import com.legendsayantan.adbtools.data.AppData
 import com.legendsayantan.adbtools.lib.ShizukuShell
+import com.legendsayantan.adbtools.lib.Utils.Companion.clearCommandOutputs
+import com.legendsayantan.adbtools.lib.Utils.Companion.commandOutputPath
 import com.legendsayantan.adbtools.lib.Utils.Companion.extractUrls
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
+import com.legendsayantan.adbtools.lib.Utils.Companion.lastCommandOutput
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -65,18 +68,19 @@ class DebloatActivity : AppCompatActivity() {
                 val uninstallBtn = MaterialButton(this)
                 uninstallBtn.text = "Confirm to uninstall"
                 uninstallBtn.setOnClickListener {
+                    clearCommandOutputs()
                     //uninstall app
-                    shell = ShizukuShell(output, "pm uninstall -k --user 0 ${app.id}")
+                    shell = ShizukuShell(output, "pm uninstall -k --user 0 ${app.id} | tee -a ${commandOutputPath()}")
                     Toast.makeText(this, "Uninstalling ${app.name}", Toast.LENGTH_SHORT).show()
                     shell!!.exec()
                     Timer().schedule(timerTask {
                         runOnUiThread {
-                            shell = ShizukuShell(output, "pm list packages | grep ${app.id}")
-                            shell!!.exec()
-                            if(output.isEmpty()) {
+                            if(lastCommandOutput().contains("Success",true)) {
                                 apps = apps.filter { it.id != app.id }
                                 list.adapter = DebloatAdapter(this@DebloatActivity, apps)
                                 Toast.makeText(applicationContext, "Uninstalled ${app.name}", Toast.LENGTH_LONG).show()
+                            }else{
+                                Toast.makeText(applicationContext, "Failed to uninstall ${app.name}", Toast.LENGTH_LONG).show()
                             }
                             dialog?.dismiss()
                         }

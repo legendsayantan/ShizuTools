@@ -7,8 +7,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
 import com.legendsayantan.adbtools.lib.ShizukuShell
+import com.legendsayantan.adbtools.lib.Utils.Companion.clearCommandOutputs
+import com.legendsayantan.adbtools.lib.Utils.Companion.commandOutputPath
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
+import com.legendsayantan.adbtools.lib.Utils.Companion.lastCommandOutput
 import com.legendsayantan.adbtools.lib.Utils.Companion.postNotification
 import java.util.Timer
 import kotlin.concurrent.schedule
@@ -71,6 +74,7 @@ class ThemePatcherActivity : AppCompatActivity() {
     }
 
     private fun startPatcher(storepackage: String, patched: () -> Unit) {
+        patchAll("") {}
         Toast.makeText(this, "Waiting for trial item...", Toast.LENGTH_SHORT).show()
         Thread {
             while (!isOnTrial()) {
@@ -83,33 +87,48 @@ class ThemePatcherActivity : AppCompatActivity() {
                 )
             }
             Timer().schedule(7000) {
-                patchAll(storepackage, patched)
+                patchAll(storepackage){
+                    if(lastCommandOutput().isEmpty()){
+                        patched()
+                    }else{
+                        runOnUiThread {
+                            postNotification(
+                                "ThemePatcher",
+                                "Error: ${lastCommandOutput()}", success = false
+                            )
+                        }
+                    }
+                }
+
             }
         }.start()
     }
 
     private fun patchAll(storepackage: String, done: () -> Unit) {
+        clearCommandOutputs()
         if (isOnTrial()) {
             //patch
-            shell = ShizukuShell(output, "am force-stop $storepackage")
-            shell.exec()
+            if(storepackage.isNotEmpty()){
+                shell = ShizukuShell(output, "am force-stop $storepackage")
+                shell.exec()
+            }
 
             zeroByDefault.forEach {
-                shell = ShizukuShell(output, "settings put system $it 0")
+                shell = ShizukuShell(output, "settings put system $it 0 | tee -a ${commandOutputPath()}")
                 shell.exec()
-                shell = ShizukuShell(output, "settings put secure $it 0")
+                shell = ShizukuShell(output, "settings put secure $it 0 | tee -a ${commandOutputPath()}")
                 shell.exec()
             }
             negativeOneByDefault.forEach {
-                shell = ShizukuShell(output, "settings put system $it -1")
+                shell = ShizukuShell(output, "settings put system $it -1 | tee -a ${commandOutputPath()}")
                 shell.exec()
-                shell = ShizukuShell(output, "settings put secure $it -1")
+                shell = ShizukuShell(output, "settings put secure $it -1 | tee -a ${commandOutputPath()}")
                 shell.exec()
             }
             otherDefaults.forEach {
-                shell = ShizukuShell(output, "settings put system ${it.key} ${it.value}")
+                shell = ShizukuShell(output, "settings put system ${it.key} ${it.value} | tee -a ${commandOutputPath()}")
                 shell.exec()
-                shell = ShizukuShell(output, "settings put secure ${it.key} ${it.value}")
+                shell = ShizukuShell(output, "settings put secure ${it.key} ${it.value} | tee -a ${commandOutputPath()}")
                 shell.exec()
             }
             runOnUiThread { done() }
