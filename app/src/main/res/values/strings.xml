@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ShizuTools</string>
+    <string name="this_app_requires_u_shizuku">This app requires <u>Shizuku</u>.\nPlease make sure you have shizuku installed and running.</string>
 </resources>

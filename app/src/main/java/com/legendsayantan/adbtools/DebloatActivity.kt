@@ -147,7 +147,7 @@ class DebloatActivity : AppCompatActivity() {
         }
     }
 
-    fun loadDatabase(onComplete: (ArrayList<AppData>) -> Unit, onFailure: () -> Unit) {
+    private fun loadDatabase(onComplete: (ArrayList<AppData>) -> Unit, onFailure: () -> Unit) {
         try {
             val url =
                 URL("https://cdn.jsdelivr.net/gh/0x192/universal-android-debloater@main/resources/assets/uad_lists.json")
