@@ -8,7 +8,7 @@ Contains some easy-to-use tools to go beyond the level of control allowed by And
 - [x] **MixedAudio** - Allows multiple media apps to play at the same time. *May cause some apps to crash.*
 - [x] **ADB Shell** - Execute other raw ADB commands.
 
-Feel free to suggest new features or contribute to the project.
+#### This app is still on development phase, and not everything is always reliable. Feel free to suggest new features, report bugs or contribute to the project.
 
 ### Installation
 Download the latest apk from [here](https://github.com/legendsayantan/ShizuTools/blob/master/app/release/app-release.apk).
