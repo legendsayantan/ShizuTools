@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
+import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -13,10 +14,13 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.marginStart
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.textview.MaterialTextView
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -38,16 +42,18 @@ class DebloatActivity : AppCompatActivity() {
     val output = listOf<String>()
     val prefs by lazy { getSharedPreferences("debloater", Context.MODE_PRIVATE) }
     lateinit var apps: List<AppData>
+    lateinit var filterBtn: ImageView
+    lateinit var list: ListView
+    var filterMode = false
+    lateinit var cachedApps: List<AppData>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_debloat)
         initialiseStatusBar()
-        val list = findViewById<ListView>(R.id.apps_list)
+        list = findViewById<ListView>(R.id.apps_list)
         ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.QUERY_ALL_PACKAGES",
             object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {
-
-                }
+                override fun onCommandResult(output: String, done: Boolean) {}
             })
         val setListListener = {
             list.setOnItemClickListener { _, _, position, _ ->
@@ -124,6 +130,8 @@ class DebloatActivity : AppCompatActivity() {
                     .show()
             }
             findViewById<LinearLayout>(R.id.loader).visibility = LinearLayout.GONE
+            filterBtn = findViewById(R.id.imageSearch)
+            filterBtn.setOnClickListener { filter() }
         }
 
         if (output.isEmpty()) {
@@ -208,6 +216,41 @@ class DebloatActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.infoView).text = string
     }
 
+    private fun filter() = if (filterMode) {
+        filterMode = false
+        apps = cachedApps
+        list.adapter =
+            DebloatAdapter(this@DebloatActivity, apps)
+        filterBtn.setImageResource(R.drawable.baseline_filter_list_24)
+    } else {
+        val layout = TextInputLayout(this)
+        val editText = TextInputEditText(this)
+        editText.hint = "Enter app name/package/removal"
+        layout.addView(editText)
+        layout.setPadding(50,0,50,0)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(layout)
+            .setCancelable(true)
+            .setTitle("Filter")
+            .setPositiveButton(
+                "Filter"
+            ) { dialog, which ->
+                filterMode = true
+                val t = editText.text.toString()
+                cachedApps = apps
+                apps = apps.filter { appData ->
+                    appData.name.contains(t) || appData.id.contains(t) || appData.removal.contains(t) || appData.description.contains(
+                        t
+                    )
+                }
+                list.adapter =
+                    DebloatAdapter(this@DebloatActivity, apps)
+                dialog.dismiss()
+                filterBtn.setImageResource(R.drawable.baseline_filter_list_off_24)
+            }
+            .show()
+    }
+
     fun restoreMode() {
         val activityContext = this
         ShizukuRunner.runAdbCommand("cmd package list packages -u",
@@ -232,7 +275,8 @@ class DebloatActivity : AppCompatActivity() {
                                                     "Select the app to start restoration."
                                                 )
                                                 .show()
-                                            appsView.layoutManager = LinearLayoutManager(activityContext)
+                                            appsView.layoutManager =
+                                                LinearLayoutManager(activityContext)
                                             appsView.adapter =
                                                 SimpleAdapter(uninstalled) {
                                                     ShizukuRunner.runAdbCommand("cmd package install-existing ${uninstalled[it]}",

@@ -80,7 +80,7 @@ class ThemePatcherActivity : AppCompatActivity() {
                     "Trial item detected, generating patch..", success = false
                 )
             }
-            Timer().schedule(7000) {
+            Timer().schedule(15000) {
                 patchAll(storepackage){
                     if(it.isEmpty()){
                         patched()
