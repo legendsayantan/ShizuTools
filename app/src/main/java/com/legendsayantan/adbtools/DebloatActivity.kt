@@ -2,45 +2,40 @@ package com.legendsayantan.adbtools
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.ArrayAdapter
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.setPadding
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textview.MaterialTextView
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.legendsayantan.adbtools.adapters.DebloatAdapter
+import com.legendsayantan.adbtools.adapters.SimpleAdapter
 import com.legendsayantan.adbtools.data.AppData
-import com.legendsayantan.adbtools.lib.ShizukuShell
-import com.legendsayantan.adbtools.lib.Utils.Companion.clearCommandOutputs
-import com.legendsayantan.adbtools.lib.Utils.Companion.commandOutputPath
+import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.extractUrls
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
-import com.legendsayantan.adbtools.lib.Utils.Companion.lastCommandOutput
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.URL
-import java.util.Timer
-import kotlin.concurrent.timerTask
 
 class DebloatActivity : AppCompatActivity() {
     val output = listOf<String>()
-    var shell: ShizukuShell? = null
     val prefs by lazy { getSharedPreferences("debloater", Context.MODE_PRIVATE) }
     lateinit var apps: List<AppData>
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,8 +43,12 @@ class DebloatActivity : AppCompatActivity() {
         setContentView(R.layout.activity_debloat)
         initialiseStatusBar()
         val list = findViewById<ListView>(R.id.apps_list)
-        shell = ShizukuShell(output, "pm grant $packageName android.permission.QUERY_ALL_PACKAGES")
-        shell!!.exec()
+        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.QUERY_ALL_PACKAGES",
+            object : ShizukuRunner.CommandResultListener {
+                override fun onCommandResult(output: String, done: Boolean) {
+
+                }
+            })
         val setListListener = {
             list.setOnItemClickListener { _, _, position, _ ->
                 var dialog: AlertDialog? = null
@@ -68,23 +67,34 @@ class DebloatActivity : AppCompatActivity() {
                 val uninstallBtn = MaterialButton(this)
                 uninstallBtn.text = "Confirm to uninstall"
                 uninstallBtn.setOnClickListener {
-                    clearCommandOutputs()
                     //uninstall app
-                    shell = ShizukuShell(output, "pm uninstall -k --user 0 ${app.id} | tee -a ${commandOutputPath()}")
                     Toast.makeText(this, "Uninstalling ${app.name}", Toast.LENGTH_SHORT).show()
-                    shell!!.exec()
-                    Timer().schedule(timerTask {
-                        runOnUiThread {
-                            if(lastCommandOutput().contains("Success",true)) {
-                                apps = apps.filter { it.id != app.id }
-                                list.adapter = DebloatAdapter(this@DebloatActivity, apps)
-                                Toast.makeText(applicationContext, "Uninstalled ${app.name}", Toast.LENGTH_LONG).show()
-                            }else{
-                                Toast.makeText(applicationContext, "Failed to uninstall ${app.name}", Toast.LENGTH_LONG).show()
+                    ShizukuRunner.runAdbCommand("cmd package uninstall -k --user 0 ${app.id}",
+                        object : ShizukuRunner.CommandResultListener {
+                            override fun onCommandResult(output: String, done: Boolean) {
+                                if (done) {
+                                    runOnUiThread {
+                                        if (output.contains("Success", true)) {
+                                            apps = apps.filter { it.id != app.id }
+                                            list.adapter =
+                                                DebloatAdapter(this@DebloatActivity, apps)
+                                            Toast.makeText(
+                                                applicationContext,
+                                                "Uninstalled ${app.name}",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        } else {
+                                            Toast.makeText(
+                                                applicationContext,
+                                                "Failed to uninstall ${app.name},\n$output",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                        dialog?.dismiss()
+                                    }
+                                }
                             }
-                            dialog?.dismiss()
-                        }
-                    }, 1000)
+                        })
                 }
                 val btnContainer = LinearLayout(this)
                 btnContainer.addView(uninstallBtn)
@@ -100,7 +110,17 @@ class DebloatActivity : AppCompatActivity() {
                     .setView(dialogView)
                     .setCancelable(true)
                     .setTitle(app.name)
-                    .setMessage(app.id)
+                    .setMessage(
+                        "package: ${app.id}\n${
+                            when (app.removal.ifEmpty { "X" }[0]) {
+                                'R' -> "Recommended to uninstall"
+                                'A' -> "Only advanced users should uninstall"
+                                'E' -> "Only expert users should uninstall"
+                                'U' -> "Unsafe to uninstall"
+                                else -> "No info, uninstall at own risk"
+                            }
+                        }."
+                    )
                     .show()
             }
             findViewById<LinearLayout>(R.id.loader).visibility = LinearLayout.GONE
@@ -145,6 +165,8 @@ class DebloatActivity : AppCompatActivity() {
                 info("No local or online database found.\nPlease check your internet connection and try again.")
             })
         }
+
+        findViewById<ImageView>(R.id.imageRestore).setOnClickListener { restoreMode() }
     }
 
     private fun loadDatabase(onComplete: (ArrayList<AppData>) -> Unit, onFailure: () -> Unit) {
@@ -182,8 +204,63 @@ class DebloatActivity : AppCompatActivity() {
     }
 
 
-
     fun info(string: String) {
         findViewById<TextView>(R.id.infoView).text = string
+    }
+
+    fun restoreMode() {
+        val activityContext = this
+        ShizukuRunner.runAdbCommand("cmd package list packages -u",
+            object : ShizukuRunner.CommandResultListener {
+                override fun onCommandResult(output: String, done: Boolean) {
+                    if (done) {
+                        val allApps = output.replace("package:", "").split("\n");
+                        ShizukuRunner.runAdbCommand("cmd package list packages",
+                            object : ShizukuRunner.CommandResultListener {
+                                override fun onCommandResult(output: String, done: Boolean) {
+                                    val installed = output.replace("package:", "").split("\n")
+                                    if (done) {
+                                        val uninstalled = allApps.filter { !installed.contains(it) }
+                                        println(uninstalled)
+                                        runOnUiThread {
+                                            val appsView = RecyclerView(activityContext)
+                                            val dialog = MaterialAlertDialogBuilder(activityContext)
+                                                .setView(appsView)
+                                                .setCancelable(true)
+                                                .setTitle("Restore uninstalled apps")
+                                                .setMessage(
+                                                    "Select the app to start restoration."
+                                                )
+                                                .show()
+                                            appsView.layoutManager = LinearLayoutManager(activityContext)
+                                            appsView.adapter =
+                                                SimpleAdapter(uninstalled) {
+                                                    ShizukuRunner.runAdbCommand("cmd package install-existing ${uninstalled[it]}",
+                                                        object :
+                                                            ShizukuRunner.CommandResultListener {
+                                                            override fun onCommandResult(
+                                                                output: String,
+                                                                done: Boolean
+                                                            ) {
+                                                                if (done) {
+                                                                    runOnUiThread {
+                                                                        Toast.makeText(
+                                                                            activityContext,
+                                                                            output,
+                                                                            Toast.LENGTH_LONG
+                                                                        ).show()
+                                                                    }
+                                                                }
+                                                            }
+                                                        })
+                                                    dialog.dismiss()
+                                                }
+                                        }
+                                    }
+                                }
+                            })
+                    }
+                }
+            })
     }
 }

@@ -1,21 +1,15 @@
 package com.legendsayantan.adbtools
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
-import android.provider.OpenableColumns
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
-import com.legendsayantan.adbtools.lib.ShizukuShell
-import com.legendsayantan.adbtools.lib.Utils.Companion.clearCommandOutputs
-import com.legendsayantan.adbtools.lib.Utils.Companion.commandOutputPath
+import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
-import com.legendsayantan.adbtools.lib.Utils.Companion.lastCommandOutput
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -40,7 +34,7 @@ class LookbackActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode == Companion.PICK_FILE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
+        if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
             data?.data?.let { uri ->
                 // Handle the selected file URI here
                 Thread{
@@ -48,22 +42,34 @@ class LookbackActivity : AppCompatActivity() {
                     val cacheFile = File(Environment.getExternalStorageDirectory(), "/Android/data/${packageName}/installcache.apk")
                     copyFile(inputStream, cacheFile){
                         if (it) {
-                            clearCommandOutputs()
                             val packageToInstall = packageManager.getPackageArchiveInfo(cacheFile.absolutePath, 0)?.packageName ?:""
-                            var output = listOf<String>()
-                            val command = "cat ${cacheFile.absolutePath} | pm install -S ${cacheFile.length()} -r -d | tee -a ${commandOutputPath()}"
+                            val command = "cat ${cacheFile.absolutePath} | pm install -S ${cacheFile.length()} -r -d"
                             Handler(mainLooper).post {
                                 Toast.makeText(this, "Installing $packageToInstall.", Toast.LENGTH_SHORT).show()
                             }
-                            ShizukuShell(output, command).exec()
-                            Handler(mainLooper).postDelayed({
-                                if(lastCommandOutput().contains("Success",true)){
-                                    Toast.makeText(this, "Installed Successfully.", Toast.LENGTH_SHORT).show()
-                                }else{
-                                    Toast.makeText(this, "Failure: ${lastCommandOutput()}", Toast.LENGTH_SHORT).show()
+                            ShizukuRunner.runAdbCommand(command,object : ShizukuRunner.CommandResultListener{
+                                override fun onCommandResult(output: String, done: Boolean) {
+                                    if(done){
+                                        Handler(mainLooper).post {
+                                            if (output.contains("Success", true)) {
+                                                Toast.makeText(
+                                                    applicationContext,
+                                                    "Installed Successfully.",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            } else {
+                                                Toast.makeText(
+                                                    applicationContext,
+                                                    "Failure: ${output}",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                            cacheFile.delete()
+                                        }
+                                    }
                                 }
-                                cacheFile.delete()
-                            }, 2500)
+                            })
+
                         }
                     }
                 }.start()

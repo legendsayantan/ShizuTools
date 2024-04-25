@@ -9,12 +9,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
-import android.widget.TextView
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textview.MaterialTextView
 import com.legendsayantan.adbtools.data.AppData
 import com.legendsayantan.adbtools.R
-import com.legendsayantan.adbtools.lib.Utils.Companion.extractUrls
 import com.legendsayantan.adbtools.lib.Utils.Companion.removeUrls
 
 class DebloatAdapter(private val activity: Activity, private val dataList: List<AppData>) :

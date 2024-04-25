@@ -6,19 +6,14 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
-import com.legendsayantan.adbtools.lib.ShizukuShell
-import com.legendsayantan.adbtools.lib.Utils.Companion.clearCommandOutputs
-import com.legendsayantan.adbtools.lib.Utils.Companion.commandOutputPath
+import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
-import com.legendsayantan.adbtools.lib.Utils.Companion.lastCommandOutput
 import com.legendsayantan.adbtools.lib.Utils.Companion.postNotification
 import java.util.Timer
 import kotlin.concurrent.schedule
 
 class ThemePatcherActivity : AppCompatActivity() {
-    lateinit var shell: ShizukuShell
-    var output = listOf<String>()
     val zeroByDefault = listOf(
         "persist.sys.trial.theme",
         "persist.sys.trial_theme",
@@ -40,13 +35,15 @@ class ThemePatcherActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_theme_patcher)
         initialiseStatusBar()
-        shell = ShizukuShell(output, "pm grant $packageName android.permission.WRITE_SETTINGS")
-        shell.exec()
-        shell =
-            ShizukuShell(output, "pm grant $packageName android.permission.WRITE_SECURE_SETTINGS")
-        shell.exec()
-        shell = ShizukuShell(output, "pm grant $packageName android.permission.POST_NOTIFICATIONS")
-        shell.exec()
+        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.WRITE_SETTINGS",object : ShizukuRunner.CommandResultListener{
+            override fun onCommandResult(output: String, done: Boolean) {}
+        })
+        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.WRITE_SECURE_SETTINGS",object : ShizukuRunner.CommandResultListener{
+            override fun onCommandResult(output: String, done: Boolean) {}
+        })
+        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.POST_NOTIFICATIONS",object : ShizukuRunner.CommandResultListener{
+            override fun onCommandResult(output: String, done: Boolean) {}
+        })
         var themeStores =
             packageManager.getAllInstalledApps().filter { it.packageName.contains("theme") }
         if (themeStores.any { it.loadLabel(packageManager).contains("theme") }) themeStores =
@@ -66,9 +63,6 @@ class ThemePatcherActivity : AppCompatActivity() {
             startActivity(intent)
             startPatcher(themeStores[0].packageName) {
                 postPatchNotification()
-                output.forEach {
-                    Toast.makeText(applicationContext, it, Toast.LENGTH_SHORT).show()
-                }
             }
         }
     }
@@ -88,13 +82,13 @@ class ThemePatcherActivity : AppCompatActivity() {
             }
             Timer().schedule(7000) {
                 patchAll(storepackage){
-                    if(lastCommandOutput().isEmpty()){
+                    if(it.isEmpty()){
                         patched()
                     }else{
                         runOnUiThread {
                             postNotification(
                                 "ThemePatcher",
-                                "Error: ${lastCommandOutput()}", success = false
+                                "Error: $it", success = false
                             )
                         }
                     }
@@ -104,38 +98,45 @@ class ThemePatcherActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun patchAll(storepackage: String, done: () -> Unit) {
-        clearCommandOutputs()
+    private fun patchAll(storepackage: String, done: (String) -> Unit) {
         if (isOnTrial()) {
             //patch
             if(storepackage.isNotEmpty()){
-                shell = ShizukuShell(output, "am force-stop $storepackage")
-                shell.exec()
+                ShizukuRunner.runAdbCommand("am force-stop $storepackage",object : ShizukuRunner.CommandResultListener{
+                    override fun onCommandResult(output: String, done: Boolean) {}
+                })
             }
 
             zeroByDefault.forEach {
-                shell = ShizukuShell(output, "settings put system $it 0 | tee -a ${commandOutputPath()}")
-                shell.exec()
-                shell = ShizukuShell(output, "settings put secure $it 0 | tee -a ${commandOutputPath()}")
-                shell.exec()
+                ShizukuRunner.runAdbCommand("settings put system $it 0",object : ShizukuRunner.CommandResultListener{
+                    override fun onCommandResult(output: String, done: Boolean) {}
+                })
+                ShizukuRunner.runAdbCommand("settings put secure $it 0",object : ShizukuRunner.CommandResultListener{
+                    override fun onCommandResult(output: String, done: Boolean) {}
+                })
             }
             negativeOneByDefault.forEach {
-                shell = ShizukuShell(output, "settings put system $it -1 | tee -a ${commandOutputPath()}")
-                shell.exec()
-                shell = ShizukuShell(output, "settings put secure $it -1 | tee -a ${commandOutputPath()}")
-                shell.exec()
+                ShizukuRunner.runAdbCommand("settings put system $it -1",object : ShizukuRunner.CommandResultListener{
+                    override fun onCommandResult(output: String, done: Boolean) {}
+                })
+                ShizukuRunner.runAdbCommand("settings put secure $it -1",object : ShizukuRunner.CommandResultListener{
+                    override fun onCommandResult(output: String, done: Boolean) {}
+                })
             }
             otherDefaults.forEach {
-                shell = ShizukuShell(output, "settings put system ${it.key} ${it.value} | tee -a ${commandOutputPath()}")
-                shell.exec()
-                shell = ShizukuShell(output, "settings put secure ${it.key} ${it.value} | tee -a ${commandOutputPath()}")
-                shell.exec()
+                ShizukuRunner.runAdbCommand("settings put system ${it.key} ${it.value}",object : ShizukuRunner.CommandResultListener{
+                    override fun onCommandResult(output: String, done: Boolean) {}
+                })
+                ShizukuRunner.runAdbCommand("settings put secure ${it.key} ${it.value}",object : ShizukuRunner.CommandResultListener{
+                    override fun onCommandResult(output: String, done: Boolean) {
+                        runOnUiThread { done(output) }
+                    }
+                })
             }
-            runOnUiThread { done() }
         }
     }
 
-    fun isOnTrial(): Boolean {
+    private fun isOnTrial(): Boolean {
         zeroByDefault.forEach {
             val system = Settings.System.getInt(contentResolver, it, 0)
             val secure = Settings.Secure.getInt(contentResolver, it, 0)

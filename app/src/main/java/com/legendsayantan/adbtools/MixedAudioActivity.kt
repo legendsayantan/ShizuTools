@@ -7,11 +7,8 @@ import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.legendsayantan.adbtools.adapters.SimpleAdapter
-import com.legendsayantan.adbtools.lib.ShizukuShell
-import com.legendsayantan.adbtools.lib.Utils.Companion.clearCommandOutputs
-import com.legendsayantan.adbtools.lib.Utils.Companion.commandOutputPath
+import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
-import com.legendsayantan.adbtools.lib.Utils.Companion.lastCommandOutput
 
 class MixedAudioActivity : AppCompatActivity() {
     private val enabledApps = arrayListOf<String>()
@@ -33,45 +30,61 @@ class MixedAudioActivity : AppCompatActivity() {
         disabledApps.clear()
         enabledNames.clear()
         disabledNames.clear()
-        clearCommandOutputs()
-        ShizukuShell(enabledApps, "appops query-op TAKE_AUDIO_FOCUS ignore | tee -a ${commandOutputPath()}").exec()
-        ShizukuShell(enabledApps, "appops query-op TAKE_AUDIO_FOCUS deny | tee -a ${commandOutputPath()}").exec()
-        lastCommandOutput().split("\n").forEach {
-            if(!enabledApps.contains(it) && it.isNotEmpty())enabledApps.add(it)
-        }
-        clearCommandOutputs()
-        ShizukuShell(disabledApps, "appops query-op TAKE_AUDIO_FOCUS allow | tee -a ${commandOutputPath()}").exec()
-        lastCommandOutput().split("\n").forEach {
-            if(!disabledApps.contains(it) && it.isNotEmpty()) disabledApps.add(it)
-        }
-        enabledApps.forEach {
-            try {
-                val name = packageManager.getApplicationInfo(it.split(" ")[0], PackageManager.GET_META_DATA).loadLabel(packageManager).toString()
-                enabledNames.add(name.ifEmpty { it })
-            } catch (e: PackageManager.NameNotFoundException) {
-                enabledNames.add(it.split(" ")[0])
+        ShizukuRunner.runAdbCommand("appops query-op TAKE_AUDIO_FOCUS ignore ",object : ShizukuRunner.CommandResultListener{
+            override fun onCommandResult(output: String, done: Boolean) {
+                if(done){
+                    output.split("\n").forEach {
+                        if(!enabledApps.contains(it) && it.isNotEmpty())enabledApps.add(it)
+                    }
+                    ShizukuRunner.runAdbCommand("appops query-op TAKE_AUDIO_FOCUS deny ",object : ShizukuRunner.CommandResultListener{
+                        override fun onCommandResult(output: String, done: Boolean) {
+                            if(done){
+                                output.split("\n").forEach {
+                                    if(!enabledApps.contains(it) && it.isNotEmpty())enabledApps.add(it)
+                                }
+                                ShizukuRunner.runAdbCommand("appops query-op TAKE_AUDIO_FOCUS allow ",object : ShizukuRunner.CommandResultListener{
+                                    override fun onCommandResult(output: String, done: Boolean) {
+                                        if(done){
+                                            output.split("\n").forEach {
+                                                if(!disabledApps.contains(it) && it.isNotEmpty()) disabledApps.add(it)
+                                            }
+                                            runOnUiThread{
+                                                enabledApps.forEach {
+                                                    try {
+                                                        val name = packageManager.getApplicationInfo(it.split(" ")[0], PackageManager.GET_META_DATA).loadLabel(packageManager).toString()
+                                                        enabledNames.add(name.ifEmpty { it })
+                                                    } catch (e: PackageManager.NameNotFoundException) {
+                                                        enabledNames.add(it.split(" ")[0])
+                                                    }
+                                                }
+                                                disabledApps.forEach {
+                                                    try {
+                                                        val name = packageManager.getApplicationInfo(it.split(" ")[0], PackageManager.GET_META_DATA).loadLabel(packageManager).toString()
+                                                        disabledNames.add(name.ifEmpty { it })
+                                                    } catch (e: PackageManager.NameNotFoundException) {
+                                                        disabledNames.add(it.split(" ")[0])
+                                                    }
+                                                }
+                                                val enabledAdapter = SimpleAdapter(enabledNames){
+                                                    showChangeDialog(enabledApps[it],"allow")
+                                                }
+                                                val disabledAdapter = SimpleAdapter(disabledNames){
+                                                    showChangeDialog(disabledApps[it],"deny")
+                                                }
+                                                val enabledList = findViewById<RecyclerView>(R.id.enabled)
+                                                enabledList.adapter = enabledAdapter
+                                                val disabledList = findViewById<RecyclerView>(R.id.disabled)
+                                                disabledList.adapter = disabledAdapter
+                                            }
+                                        }
+                                    }
+                                })
+                            }
+                        }
+                    })
+                }
             }
-        }
-        disabledApps.forEach {
-            try {
-                val name = packageManager.getApplicationInfo(it.split(" ")[0], PackageManager.GET_META_DATA).loadLabel(packageManager).toString()
-                disabledNames.add(name.ifEmpty { it })
-            } catch (e: PackageManager.NameNotFoundException) {
-                disabledNames.add(it.split(" ")[0])
-            }
-        }
-        runOnUiThread {
-            val enabledAdapter = SimpleAdapter(enabledNames){
-                showChangeDialog(enabledApps[it],"allow")
-            }
-            val disabledAdapter = SimpleAdapter(disabledNames){
-                showChangeDialog(disabledApps[it],"deny")
-            }
-            val enabledList = findViewById<RecyclerView>(R.id.enabled)
-            enabledList.adapter = enabledAdapter
-            val disabledList = findViewById<RecyclerView>(R.id.disabled)
-            disabledList.adapter = disabledAdapter
-        }
+        })
     }
     private fun showChangeDialog(packageName:String,mode:String){
         val dialog = MaterialAlertDialogBuilder(this)
@@ -89,8 +102,12 @@ class MixedAudioActivity : AppCompatActivity() {
         dialog.create().show()
     }
     private fun setMode(packageName:String,mode:String):String{
-        clearCommandOutputs()
-        ShizukuShell(enabledApps, "appops set $packageName TAKE_AUDIO_FOCUS $mode | tee -a ${commandOutputPath()}").exec()
-        return lastCommandOutput()
+        var o = ""
+        ShizukuRunner.runAdbCommand("appops set $packageName TAKE_AUDIO_FOCUS $mode",object : ShizukuRunner.CommandResultListener{
+            override fun onCommandResult(output: String, done: Boolean) {
+                o = output
+            }
+        })
+        return o
     }
 }

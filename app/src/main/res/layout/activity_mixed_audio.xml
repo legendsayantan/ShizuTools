@@ -4,8 +4,11 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/gradient"
+    android:fitsSystemWindows="true"
     tools:context=".MixedAudioActivity">
     <ScrollView
+        android:layout_marginTop="45dp"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
         <LinearLayout

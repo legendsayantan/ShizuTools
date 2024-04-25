@@ -9,6 +9,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Environment
+import android.view.WindowManager
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -45,7 +46,7 @@ class Utils {
         }
 
         fun Activity.initialiseStatusBar(){
-            window.statusBarColor = ColorUtils.blendARGB(ContextCompat.getColor(this, R.color.green), Color.BLACK, 0.5f)
+            window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         }
 
         fun PackageManager.getAllInstalledApps(): List<ApplicationInfo> {
@@ -78,18 +79,6 @@ class Utils {
                     notify(0, notificationBuilder.build())
                 }
             }
-        }
-
-        fun Context.commandOutputPath():String{
-            return File(Environment.getExternalStorageDirectory(), "/Android/data/${packageName}/output.txt").absolutePath
-        }
-
-        fun Context.lastCommandOutput():String{
-            return File(Environment.getExternalStorageDirectory(), "/Android/data/${packageName}/output.txt").readText()
-        }
-
-        fun Context.clearCommandOutputs(){
-            File(Environment.getExternalStorageDirectory(), "/Android/data/${packageName}/output.txt").delete()
         }
 
     }

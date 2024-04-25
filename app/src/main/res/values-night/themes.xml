@@ -2,6 +2,9 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.AdbTools" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <item name="colorAccent">@color/theme</item>
+        <item name="colorContainer">@color/black</item>
+        <item name="strokeColor">@color/theme_light</item>
+        <item name="colorPrimary">@color/theme_light</item>
     </style>
 </resources>
