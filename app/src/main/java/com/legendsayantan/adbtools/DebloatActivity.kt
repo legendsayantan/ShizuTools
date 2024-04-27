@@ -225,7 +225,7 @@ class DebloatActivity : AppCompatActivity() {
     } else {
         val layout = TextInputLayout(this)
         val editText = TextInputEditText(this)
-        editText.hint = "Enter app name/package/removal"
+        editText.hint = "Enter app name/package/severity/type"
         layout.addView(editText)
         layout.setPadding(50,0,50,0)
         val dialog = MaterialAlertDialogBuilder(this)
@@ -239,9 +239,11 @@ class DebloatActivity : AppCompatActivity() {
                 val t = editText.text.toString()
                 cachedApps = apps
                 apps = apps.filter { appData ->
-                    appData.name.contains(t) || appData.id.contains(t) || appData.removal.contains(t) || appData.description.contains(
-                        t
-                    )
+                    appData.name.contains(t)
+                            || appData.id.contains(t)
+                            || appData.removal.contains(t)
+                            || appData.description.contains(t)
+                            || appData.list.contains(t)
                 }
                 list.adapter =
                     DebloatAdapter(this@DebloatActivity, apps)
