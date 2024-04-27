@@ -233,7 +233,7 @@ class DebloatActivity : AppCompatActivity() {
             .setCancelable(true)
             .setTitle("Filter")
             .setPositiveButton(
-                "Filter"
+                "Apply"
             ) { dialog, which ->
                 filterMode = true
                 val t = editText.text.toString()

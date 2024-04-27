@@ -231,7 +231,7 @@
                     <com.google.android.material.textview.MaterialTextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Allow multiple apps to play audio at the same time, without pausing each other." />
+                        android:text="Allow multiple apps to play audio at the same time. Not supported by every app." />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -278,6 +278,51 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Execute raw adb commands, on-device." />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardIntentShell"
+                style="@style/Theme.AdbTools"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                app:strokeWidth="1dp"
+                android:layout_marginVertical="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginHorizontal="15dp"
+                    android:layout_marginVertical="10dp"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Intent Shell"
+                            android:textSize="22dp" />
+
+                        <ImageView
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:layout_marginHorizontal="10dp"
+                            app:srcCompat="@drawable/baseline_arrow_forward_24"
+                            app:tint="?colorAccent" />
+
+                    </LinearLayout>
+
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Execute raw adb commands, on-demand through intents. This is still experimental." />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>

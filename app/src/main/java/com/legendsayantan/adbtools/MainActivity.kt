@@ -1,20 +1,29 @@
 package com.legendsayantan.adbtools
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.switchmaterial.SwitchMaterial
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
+import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         val cardLookBack = findViewById<MaterialCardView>(R.id.cardLookBack)
         val cardMixedAudio = findViewById<MaterialCardView>(R.id.cardMixedAudio)
         val cardShell = findViewById<MaterialCardView>(R.id.cardShell)
+        val cardIntentShell = findViewById<MaterialCardView>(R.id.cardIntentShell)
         cardDebloat.setOnClickListener {
             startActivity(
                 Intent(
@@ -68,6 +78,7 @@ class MainActivity : AppCompatActivity() {
             )
         }
         cardShell.setOnClickListener { openShell() }
+        cardIntentShell.setOnClickListener { intentShell() }
     }
 
     private fun openShell() {
@@ -114,5 +125,43 @@ class MainActivity : AppCompatActivity() {
             addView(layout)
         })
         dialog.create().show()
+    }
+    private fun intentShell(){
+        val prefs = getSharedPreferences("execution", MODE_PRIVATE)
+        if(prefs.getString("key",null)==null){
+            prefs.edit().putString("key",UUID.randomUUID().toString()).apply()
+        }
+        val key = prefs.getString("key",null)
+        val layout = LinearLayout(this).apply {
+            setPadding(60,0,60,0)
+        }
+        layout.orientation = LinearLayout.VERTICAL
+        val toggle = SwitchMaterial(this)
+        toggle.isChecked = prefs.getBoolean("enabled",false)
+        toggle.text = "Accept adb intents"
+        toggle.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("enabled",isChecked).apply()
+        }
+        val editLayout = TextInputLayout(this)
+        val editText = TextInputEditText(this)
+        editText.setText(key)
+        editText.focusable = View.NOT_FOCUSABLE
+        editText.hint = "Access key"
+        editLayout.addView(editText)
+        editText.setOnClickListener {
+            //copy to clipboar
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("key", key)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(this,"Key copied to clipboard",Toast.LENGTH_SHORT).show()
+        }
+        layout.addView(toggle)
+        layout.addView(editLayout)
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Intent Shell")
+            .setMessage("Intent shell locks for 5 minutes after usage of a wrong access key, to prevent brute force attempts.")
+            .setView(layout)
+            .setPositiveButton("OK") { _, _ -> }
+            .create().show()
     }
 }
