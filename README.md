@@ -26,3 +26,5 @@ Download the latest apk from [here](https://github.com/legendsayantan/ShizuTools
 
 ### License
 This project is licensed under GNU General Public License v3.0.
+
+**Note** - You must not distribute this software, whether original or modified, to any platform without its source code or the reference to its original source code. Also, uploading to any app stores is forbidden.
