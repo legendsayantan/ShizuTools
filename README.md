@@ -23,3 +23,6 @@ Contains some easy-to-use tools to go beyond the level of control allowed by And
 
 ### Installation
 Download the latest apk from [here](https://github.com/legendsayantan/ShizuTools/blob/master/app/release/app-release.apk).
+
+### License
+This project is licensed under GNU General Public License v3.0.
