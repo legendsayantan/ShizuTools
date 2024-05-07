@@ -103,7 +103,7 @@ class MixedAudioActivity : AppCompatActivity() {
             setPositiveButton("Cancel"){_,_->}
         }.create()
         dialog.setTitle("MixedAudio")
-        dialog.setMessage("Toggle MixedAudio status for $packageName?")
+        dialog.setMessage("Toggle MixedAudio support for $packageName?")
         val layout = LinearLayout(this)
         layout.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT
