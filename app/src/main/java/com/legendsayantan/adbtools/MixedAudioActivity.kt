@@ -3,8 +3,11 @@ package com.legendsayantan.adbtools
 import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.legendsayantan.adbtools.adapters.SimpleAdapter
 import com.legendsayantan.adbtools.lib.ShizukuRunner
@@ -22,8 +25,13 @@ class MixedAudioActivity : AppCompatActivity() {
         initialiseStatusBar()
         Thread{
             reloadApps()
-
         }.start()
+        MaterialAlertDialogBuilder(this).apply {
+            setTitle("Force Apply Warning!")
+            setMessage(getString(R.string.force_applying_mixedaudio_may_crash))
+            setPositiveButton("understood"){_,_->}
+            create().show()
+        }
     }
     private fun reloadApps(){
         enabledApps.clear()
@@ -66,10 +74,14 @@ class MixedAudioActivity : AppCompatActivity() {
                                                     }
                                                 }
                                                 val enabledAdapter = SimpleAdapter(enabledNames){
-                                                    showChangeDialog(enabledApps[it],"allow")
+                                                    showChangeDialog(enabledApps[it],
+                                                        arrayOf("allow")
+                                                    )
                                                 }
                                                 val disabledAdapter = SimpleAdapter(disabledNames){
-                                                    showChangeDialog(disabledApps[it],"deny")
+                                                    showChangeDialog(disabledApps[it],
+                                                        arrayOf("ignore","deny")
+                                                    )
                                                 }
                                                 val enabledList = findViewById<RecyclerView>(R.id.enabled)
                                                 enabledList.adapter = enabledAdapter
@@ -86,20 +98,37 @@ class MixedAudioActivity : AppCompatActivity() {
             }
         })
     }
-    private fun showChangeDialog(packageName:String,mode:String){
-        val dialog = MaterialAlertDialogBuilder(this)
+    private fun showChangeDialog(packageName:String,modes:Array<String>){
+        val dialog = MaterialAlertDialogBuilder(this).apply {
+            setPositiveButton("Cancel"){_,_->}
+        }.create()
         dialog.setTitle("MixedAudio")
-        dialog.setMessage("Do you want to toggle MixedAudio for $packageName?")
-        dialog.setPositiveButton("Yes"){_,_->
-            if(setMode(packageName,mode).isBlank()){
-                Toast.makeText(this,"Successful",Toast.LENGTH_SHORT).show()
-                reloadApps()
-            }else{
-                Toast.makeText(this,"Failed",Toast.LENGTH_SHORT).show()
+        dialog.setMessage("Toggle MixedAudio status for $packageName?")
+        val layout = LinearLayout(this)
+        layout.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        layout.setPadding(50,0,50,0)
+        layout.orientation = LinearLayout.VERTICAL
+        val btns = listOf("Apply","Force Apply")
+        modes.forEachIndexed { index, mode ->
+            val btn = MaterialButton(this)
+            btn.text = btns[index]
+            btn.setOnClickListener {
+                if(setMode(packageName,mode).isBlank()){
+                    Toast.makeText(this,"Successful",Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
+                    Thread{
+                        reloadApps()
+                    }.start()
+                }else{
+                    Toast.makeText(this,"Failed",Toast.LENGTH_SHORT).show()
+                }
             }
+            layout.addView(btn)
         }
-        dialog.setNegativeButton("No"){_,_->}
-        dialog.create().show()
+        dialog.setView(layout)
+        dialog.show()
     }
     private fun setMode(packageName:String,mode:String):String{
         var o = ""
