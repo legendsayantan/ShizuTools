@@ -7,7 +7,7 @@ Contains some easy-to-use tools to go beyond the level of control allowed by And
 - [x] **LookBack** - Allows downgrade of apps, without uninstallation.
 - [x] **MixedAudio** - Allows multiple media apps to play at the same time. *May cause some apps to crash.*
 - [x] **ADB Shell** - Manually execute other raw ADB commands.
-- [x] **Intent Shell** - Allows other apps to run ADB commands via intent requests.
+- [x] **Intent Shell** - Allows other apps (Tasker,MacroDroid,etc) to run ADB commands via intent requests.
 
   Intent action - `com.legendsayantan.adbtools.execute`
 
