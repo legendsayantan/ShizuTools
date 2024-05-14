@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
-import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -14,7 +13,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.marginStart
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
@@ -22,7 +20,11 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.textview.MaterialTextView
-import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.TypeAdapter
 import com.google.gson.reflect.TypeToken
 import com.legendsayantan.adbtools.adapters.DebloatAdapter
 import com.legendsayantan.adbtools.adapters.SimpleAdapter
@@ -36,16 +38,18 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.lang.reflect.Type
 import java.net.URL
+
 
 class DebloatActivity : AppCompatActivity() {
     val output = listOf<String>()
     val prefs by lazy { getSharedPreferences("debloater", Context.MODE_PRIVATE) }
-    lateinit var apps: List<AppData>
+    lateinit var apps: HashMap<String,AppData>
     lateinit var filterBtn: ImageView
     lateinit var list: ListView
     var filterMode = false
-    lateinit var cachedApps: List<AppData>
+    lateinit var cachedApps: HashMap<String,AppData>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_debloat)
@@ -58,7 +62,8 @@ class DebloatActivity : AppCompatActivity() {
         val setListListener = {
             list.setOnItemClickListener { _, _, position, _ ->
                 var dialog: AlertDialog? = null
-                val app = apps[position]
+                val id = apps.keys.toList()[position]
+                val app = apps.values.toList()[position]
                 //show dialog
                 val links = MaterialTextView(this)
                 links.text = "Links :"
@@ -75,13 +80,13 @@ class DebloatActivity : AppCompatActivity() {
                 uninstallBtn.setOnClickListener {
                     //uninstall app
                     Toast.makeText(this, "Uninstalling ${app.name}", Toast.LENGTH_SHORT).show()
-                    ShizukuRunner.runAdbCommand("cmd package uninstall -k --user 0 ${app.id}",
+                    ShizukuRunner.runAdbCommand("cmd package uninstall -k --user 0 ${id}",
                         object : ShizukuRunner.CommandResultListener {
                             override fun onCommandResult(output: String, done: Boolean) {
                                 if (done) {
                                     runOnUiThread {
                                         if (output.contains("Success", true)) {
-                                            apps = apps.filter { it.id != app.id }
+                                            apps = apps.filterKeys { it != id } as HashMap<String,AppData>
                                             list.adapter =
                                                 DebloatAdapter(this@DebloatActivity, apps)
                                             Toast.makeText(
@@ -117,7 +122,7 @@ class DebloatActivity : AppCompatActivity() {
                     .setCancelable(true)
                     .setTitle(app.name)
                     .setMessage(
-                        "package: ${app.id}\n${
+                        "package: ${id}\n${
                             when (app.removal.ifEmpty { "X" }[0]) {
                                 'R' -> "Recommended to uninstall"
                                 'A' -> "Only advanced users should uninstall"
@@ -142,28 +147,28 @@ class DebloatActivity : AppCompatActivity() {
                 runOnUiThread {
                     info("Scanning local apps")
                     val localApps = packageManager.getAllInstalledApps()
-                    val finalApp = arrayListOf<AppData>()
+                    val finalApp = hashMapOf<String,AppData>()
                     Thread {
                         localApps.forEach { app ->
-                            val searchResult = databaseApps.find { it.id == app.packageName }
+                            val searchResult = databaseApps[app.packageName]
                             val appName = app.loadLabel(packageManager).toString()
 
                             if (searchResult != null) {
-                                if (searchResult.removal != "Unsafe") finalApp.add(searchResult.apply {
+                                if (searchResult.removal != "Unsafe") finalApp[app.packageName] = searchResult.apply {
                                     name = appName
-                                })
+                                }
                             } else {
-                                finalApp.add(
+                                finalApp[app.packageName] =
                                     AppData(
-                                        appName, app.packageName, "",
+                                        appName, "",
                                         "", arrayListOf(), arrayListOf(),
                                         arrayListOf(), ""
                                     )
-                                )
                             }
                         }
                         runOnUiThread {
-                            apps = finalApp.sortedWith(compareBy { it.name })
+                            apps = finalApp.entries.sortedWith(compareBy { it.value.name })
+                                .associate { it.key to it.value } as HashMap<String,AppData>
                             list.adapter = DebloatAdapter(this@DebloatActivity, apps)
                             setListListener()
                         }
@@ -177,10 +182,10 @@ class DebloatActivity : AppCompatActivity() {
         findViewById<ImageView>(R.id.imageRestore).setOnClickListener { restoreMode() }
     }
 
-    private fun loadDatabase(onComplete: (ArrayList<AppData>) -> Unit, onFailure: () -> Unit) {
+    private fun loadDatabase(onComplete: (HashMap<String,AppData>) -> Unit, onFailure: () -> Unit) {
         try {
             val url =
-                URL("https://cdn.jsdelivr.net/gh/0x192/universal-android-debloater@main/resources/assets/uad_lists.json")
+                URL("https://cdn.jsdelivr.net/gh/Universal-Debloater-Alliance/universal-android-debloater-next-generation@main/resources/assets/uad_lists.json")
             GlobalScope.launch(Dispatchers.IO) {
                 try {
                     // Read the JSON content from the URL
@@ -207,8 +212,24 @@ class DebloatActivity : AppCompatActivity() {
         }
     }
 
-    private fun String.asAppDatabase(): ArrayList<AppData> {
-        return Gson().fromJson(this, object : TypeToken<ArrayList<AppData?>?>() {}.type)
+    private fun String.asAppDatabase(): HashMap<String,AppData> {
+        val type = object : TypeToken<HashMap<String,AppData?>?>() {}.type
+        return GsonBuilder()
+            .registerTypeAdapter(type, object : JsonDeserializer<HashMap<String, AppData>> {
+                override fun deserialize(
+                    json: JsonElement?,
+                    typeOfT: Type?,
+                    context: JsonDeserializationContext?
+                ): HashMap<String, AppData> {
+                    val map = HashMap<String, AppData>()
+                    json?.asJsonObject?.entrySet()?.forEach {
+                        map[it.key] = context?.deserialize(it.value, AppData::class.java)!!
+                    }
+                    return map
+                }
+            })
+            .create()
+            .fromJson(this, type)
     }
 
 
@@ -238,13 +259,12 @@ class DebloatActivity : AppCompatActivity() {
                 filterMode = true
                 val t = editText.text.toString()
                 cachedApps = apps
-                apps = apps.filter { appData ->
+                apps = apps.filterValues { appData->
                     appData.name.contains(t)
-                            || appData.id.contains(t)
                             || appData.removal.contains(t)
                             || appData.description.contains(t)
                             || appData.list.contains(t)
-                }
+                } as HashMap<String,AppData>
                 list.adapter =
                     DebloatAdapter(this@DebloatActivity, apps)
                 dialog.dismiss()

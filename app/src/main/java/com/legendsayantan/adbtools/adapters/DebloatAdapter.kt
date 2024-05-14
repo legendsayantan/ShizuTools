@@ -15,15 +15,15 @@ import com.legendsayantan.adbtools.data.AppData
 import com.legendsayantan.adbtools.R
 import com.legendsayantan.adbtools.lib.Utils.Companion.removeUrls
 
-class DebloatAdapter(private val activity: Activity, private val dataList: List<AppData>) :
+class DebloatAdapter(private val activity: Activity, private val dataList: HashMap<String,AppData>) :
     BaseAdapter() {
 
     override fun getCount(): Int {
         return dataList.size
     }
 
-    override fun getItem(position: Int): AppData {
-        return dataList[position]
+    override fun getItem(position: Int): Pair<String,AppData> {
+        return dataList.entries.toList()[position].toPair()
     }
 
     override fun getItemId(position: Int): Long {
@@ -46,17 +46,17 @@ class DebloatAdapter(private val activity: Activity, private val dataList: List<
         val descriptionTextView = view.findViewById<MaterialTextView>(R.id.Description)
         val background = view.findViewById<MaterialCardView>(R.id.background)
 
-        val desc = if(data.description.isNotEmpty()){
-            var copy = data.description
+        val desc = if(data.second.description.isNotEmpty()){
+            var copy = data.second.description
             copy.replace("\n\n","\n").removeUrls()
         }else{
-            data.id
+            data.first
         }
 
-        appNameTextView.text = data.name
-        listModeTextView.text = data.list
+        appNameTextView.text = data.second.name
+        listModeTextView.text = data.second.list
         descriptionTextView.text = desc
-        background.strokeColor = when (data.removal) {
+        background.strokeColor = when (data.second.removal) {
             "Recommended" -> activity.getColor(R.color.green)
             "Advanced" -> activity.getColor(R.color.yellow)
             "Expert" -> activity.getColor(R.color.red)
