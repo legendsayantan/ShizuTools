@@ -2,10 +2,10 @@
 Contains some easy-to-use tools to go beyond the level of control allowed by Android System.
 
 ### Tools -
-- [x] **Debloater** - Uninstall system apps and bloatware, with app descriptions from [UAD](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation).
+- [x] **Debloater** - Uninstall system apps and bloatware, with app information from [UAD](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation).
 - [x] **ThemePatcher** - Unlocks premium content for free, from the Oppo/Realme/Oneplus theme store.
 - [x] **LookBack** - Allows downgrade of apps, without uninstallation.
-- [x] **MixedAudio** - Allows multiple media apps to play at the same time. *May cause some apps to crash.*
+- [x] **MixedAudio** - Allows multiple media apps to play at the same time, or mute audio of specific apps.
 - [x] **ADB Shell** - Manually execute other raw ADB commands.
 - [x] **Intent Shell** - Allows other apps (Tasker,MacroDroid,etc) to run ADB commands via intent requests.
 
