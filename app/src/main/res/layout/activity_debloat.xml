@@ -15,7 +15,7 @@
         android:layout_marginHorizontal="20dp"
         android:layout_marginTop="50dp"
         android:text="Removable apps -"
-        android:textSize="22dp"
+        android:textSize="22sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 

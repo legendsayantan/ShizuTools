@@ -215,7 +215,7 @@
                         <com.google.android.material.textview.MaterialTextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="MixedAudio"
+                            android:text="MixedAudio+"
                             android:textSize="22dp" />
 
                         <ImageView
@@ -231,7 +231,7 @@
                     <com.google.android.material.textview.MaterialTextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Allow multiple apps to play audio at the same time. Not supported by every app." />
+                        android:text="Allow multiple apps to play audio at the same time, or mute specific apps." />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>

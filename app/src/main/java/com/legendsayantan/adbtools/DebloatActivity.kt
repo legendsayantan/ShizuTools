@@ -24,9 +24,9 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonDeserializationContext
 import com.google.gson.JsonDeserializer
 import com.google.gson.JsonElement
-import com.google.gson.TypeAdapter
 import com.google.gson.reflect.TypeToken
 import com.legendsayantan.adbtools.adapters.DebloatAdapter
+import com.legendsayantan.adbtools.adapters.AudioStateAdapter
 import com.legendsayantan.adbtools.adapters.SimpleAdapter
 import com.legendsayantan.adbtools.data.AppData
 import com.legendsayantan.adbtools.lib.ShizukuRunner

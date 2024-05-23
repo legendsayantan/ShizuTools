@@ -1,5 +1,8 @@
 package com.legendsayantan.adbtools.adapters
 
+/**
+ * @author legendsayantan
+ */
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
