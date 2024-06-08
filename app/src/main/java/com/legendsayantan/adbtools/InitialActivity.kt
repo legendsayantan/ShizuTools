@@ -42,7 +42,7 @@ class InitialActivity : AppCompatActivity() {
             applicationContext,
             "https://cdn.jsdelivr.net/gh/legendsayantan/ShizuTools@master/app/build.gradle",
             86400000
-        ).checkAndNotify("https://github.com/legendsayantan/ShizuTools/raw/master/app/release/app-release.apk",R.drawable.baseline_file_download_24)
+        ).checkAndNotify("https://github.com/legendsayantan/ShizuTools/releases/latest",R.drawable.baseline_file_download_24)
     }
 
     override fun onResume() {
