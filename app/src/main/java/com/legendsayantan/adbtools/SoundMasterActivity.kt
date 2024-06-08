@@ -10,10 +10,13 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
+import android.widget.Space
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import com.legendsayantan.adbtools.adapters.VolumeBarAdapter
@@ -66,6 +69,12 @@ class SoundMasterActivity : AppCompatActivity() {
                 if (SoundMasterService.running) SoundMasterService.onDynamicAttach(pkg)
                 updateSliders()
             }.show()
+        }
+
+        //adjustment
+        ViewCompat.getRootWindowInsets(findViewById(R.id.main))?.let {
+            val systemBars = it.getInsets(WindowInsetsCompat.Type.systemBars())
+            findViewById<Space>(R.id.insetSpace).minimumHeight = systemBars.bottom
         }
 
         //outside touch
