@@ -5,6 +5,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:animateLayoutChanges="true"
+    android:paddingTop="100dp"
+    android:clipToPadding="false"
     android:background="@color/transparent"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -100,6 +102,7 @@
         app:layout_constraintStart_toStartOf="parent">
 
         <LinearLayout
+            android:orientation="vertical"
             android:background="@drawable/gradient"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -114,6 +117,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+            <Space
+                android:id="@+id/insetSpace"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
         </LinearLayout>
 
         <TextView
