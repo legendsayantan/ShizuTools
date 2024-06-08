@@ -2,4 +2,23 @@
     <string name="app_name">ShizuTools</string>
     <string name="this_app_requires_u_shizuku">This app requires <u>Shizuku</u>.\nPlease make sure you have shizuku installed and running.</string>
     <string name="force_applying_mixedaudio_may_crash">Force preventing media interruption may crash some apps, and doing so on system apps may crash your entire system.</string>
+    <string name="debloater">Debloater</string>
+    <string name="themepatcher">ThemePatcher</string>
+    <string name="lookback">LookBack</string>
+    <string name="mixedaudio">MixedAudio</string>
+    <string name="adb_shell">ADB Shell</string>
+    <string name="intent_shell">Intent Shell</string>
+    <string name="desc_intent_shell">Execute raw adb commands, on-demand through intents. This is still experimental.</string>
+    <string name="desc_adb_shell">Execute raw adb commands, on-device.</string>
+    <string name="desc_mixedaudio">Allow multiple apps to play audio at the same time, or mute specific apps.</string>
+    <string name="desc_lookback">Seamlessly downgrade apps to older versions, without re-install.</string>
+    <string name="desc_themepatcher">Use premium themes from the theme store in oppo, oneplus or realme devices for free.</string>
+    <string name="desc_debloater">Uninstall unnecessary system apps to remove ads, save battery and improve performance.</string>
+    <string name="_100">100</string>
+    <string name="percentage_sign">%</string>
+    <string name="soundmaster">SoundMaster</string>
+    <string name="desc_soundmaster">Control audio output of individual apps, on Android 10 or newer device.</string>
+    <string name="new_slider_for">Select which app to control :</string>
+    <string name="no_sliders_added">No sliders added</string>
+    <string name="new_slider">New Slider</string>
 </resources>

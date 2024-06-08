@@ -1,9 +1,13 @@
 package com.legendsayantan.adbtools
 
+import android.annotation.SuppressLint
+import android.app.PendingIntent
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Gravity
@@ -14,10 +18,12 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -26,6 +32,7 @@ import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
+    @SuppressLint("LaunchActivityFromNotification")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -43,6 +50,7 @@ class MainActivity : AppCompatActivity() {
         val cardThemePatcher = findViewById<MaterialCardView>(R.id.cardThemePatcher)
         val cardLookBack = findViewById<MaterialCardView>(R.id.cardLookBack)
         val cardMixedAudio = findViewById<MaterialCardView>(R.id.cardMixedAudio)
+        val cardSoundMaster = findViewById<MaterialCardView>(R.id.cardSoundMaster)
         val cardShell = findViewById<MaterialCardView>(R.id.cardShell)
         val cardIntentShell = findViewById<MaterialCardView>(R.id.cardIntentShell)
         cardDebloat.setOnClickListener {
@@ -76,6 +84,37 @@ class MainActivity : AppCompatActivity() {
                     MixedAudioActivity::class.java
                 )
             )
+        }
+        cardSoundMaster.setOnClickListener {
+            if(Build.VERSION.SDK_INT<Build.VERSION_CODES.Q) return@setOnClickListener
+            //create notification
+            val intent = Intent(this, SoundMasterActivity::class.java)
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            val channelId = "notifications"
+            val notificationBuilder = NotificationCompat.Builder(applicationContext, channelId)
+                .setSmallIcon(R.drawable.outline_info_24)
+                .setContentTitle("Tap to configure "+applicationContext.getString(R.string.soundmaster))
+                .setOngoing(true)
+                .setContentIntent(
+                    PendingIntent.getActivity(
+                        this,
+                        0,
+                        intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                )
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+
+            // Show the notification.
+            with(NotificationManagerCompat.from(applicationContext)) {
+                if (ActivityCompat.checkSelfPermission(
+                        applicationContext,
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    notify(3, notificationBuilder.build())
+                }
+            }
         }
         cardShell.setOnClickListener { openShell() }
         cardIntentShell.setOnClickListener { intentShell() }

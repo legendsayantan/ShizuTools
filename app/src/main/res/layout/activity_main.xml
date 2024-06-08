@@ -77,7 +77,7 @@
                         <com.google.android.material.textview.MaterialTextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Debloater"
+                            android:text="@string/debloater"
                             android:textSize="22dp" />
 
                         <ImageView
@@ -93,7 +93,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Uninstall unnecessary system apps to remove ads, save battery and improve performance." />
+                        android:text="@string/desc_debloater" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -123,7 +123,7 @@
                         <com.google.android.material.textview.MaterialTextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="ThemePatcher"
+                            android:text="@string/themepatcher"
                             android:textSize="22dp" />
 
                         <ImageView
@@ -139,7 +139,100 @@
                     <com.google.android.material.textview.MaterialTextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Use premium themes from the theme store in oppo, oneplus or realme devices for free." />
+                        android:text="@string/desc_themepatcher" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardMixedAudio"
+                style="@style/Theme.AdbTools"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                app:strokeWidth="1dp"
+                android:layout_marginVertical="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginHorizontal="15dp"
+                    android:layout_marginVertical="10dp"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/mixedaudio"
+                            android:textSize="22dp" />
+
+                        <ImageView
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:layout_marginHorizontal="10dp"
+                            app:srcCompat="@drawable/baseline_arrow_forward_24"
+                            app:tint="?colorAccent" />
+
+                    </LinearLayout>
+
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/desc_mixedaudio" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardSoundMaster"
+                style="@style/Theme.AdbTools"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                app:strokeWidth="1dp"
+                android:layout_marginVertical="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginHorizontal="15dp"
+                    android:layout_marginVertical="10dp"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/soundmaster"
+                            android:textSize="22sp" />
+
+                        <ImageView
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:layout_marginHorizontal="10dp"
+                            app:srcCompat="@drawable/baseline_arrow_forward_24"
+                            app:tint="?colorAccent" />
+
+                    </LinearLayout>
+
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/desc_soundmaster" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -169,7 +262,7 @@
                         <com.google.android.material.textview.MaterialTextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="LookBack"
+                            android:text="@string/lookback"
                             android:textSize="22dp" />
 
                         <ImageView
@@ -185,56 +278,11 @@
                     <com.google.android.material.textview.MaterialTextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Seamlessly downgrade apps to older versions, without re-install." />
+                        android:text="@string/desc_lookback" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardMixedAudio"
-                style="@style/Theme.AdbTools"
-                android:layout_width="match_parent"
-                android:layout_height="100dp"
-                app:strokeWidth="1dp"
-                android:layout_marginVertical="10dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_marginHorizontal="15dp"
-                    android:layout_marginVertical="10dp"
-                    android:gravity="center"
-                    android:orientation="vertical">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.textview.MaterialTextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="MixedAudio+"
-                            android:textSize="22dp" />
-
-                        <ImageView
-                            android:layout_width="wrap_content"
-                            android:layout_height="match_parent"
-                            android:layout_marginHorizontal="10dp"
-                            app:srcCompat="@drawable/baseline_arrow_forward_24"
-                            app:tint="?colorAccent" />
-
-                    </LinearLayout>
-
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Allow multiple apps to play audio at the same time, or mute specific apps." />
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardShell"
@@ -261,7 +309,7 @@
                         <com.google.android.material.textview.MaterialTextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="ADB Shell"
+                            android:text="@string/adb_shell"
                             android:textSize="22dp" />
 
                         <ImageView
@@ -273,11 +321,10 @@
 
                     </LinearLayout>
 
-
                     <com.google.android.material.textview.MaterialTextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Execute raw adb commands, on-device." />
+                        android:text="@string/desc_adb_shell" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -306,7 +353,7 @@
                         <com.google.android.material.textview.MaterialTextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Intent Shell"
+                            android:text="@string/intent_shell"
                             android:textSize="22dp" />
 
                         <ImageView
@@ -322,7 +369,7 @@
                     <com.google.android.material.textview.MaterialTextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Execute raw adb commands, on-demand through intents. This is still experimental." />
+                        android:text="@string/desc_intent_shell" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>

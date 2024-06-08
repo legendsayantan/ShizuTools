@@ -7,4 +7,10 @@
         <item name="strokeColor">@color/theme_light</item>
         <item name="colorPrimary">@color/theme_light</item>
     </style>
+    <style name="DialogActivityTheme" parent="Base.Theme.AdbTools">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:background">@android:color/transparent</item>
+        <item name="android:statusBarColor">@color/transparent</item>
+        <item name="android:windowBackground">@color/transparent</item>
+    </style>
 </resources>

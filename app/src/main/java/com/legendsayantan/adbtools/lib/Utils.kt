@@ -56,15 +56,6 @@ class Utils {
         fun Context.postNotification(title: String, message: String, success: Boolean = true) {
             val channelId = "notifications"
 
-            // Create a notification channel (for Android 8.0 and higher).
-            val channel = NotificationChannel(
-                channelId,
-                "Notifications",
-                NotificationManager.IMPORTANCE_HIGH
-            )
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
-
             // Create the notification using NotificationCompat.
             val notificationBuilder = NotificationCompat.Builder(applicationContext, channelId)
                 .setSmallIcon(if(success)R.drawable.baseline_verified_24 else R.drawable.outline_info_24) // Replace with your notification icon.
@@ -80,6 +71,39 @@ class Utils {
                 }
             }
         }
+
+        fun Context.initialiseNotiChannel(){
+            val channelId = "notifications"
+
+            // Create a notification channel (for Android 8.0 and higher).
+            val channel = NotificationChannel(
+                channelId,
+                "Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        fun loadApps(callback: (List<String>) -> Unit) {
+            ShizukuRunner.runAdbCommand(
+                "pm list packages",
+                object : ShizukuRunner.CommandResultListener {
+                    override fun onCommandResult(output: String, done: Boolean) {
+                        val packages = output.replace("package:", "").split("\n")
+                        callback(packages)
+                    }
+                })
+        }
+
+        fun getAppUidFromPackage(context: Context, packageName: String): Int {
+            return context.packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA).uid
+        }
+
+        fun getAppNameFromPackage(context: Context, packageName: String): String {
+            return context.packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA).loadLabel(context.packageManager).toString()
+        }
+
 
     }
 }
