@@ -6,7 +6,9 @@ Contains some easy-to-use tools to go beyond the level of control allowed by And
 - [x] **ThemePatcher** - Unlocks premium content for free, from the Oppo/Realme/Oneplus theme store.
 - [x] **MixedAudio** - Allows multiple media apps to play at the same time, or mute audio of specific apps.
 - [x] **SoundMaster** - Independent volume control for every app, and more! Requires Android 10 or later.
-  ⚠ SoundMaster may not work on apps with strong copyright protection, like Spotify. In case SoundMaster crashes and some apps lose sound output, use MixedAudio to unmute them. 
+
+  ⚠ SoundMaster may not work on apps with strong copyright protection, like Spotify. In case SoundMaster crashes and some apps lose sound output, use MixedAudio to unmute them.
+
 - [x] **LookBack** - Allows downgrade of apps, without uninstallation.
 - [x] **ADB Shell** - Manually execute other raw ADB commands.
 - [x] **Intent Shell** - Allows other apps (Tasker,MacroDroid,etc) to run ADB commands via intent requests.
