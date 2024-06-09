@@ -25,7 +25,7 @@
             android:textSize="25sp" />
         <Space
             android:layout_weight="1"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"/>
         <ImageView
             android:id="@+id/github"
@@ -78,7 +78,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/debloater"
-                            android:textSize="22dp" />
+                            android:textSize="22sp" />
 
                         <ImageView
                             android:layout_width="wrap_content"
@@ -124,7 +124,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/themepatcher"
-                            android:textSize="22dp" />
+                            android:textSize="22sp" />
 
                         <ImageView
                             android:layout_width="wrap_content"
@@ -171,7 +171,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/mixedaudio"
-                            android:textSize="22dp" />
+                            android:textSize="22sp" />
 
                         <ImageView
                             android:layout_width="wrap_content"
@@ -263,7 +263,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/lookback"
-                            android:textSize="22dp" />
+                            android:textSize="22sp" />
 
                         <ImageView
                             android:layout_width="wrap_content"
@@ -309,8 +309,8 @@
                         <com.google.android.material.textview.MaterialTextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/adb_shell"
-                            android:textSize="22dp" />
+                            android:text="@string/localshell"
+                            android:textSize="22sp" />
 
                         <ImageView
                             android:layout_width="wrap_content"
@@ -354,7 +354,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/intent_shell"
-                            android:textSize="22dp" />
+                            android:textSize="22sp" />
 
                         <ImageView
                             android:layout_width="wrap_content"

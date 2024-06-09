@@ -71,12 +71,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content">
             <TextView
-                android:text="Stereo:"
+                android:text="@string/stereo"
                 android:layout_weight="0.3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
             <TextView
-                android:text="Left"
+                android:text="@string/left"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
             <com.google.android.material.slider.Slider
@@ -89,7 +89,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"/>
             <TextView
-                android:text="Right"
+                android:text="@string/right"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
             <ImageView
@@ -112,7 +112,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent">
                 <TextView
-                    android:text="EQ:      "
+                    android:text="@string/eq"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"/>
 
@@ -148,7 +148,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content">
                     <TextView
-                        android:text="Low Bands"
+                        android:text="@string/low_bands"
                         android:layout_weight="0.4"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"/>
@@ -174,7 +174,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content">
                     <TextView
-                        android:text="Mid Bands"
+                        android:text="@string/mid_bands"
                         android:layout_weight="0.4"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"/>
@@ -199,7 +199,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content">
                     <TextView
-                        android:text="High Bands"
+                        android:text="@string/high_bands"
                         android:layout_weight="0.4"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"/>

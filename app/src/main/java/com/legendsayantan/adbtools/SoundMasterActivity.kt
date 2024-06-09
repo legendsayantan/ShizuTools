@@ -29,23 +29,21 @@ import java.io.FileNotFoundException
 import java.util.Timer
 import kotlin.concurrent.timerTask
 
+/**
+ * @author legendsayantan
+ */
+
 class SoundMasterActivity : AppCompatActivity() {
     private lateinit var mediaProjectionManager: MediaProjectionManager
-    val preferences by lazy {
-        applicationContext.getSharedPreferences(
-            "volumeplus",
-            Context.MODE_PRIVATE
-        )
-    }
     var packages: MutableList<String>
         get() = try {
-            File(applicationContext.filesDir, "soundmaster.txt").readText().split("\n")
+            File(applicationContext.filesDir, FILENAME_SOUNDMASTER).readText().split("\n")
                 .toMutableList()
         } catch (f: FileNotFoundException) {
             mutableListOf()
         }
         set(value) {
-            val file = File(applicationContext.filesDir, "soundmaster.txt")
+            val file = File(applicationContext.filesDir, FILENAME_SOUNDMASTER)
             if (!file.exists()) {
                 file.parentFile?.mkdirs()
                 file.createNewFile()
@@ -197,6 +195,7 @@ class SoundMasterActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val FILENAME_SOUNDMASTER = "soundmaster.txt"
         private const val MEDIA_PROJECTION_REQUEST_CODE = 13
     }
 }

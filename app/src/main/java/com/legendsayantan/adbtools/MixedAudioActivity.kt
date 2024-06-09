@@ -13,7 +13,11 @@ import com.legendsayantan.adbtools.adapters.AudioStateAdapter
 import com.legendsayantan.adbtools.data.AudioState
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
+import com.legendsayantan.adbtools.lib.Utils.Companion.loadApps
 
+/**
+ * @author legendsayantan
+ */
 class MixedAudioActivity : AppCompatActivity() {
     val muteMap = HashMap<String,Boolean>()
     val focusMap = HashMap<String,AudioState>()
@@ -75,11 +79,17 @@ class MixedAudioActivity : AppCompatActivity() {
                                                                         focusMap.putIfAbsent(it, AudioState(getAppName(it),muteMap[it]?:false, AudioState.Focus.ALLOWED))
                                                                 }
 
-                                                                //update UI
-                                                                runOnUiThread{
-                                                                    val recyclerView = findViewById<RecyclerView>(R.id.apps)
-                                                                    recyclerView.adapter = AudioStateAdapter(this@MixedAudioActivity,focusMap) { pkg,state->
-                                                                        showChangeDialog(pkg,state)
+                                                                loadApps {
+                                                                    it.forEach {  pkg->
+                                                                        focusMap.putIfAbsent(pkg,AudioState(getAppName(pkg),muteMap[pkg]?:false, AudioState.Focus.ALLOWED))
+                                                                    }
+
+                                                                    //update UI
+                                                                    runOnUiThread{
+                                                                        val recyclerView = findViewById<RecyclerView>(R.id.apps)
+                                                                        recyclerView.adapter = AudioStateAdapter(this@MixedAudioActivity,focusMap) { pkg,state->
+                                                                            showChangeDialog(pkg,state)
+                                                                        }
                                                                     }
                                                                 }
                                                             }
@@ -91,7 +101,6 @@ class MixedAudioActivity : AppCompatActivity() {
                                     }
                                 }
                             })
-
                         }
                     })
                 }
@@ -112,7 +121,7 @@ class MixedAudioActivity : AppCompatActivity() {
         val dialog = MaterialAlertDialogBuilder(this).apply {
             setPositiveButton("Cancel"){_,_->}
         }.create()
-        dialog.setTitle("MixedAudio")
+        dialog.setTitle(getString(R.string.mixedaudio))
         dialog.setMessage("Select operation for ${state.name} :")
         val layout = LinearLayout(this)
         layout.layoutParams = ViewGroup.LayoutParams(
@@ -151,14 +160,5 @@ class MixedAudioActivity : AppCompatActivity() {
         }
         dialog.setView(layout)
         dialog.show()
-    }
-    private fun setMode(packageName:String,mode:String):String{
-        var o = ""
-        ShizukuRunner.runAdbCommand("appops set $packageName TAKE_AUDIO_FOCUS $mode",object : ShizukuRunner.CommandResultListener{
-            override fun onCommandResult(output: String, done: Boolean) {
-                o = output
-            }
-        })
-        return o
     }
 }

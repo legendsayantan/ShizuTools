@@ -15,6 +15,10 @@ import com.legendsayantan.adbtools.data.AppData
 import com.legendsayantan.adbtools.R
 import com.legendsayantan.adbtools.lib.Utils.Companion.removeUrls
 
+/**
+ * @author legendsayantan
+ */
+
 class DebloatAdapter(private val activity: Activity, private val dataList: HashMap<String,AppData>) :
     BaseAdapter() {
 

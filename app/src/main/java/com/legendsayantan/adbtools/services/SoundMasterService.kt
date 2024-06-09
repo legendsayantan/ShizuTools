@@ -110,6 +110,7 @@ class SoundMasterService : Service() {
     override fun onDestroy() {
         running = false
         threadMap.forEach { it.value.interrupt() }
+        mediaProjection?.stop()
         super.onDestroy()
     }
 
@@ -127,7 +128,7 @@ class SoundMasterService : Service() {
         var getBandValueOf:(String,Int)->Float = {_,_-> 50f}
 
         const val SAMPLE_RATE = 44100
-        const val LOG_TAG = "VolumePlus"
+        const val LOG_TAG = "SoundMaster"
         const val CHANNEL = AudioFormat.CHANNEL_IN_STEREO
         val BUF_SIZE =
             AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL, AudioFormat.ENCODING_PCM_16BIT)

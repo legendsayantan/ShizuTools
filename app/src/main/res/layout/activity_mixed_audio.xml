@@ -14,7 +14,7 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
         <TextView
-            android:text="MixedAudio+"
+            android:text="@string/mixedaudio"
             android:textSize="24sp"
             android:textStyle="bold"
             android:layout_marginBottom="5dp"

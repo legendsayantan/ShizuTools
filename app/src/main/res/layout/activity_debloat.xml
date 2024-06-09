@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="20dp"
         android:layout_marginTop="50dp"
-        android:text="Removable apps -"
+        android:text="@string/removable_apps"
         android:textSize="22sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -68,7 +68,7 @@
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/infoView"
             android:textSize="18sp"
-            android:text="Please wait..."
+            android:text="@string/please_wait"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
     </LinearLayout>

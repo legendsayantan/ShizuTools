@@ -4,7 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.legendsayantan.adbtools.lib.ShizukuRunner
-
+/**
+ * @author legendsayantan
+ */
 class IntentReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {

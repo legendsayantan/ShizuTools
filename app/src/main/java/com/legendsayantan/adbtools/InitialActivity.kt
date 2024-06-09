@@ -12,7 +12,9 @@ import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import rikka.shizuku.Shizuku
 import rikka.shizuku.Shizuku.OnRequestPermissionResultListener
 
-
+/**
+ * @author legendsayantan
+ */
 class InitialActivity : AppCompatActivity() {
     val REQUEST_CODE = 123;
 

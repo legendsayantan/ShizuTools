@@ -12,7 +12,9 @@ import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.lib.Utils.Companion.postNotification
 import java.util.Timer
 import kotlin.concurrent.schedule
-
+/**
+ * @author legendsayantan
+ */
 class ThemePatcherActivity : AppCompatActivity() {
     val zeroByDefault = listOf(
         "persist.sys.trial.theme",
@@ -48,8 +50,9 @@ class ThemePatcherActivity : AppCompatActivity() {
             packageManager.getAllInstalledApps().filter { it.packageName.contains("theme") }
         if (themeStores.any { it.loadLabel(packageManager).contains("theme") }) themeStores =
             themeStores.filter { it.loadLabel(packageManager).contains("theme") }
-        if (themeStores.any { it.packageName.contains("store") }) themeStores =
+        else if (themeStores.any { it.packageName.contains("store") }) themeStores =
             themeStores.filter { it.packageName.contains("store") }
+
         if (isOnTrial()) {
             startPatcher(themeStores[0].packageName) {
                 postPatchNotification()

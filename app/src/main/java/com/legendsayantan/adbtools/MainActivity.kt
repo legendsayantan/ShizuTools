@@ -30,7 +30,9 @@ import com.google.android.material.textfield.TextInputLayout
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import java.util.UUID
-
+/**
+ * @author legendsayantan
+ */
 class MainActivity : AppCompatActivity() {
     @SuppressLint("LaunchActivityFromNotification")
     override fun onCreate(savedInstanceState: Bundle?) {

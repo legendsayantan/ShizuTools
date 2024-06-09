@@ -21,7 +21,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="15dp"
-            android:text="LookBack"
+            android:text="@string/lookback"
             android:textSize="23dp" />
 
         <com.google.android.material.textview.MaterialTextView
@@ -30,7 +30,7 @@
             android:layout_marginBottom="10dp"
             android:gravity="center"
             android:textColor="@color/red"
-            android:text="Ensure you do not have any adb restrictions, from developer options."
+            android:text="@string/ensure_no_adb_restrictions"
             android:textSize="18dp" />
 
         <com.google.android.material.textview.MaterialTextView
@@ -38,13 +38,13 @@
             android:layout_height="wrap_content"
             android:layout_margin="10dp"
             android:gravity="center"
-            android:text="Select an apk file to be installed as a downgrade."
+            android:text="@string/directions_lookback"
             android:textSize="18dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/startBtn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Start" />
+            android:text="@string/start" />
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

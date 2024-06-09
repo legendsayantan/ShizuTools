@@ -19,6 +19,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils
+import com.legendsayantan.adbtools.services.SoundMasterService.Companion.BUF_SIZE
 import com.legendsayantan.adbtools.services.SoundMasterService.Companion.CHANNEL
 import com.legendsayantan.adbtools.services.SoundMasterService.Companion.LOG_TAG
 import com.legendsayantan.adbtools.services.SoundMasterService.Companion.SAMPLE_RATE
@@ -31,7 +32,7 @@ class AudioThread(val context: Context, val pkg:String, private val mediaProject
     var playback = true
     var volume : Float = 1f
     var targetVolume : Float = 100f
-    val dataBuffer = ByteArray(SoundMasterService.BUF_SIZE)
+    val dataBuffer = ByteArray(BUF_SIZE)
     private var stereoGainFactor = arrayOf(1f,1f)
     private var bandCompensations = arrayOf(0, 0, 0)
 
@@ -92,11 +93,7 @@ class AudioThread(val context: Context, val pkg:String, private val mediaProject
             mTrack = AudioTrack(
                 AudioManager.STREAM_MUSIC,
                 SAMPLE_RATE, CHANNEL,
-                AudioFormat.ENCODING_PCM_16BIT, AudioTrack.getMinBufferSize(
-                    SAMPLE_RATE,
-                    CHANNEL,
-                    AudioFormat.ENCODING_PCM_16BIT
-                ),
+                AudioFormat.ENCODING_PCM_16BIT, BUF_SIZE,
                 AudioTrack.MODE_STREAM
             )
 
@@ -120,7 +117,7 @@ class AudioThread(val context: Context, val pkg:String, private val mediaProject
                 Log.i(LOG_TAG, "EQ NOT SUPPORTED")
             }
             while (playback) {
-                mRecord.read(dataBuffer, 0, SoundMasterService.BUF_SIZE)
+                mRecord.read(dataBuffer, 0, BUF_SIZE)
                 mTrack.write(dataBuffer, 0, dataBuffer.size)
             }
         }catch (e:Exception){
@@ -165,6 +162,10 @@ class AudioThread(val context: Context, val pkg:String, private val mediaProject
         savedBands[band] = value
         updateBandLevel(band, value)
     }
+
+    /**
+     * changes levels of certain band groups in equalizer. follows SoundMasterService.bandDivision.
+     */
     private fun updateBandLevel(bandRange: Int, percentage: Float = -1f) {
         try {
             // Iterate through the frequency bands
@@ -174,7 +175,6 @@ class AudioThread(val context: Context, val pkg:String, private val mediaProject
                         bandCompensations[bandRange]
             for (i in 0 until equalizer.numberOfBands) {
                 val centerFreq = equalizer.getCenterFreq(i.toShort()) / 1000
-                // Reduce gain for specific frequencies
                 if (centerFreq in bandDivision[bandRange]..bandDivision[bandRange + 1]) {
                     equalizer.setBandLevel(
                         i.toShort(),
@@ -194,6 +194,10 @@ class AudioThread(val context: Context, val pkg:String, private val mediaProject
         ShizukuRunner.runAdbCommand("appops set $pkg PLAY_AUDIO allow",object : ShizukuRunner.CommandResultListener{
             override fun onCommandResult(output: String, done: Boolean) {}
         })
+        mRecord.stop()
+        mRecord.release()
+        mTrack.stop()
+        mTrack.release()
         super.interrupt()
     }
 

@@ -33,23 +33,43 @@ import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.extractUrls
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
+import com.legendsayantan.adbtools.lib.Utils.Companion.loadApps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
+import java.io.File
+import java.io.FileNotFoundException
 import java.io.InputStreamReader
 import java.lang.reflect.Type
 import java.net.URL
 
-
+/**
+ * @author legendsayantan
+ */
 class DebloatActivity : AppCompatActivity() {
     val output = listOf<String>()
-    val prefs by lazy { getSharedPreferences("debloater", Context.MODE_PRIVATE) }
-    lateinit var apps: HashMap<String,AppData>
+    var database: String?
+        get() = try {
+            File(applicationContext.filesDir, FILENAME_DATABASE).readText()
+        } catch (f: FileNotFoundException) {
+            null
+        }
+        set(value) {
+            val file = File(applicationContext.filesDir, FILENAME_DATABASE)
+            if (!file.exists()) {
+                file.parentFile?.mkdirs()
+                file.createNewFile()
+            }
+            if (value != null) {
+                file.writeText(value)
+            }
+        }
+    lateinit var apps: HashMap<String, AppData>
     lateinit var filterBtn: ImageView
     lateinit var list: ListView
     var filterMode = false
-    lateinit var cachedApps: HashMap<String,AppData>
+    lateinit var cachedApps: HashMap<String, AppData>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_debloat)
@@ -86,7 +106,8 @@ class DebloatActivity : AppCompatActivity() {
                                 if (done) {
                                     runOnUiThread {
                                         if (output.contains("Success", true)) {
-                                            apps = apps.filterKeys { it != id } as HashMap<String,AppData>
+                                            apps =
+                                                apps.filterKeys { it != id } as HashMap<String, AppData>
                                             list.adapter =
                                                 DebloatAdapter(this@DebloatActivity, apps)
                                             Toast.makeText(
@@ -147,16 +168,17 @@ class DebloatActivity : AppCompatActivity() {
                 runOnUiThread {
                     info("Scanning local apps")
                     val localApps = packageManager.getAllInstalledApps()
-                    val finalApp = hashMapOf<String,AppData>()
+                    val finalApp = hashMapOf<String, AppData>()
                     Thread {
                         localApps.forEach { app ->
                             val searchResult = databaseApps[app.packageName]
                             val appName = app.loadLabel(packageManager).toString()
 
                             if (searchResult != null) {
-                                if (searchResult.removal != "Unsafe") finalApp[app.packageName] = searchResult.apply {
-                                    name = appName
-                                }
+                                if (searchResult.removal != "Unsafe") finalApp[app.packageName] =
+                                    searchResult.apply {
+                                        name = appName
+                                    }
                             } else {
                                 finalApp[app.packageName] =
                                     AppData(
@@ -168,7 +190,7 @@ class DebloatActivity : AppCompatActivity() {
                         }
                         runOnUiThread {
                             apps = finalApp.entries.sortedWith(compareBy { it.value.name })
-                                .associate { it.key to it.value } as HashMap<String,AppData>
+                                .associate { it.key to it.value } as HashMap<String, AppData>
                             list.adapter = DebloatAdapter(this@DebloatActivity, apps)
                             setListListener()
                         }
@@ -182,7 +204,10 @@ class DebloatActivity : AppCompatActivity() {
         findViewById<ImageView>(R.id.imageRestore).setOnClickListener { restoreMode() }
     }
 
-    private fun loadDatabase(onComplete: (HashMap<String,AppData>) -> Unit, onFailure: () -> Unit) {
+    private fun loadDatabase(
+        onComplete: (HashMap<String, AppData>) -> Unit,
+        onFailure: () -> Unit
+    ) {
         try {
             val url =
                 URL("https://cdn.jsdelivr.net/gh/Universal-Debloater-Alliance/universal-android-debloater-next-generation@main/resources/assets/uad_lists.json")
@@ -192,28 +217,28 @@ class DebloatActivity : AppCompatActivity() {
                     val connection = url.openConnection()
                     val reader = BufferedReader(InputStreamReader(connection.inputStream))
                     val jsonContent = reader.readText()
-                    prefs.edit().putString("database", jsonContent).apply()
+                    database = jsonContent
                     onComplete(jsonContent.asAppDatabase())
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    if (prefs.getString("database", null).isNullOrBlank()) {
+                    if (database.isNullOrBlank()) {
                         onFailure()
                     } else {
-                        onComplete(prefs.getString("database", null)!!.asAppDatabase())
+                        onComplete(database!!.asAppDatabase())
                     }
                 }
             }
         } catch (e: Exception) {
-            if (prefs.getString("database", null).isNullOrBlank()) {
+            if (database.isNullOrBlank()) {
                 onFailure()
             } else {
-                onComplete(prefs.getString("database", null)!!.asAppDatabase())
+                onComplete(database!!.asAppDatabase())
             }
         }
     }
 
-    private fun String.asAppDatabase(): HashMap<String,AppData> {
-        val type = object : TypeToken<HashMap<String,AppData?>?>() {}.type
+    private fun String.asAppDatabase(): HashMap<String, AppData> {
+        val type = object : TypeToken<HashMap<String, AppData?>?>() {}.type
         return GsonBuilder()
             .registerTypeAdapter(type, object : JsonDeserializer<HashMap<String, AppData>> {
                 override fun deserialize(
@@ -233,7 +258,7 @@ class DebloatActivity : AppCompatActivity() {
     }
 
 
-    fun info(string: String) {
+    private fun info(string: String) {
         findViewById<TextView>(R.id.infoView).text = string
     }
 
@@ -248,7 +273,7 @@ class DebloatActivity : AppCompatActivity() {
         val editText = TextInputEditText(this)
         editText.hint = "Enter app name/package/severity/type"
         layout.addView(editText)
-        layout.setPadding(50,0,50,0)
+        layout.setPadding(50, 0, 50, 0)
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(layout)
             .setCancelable(true)
@@ -259,12 +284,12 @@ class DebloatActivity : AppCompatActivity() {
                 filterMode = true
                 val t = editText.text.toString()
                 cachedApps = apps
-                apps = apps.filterValues { appData->
+                apps = apps.filterValues { appData ->
                     appData.name.contains(t)
                             || appData.removal.contains(t)
                             || appData.description.contains(t)
                             || appData.list.contains(t)
-                } as HashMap<String,AppData>
+                } as HashMap<String, AppData>
                 list.adapter =
                     DebloatAdapter(this@DebloatActivity, apps)
                 dialog.dismiss()
@@ -280,53 +305,52 @@ class DebloatActivity : AppCompatActivity() {
                 override fun onCommandResult(output: String, done: Boolean) {
                     if (done) {
                         val allApps = output.replace("package:", "").split("\n");
-                        ShizukuRunner.runAdbCommand("cmd package list packages",
-                            object : ShizukuRunner.CommandResultListener {
-                                override fun onCommandResult(output: String, done: Boolean) {
-                                    val installed = output.replace("package:", "").split("\n")
-                                    if (done) {
-                                        val uninstalled = allApps.filter { !installed.contains(it) }
-                                        println(uninstalled)
-                                        runOnUiThread {
-                                            val appsView = RecyclerView(activityContext)
-                                            val dialog = MaterialAlertDialogBuilder(activityContext)
-                                                .setView(appsView)
-                                                .setCancelable(true)
-                                                .setTitle("Restore uninstalled apps")
-                                                .setMessage(
-                                                    "Select the app to start restoration."
-                                                )
-                                                .show()
-                                            appsView.layoutManager =
-                                                LinearLayoutManager(activityContext)
-                                            appsView.adapter =
-                                                SimpleAdapter(uninstalled) {
-                                                    ShizukuRunner.runAdbCommand("cmd package install-existing ${uninstalled[it]}",
-                                                        object :
-                                                            ShizukuRunner.CommandResultListener {
-                                                            override fun onCommandResult(
-                                                                output: String,
-                                                                done: Boolean
-                                                            ) {
-                                                                if (done) {
-                                                                    runOnUiThread {
-                                                                        Toast.makeText(
-                                                                            activityContext,
-                                                                            output,
-                                                                            Toast.LENGTH_LONG
-                                                                        ).show()
-                                                                    }
-                                                                }
-                                                            }
-                                                        })
-                                                    dialog.dismiss()
+                        loadApps { installed ->
+                            val uninstalled = allApps.filter { !installed.contains(it) }
+                            println(uninstalled)
+                            runOnUiThread {
+                                val appsView = RecyclerView(activityContext)
+                                val dialog = MaterialAlertDialogBuilder(activityContext)
+                                    .setView(appsView)
+                                    .setCancelable(true)
+                                    .setTitle("Restore uninstalled apps")
+                                    .setMessage(
+                                        "Select the app to start restoration."
+                                    )
+                                    .show()
+                                appsView.layoutManager =
+                                    LinearLayoutManager(activityContext)
+                                appsView.adapter =
+                                    SimpleAdapter(uninstalled) {
+                                        ShizukuRunner.runAdbCommand("cmd package install-existing ${uninstalled[it]}",
+                                            object :
+                                                ShizukuRunner.CommandResultListener {
+                                                override fun onCommandResult(
+                                                    output: String,
+                                                    done: Boolean
+                                                ) {
+                                                    if (done) {
+                                                        runOnUiThread {
+                                                            Toast.makeText(
+                                                                activityContext,
+                                                                output,
+                                                                Toast.LENGTH_LONG
+                                                            ).show()
+                                                        }
+                                                    }
                                                 }
-                                        }
+                                            })
+                                        dialog.dismiss()
                                     }
-                                }
-                            })
+                            }
+
+                        }
                     }
                 }
             })
+    }
+
+    companion object{
+        val FILENAME_DATABASE: String = "debloat-list.json"
     }
 }
