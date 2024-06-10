@@ -14,7 +14,9 @@ import android.media.audiofx.LoudnessEnhancer
 import android.media.audiofx.NoiseSuppressor
 import android.media.projection.MediaProjection
 import android.os.Build
+import android.os.Handler
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import com.legendsayantan.adbtools.lib.ShizukuRunner
@@ -24,32 +26,48 @@ import com.legendsayantan.adbtools.services.SoundMasterService.Companion.CHANNEL
 import com.legendsayantan.adbtools.services.SoundMasterService.Companion.LOG_TAG
 import com.legendsayantan.adbtools.services.SoundMasterService.Companion.SAMPLE_RATE
 import com.legendsayantan.adbtools.services.SoundMasterService.Companion.bandDivision
+import com.legendsayantan.adbtools.services.SoundMasterService.Companion.notiUpdateTime
+import com.legendsayantan.adbtools.services.SoundMasterService.Companion.zeroByte
 
 /**
  * @author legendsayantan
  */
-class AudioThread(val context: Context, val pkg:String, private val mediaProjection: MediaProjection) : Thread() {
+class AudioThread(
+    val context: Context,
+    val pkg: String,
+    private val mediaProjection: MediaProjection
+) : Thread("$LOG_TAG : $pkg") {
     var playback = true
-    var volume : Float = 1f
-    var targetVolume : Float = 100f
+    var volume: Float = 1f
+    var targetVolume: Float = 100f
     val dataBuffer = ByteArray(BUF_SIZE)
-    private var stereoGainFactor = arrayOf(1f,1f)
+    lateinit var monitorThread : Thread
+    var loadedCycles = 0
+    var latencyUpdate:(Int)->Unit = {}
+    private var stereoGainFactor = arrayOf(1f, 1f)
     private var bandCompensations = arrayOf(0, 0, 0)
 
     val equalizer by lazy { Equalizer(0, mTrack.audioSessionId) }
-    val enhancer by lazy {LoudnessEnhancer(mTrack.audioSessionId)}
-    val suppress by lazy {NoiseSuppressor.create(mTrack.audioSessionId)}
-    val echoCancel by lazy {AcousticEchoCanceler.create(mTrack.audioSessionId)}
+    val enhancer by lazy { LoudnessEnhancer(mTrack.audioSessionId) }
+    val suppress by lazy { NoiseSuppressor.create(mTrack.audioSessionId) }
+    val echoCancel by lazy { AcousticEchoCanceler.create(mTrack.audioSessionId) }
 
     lateinit var mRecord: AudioRecord
-    lateinit var mTrack : AudioTrack
-    var savedBands = arrayOf(50f,50f,50f)
+    lateinit var mTrack: AudioTrack
+    var savedBands = arrayOf(50f, 50f, 50f)
     override fun start() {
-        ShizukuRunner.runAdbCommand("appops set $pkg PLAY_AUDIO deny",object : ShizukuRunner.CommandResultListener{
-            override fun onCommandResult(output: String, done: Boolean) {}
-        })
+        ShizukuRunner.runAdbCommand("appops set $pkg PLAY_AUDIO deny",
+            object : ShizukuRunner.CommandResultListener {
+                override fun onCommandResult(output: String, done: Boolean) {}
+                override fun onCommandError(error: String) {
+                    Handler(context.mainLooper).post {
+                        Toast.makeText(context,"Shizuku Error", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            })
         super.start()
     }
+
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun run() {
         if (ActivityCompat.checkSelfPermission(
@@ -60,7 +78,6 @@ class AudioThread(val context: Context, val pkg:String, private val mediaProject
             interrupt()
             return
         }
-
         try {
             val config = AudioPlaybackCaptureConfiguration.Builder(mediaProjection)
                 .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
@@ -119,13 +136,14 @@ class AudioThread(val context: Context, val pkg:String, private val mediaProject
             while (playback) {
                 mRecord.read(dataBuffer, 0, BUF_SIZE)
                 mTrack.write(dataBuffer, 0, dataBuffer.size)
+                loadedCycles++
             }
-        }catch (e:Exception){
-            Log.e(LOG_TAG,"Error in VolumeThread: ${e.message}")
+        } catch (e: Exception) {
+            Log.e(LOG_TAG, "Error in VolumeThread: ${e.message}")
         }
     }
 
-    fun setCurrentVolume(it:Float){
+    fun setCurrentVolume(it: Float) {
         volume = (it / 100f).coerceAtMost(1f)
         mTrack.setStereoVolume(volume * stereoGainFactor[0], volume * stereoGainFactor[1])
         try {
@@ -150,7 +168,7 @@ class AudioThread(val context: Context, val pkg:String, private val mediaProject
         return (100 - (stereoGainFactor[0] * 100).toInt()) - (100 - (stereoGainFactor[1] * 100))
     }
 
-    fun setBalance(value:Float){
+    fun setBalance(value: Float) {
         stereoGainFactor = arrayOf(
             if (value <= 0) 1f else 1f - (value / 100f),
             if (value >= 0) 1f else 1f + (value / 100f)
@@ -158,7 +176,7 @@ class AudioThread(val context: Context, val pkg:String, private val mediaProject
         mTrack.setStereoVolume(volume * stereoGainFactor[0], volume * stereoGainFactor[1])
     }
 
-    fun setBand(band:Int,value:Float){
+    fun setBand(band: Int, value: Float) {
         savedBands[band] = value
         updateBandLevel(band, value)
     }
@@ -189,16 +207,30 @@ class AudioThread(val context: Context, val pkg:String, private val mediaProject
         }
     }
 
+    fun getLatency(): Float {
+        return notiUpdateTime.toFloat()/loadedCycles.coerceAtLeast(1).also { loadedCycles=0 }
+    }
+
     override fun interrupt() {
         playback = false
-        ShizukuRunner.runAdbCommand("appops set $pkg PLAY_AUDIO allow",object : ShizukuRunner.CommandResultListener{
-            override fun onCommandResult(output: String, done: Boolean) {}
-        })
+        ShizukuRunner.runAdbCommand("appops set $pkg PLAY_AUDIO allow",
+            object : ShizukuRunner.CommandResultListener {
+                override fun onCommandResult(output: String, done: Boolean) {}
+                override fun onCommandError(error: String) {
+                    Handler(context.mainLooper).post {
+                        Toast.makeText(context,"Shizuku Error", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            })
         mRecord.stop()
         mRecord.release()
         mTrack.stop()
         mTrack.release()
+        try{
+            monitorThread.interrupt()
+        }catch (_:Exception){
+
+        }
         super.interrupt()
     }
-
 }

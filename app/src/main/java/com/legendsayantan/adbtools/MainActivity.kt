@@ -29,6 +29,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
+import com.legendsayantan.adbtools.services.SoundMasterService
 import java.util.UUID
 /**
  * @author legendsayantan
@@ -92,6 +93,7 @@ class MainActivity : AppCompatActivity() {
             //create notification
             val intent = Intent(this, SoundMasterActivity::class.java)
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            SoundMasterService.uiIntent = intent
             val channelId = "notifications"
             val notificationBuilder = NotificationCompat.Builder(applicationContext, channelId)
                 .setSmallIcon(R.drawable.outline_info_24)

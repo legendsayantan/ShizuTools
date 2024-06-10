@@ -74,7 +74,7 @@ class DebloatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_debloat)
         initialiseStatusBar()
-        list = findViewById<ListView>(R.id.apps_list)
+        list = findViewById(R.id.apps_list)
         ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.QUERY_ALL_PACKAGES",
             object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {}

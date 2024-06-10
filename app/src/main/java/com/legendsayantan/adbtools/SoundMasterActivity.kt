@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
-import android.view.Gravity
+import android.os.Handler
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
@@ -56,16 +56,20 @@ class SoundMasterActivity : AppCompatActivity() {
     @SuppressLint("ApplySharedPref")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        showing = true
         setContentView(R.layout.activity_sound_master)
         initialiseStatusBar()
+        interacted()
         //new slider
         findViewById<MaterialCardView>(R.id.newSlider).setOnClickListener {
+            lastInteractionAt = -1
             NewSliderDialog(this@SoundMasterActivity) { pkg ->
                 val newPackages = packages
                 newPackages.add(pkg)
                 packages = newPackages
                 if (SoundMasterService.running) SoundMasterService.onDynamicAttach(pkg)
                 updateSliders()
+                interacted()
             }.show()
         }
 
@@ -79,6 +83,18 @@ class SoundMasterActivity : AppCompatActivity() {
         findViewById<ConstraintLayout>(R.id.main).setOnClickListener {
             finish()
         }
+
+        setupAutoHide()
+    }
+
+    private fun setupAutoHide(){
+        Timer().schedule(timerTask {
+            if (lastInteractionAt>=0
+                && lastInteractionAt+hideTimerInterval < System.currentTimeMillis()) {
+                finish()
+                cancel()
+            }
+        }, hideTimerInterval,hideTimerInterval)
     }
 
     override fun onResume() {
@@ -100,8 +116,7 @@ class SoundMasterActivity : AppCompatActivity() {
                         applicationContext,
                         "No apps selected to control",
                         Toast.LENGTH_SHORT
-                    )
-                        .show()
+                    ).show()
                 } else {
                     ShizukuRunner.runAdbCommand("pm grant ${baseContext.packageName} android.permission.RECORD_AUDIO",
                         object : ShizukuRunner.CommandResultListener {
@@ -125,6 +140,12 @@ class SoundMasterActivity : AppCompatActivity() {
                                         })
                                 }
                             }
+
+                            override fun onCommandError(error: String) {
+                                Handler(mainLooper).post {
+                                    Toast.makeText(applicationContext,"Shizuku Error", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         })
                 }
             }
@@ -136,6 +157,7 @@ class SoundMasterActivity : AppCompatActivity() {
                     cancel()
                 } else count++
                 if (count > 50) cancel()
+                interacted()
             }, 500, 500)
         }
     }
@@ -153,16 +175,24 @@ class SoundMasterActivity : AppCompatActivity() {
                 startService(Intent(this, SoundMasterService::class.java).apply {
                     putExtra("packages", packages.toTypedArray())
                 })
+                interacted()
             } else {
                 Toast.makeText(
                     this, "Request to obtain MediaProjection denied.",
                     Toast.LENGTH_SHORT
                 ).show()
+                interacted()
             }
         }
     }
 
+    override fun finish() {
+        showing = false
+        super.finish()
+    }
+
     private fun updateSliders() {
+        interacted()
         findViewById<TextView>(R.id.none).visibility =
             if (packages.size > 0) View.GONE else View.VISIBLE
         Thread {
@@ -173,17 +203,21 @@ class SoundMasterActivity : AppCompatActivity() {
             }
             val adapter =
                 VolumeBarAdapter(this@SoundMasterActivity, sliderMap, { app, vol ->
+                    interacted()
                     SoundMasterService.setVolumeOf(app, vol)
                 }, {
+                    interacted()
                     val newPackages = packages
                     newPackages.remove(it)
                     packages = newPackages
                     updateSliders()
                     SoundMasterService.onDynamicDetach(it)
                 }, { app, sliderIndex ->
+                    interacted()
                     if (sliderIndex == 0) SoundMasterService.getBalanceOf(app)
                     else SoundMasterService.getBandValueOf(app, sliderIndex - 1)
                 }, { app, slider, value ->
+                    interacted()
                     if (slider == 0) SoundMasterService.setBalanceOf(app, value)
                     else SoundMasterService.setBandValueOf(app, slider - 1, value)
                 })
@@ -195,6 +229,12 @@ class SoundMasterActivity : AppCompatActivity() {
     }
 
     companion object {
+        var showing = false
+        private const val hideTimerInterval = 2000L
+        var lastInteractionAt = 0L
+        var interacted = {
+            lastInteractionAt = System.currentTimeMillis()
+        }
         private const val FILENAME_SOUNDMASTER = "soundmaster.txt"
         private const val MEDIA_PROJECTION_REQUEST_CODE = 13
     }

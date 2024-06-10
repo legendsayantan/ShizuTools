@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">ShizuTools</string>
     <string name="this_app_requires_u_shizuku">This app requires <u>Shizuku</u>.\nPlease make sure you have shizuku installed and running.</string>
     <string name="force_applying_mixedaudio_may_crash">Force applying MixedAudio may crash some apps, and doing so on system apps may crash your entire system.</string>
@@ -37,4 +37,5 @@
     <string name="low_bands">Low Bands</string>
     <string name="mid_bands">Mid Bands</string>
     <string name="high_bands">High Bands</string>
+    <string name="command_getevent">getevent -q</string>
 </resources>
