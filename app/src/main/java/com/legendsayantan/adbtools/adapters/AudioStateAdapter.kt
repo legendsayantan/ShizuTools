@@ -22,7 +22,7 @@ class AudioStateAdapter(val context: Context,private val data: HashMap<String, A
         return ViewHolder(itemView)
     }
 
-    var dataList = data.entries.sortedBy { !it.value.muted && (it.value.focus == AudioState.Focus.ALLOWED) }
+    private var dataList = data.entries.sortedBy { !it.value.muted && (it.value.focus == AudioState.Focus.ALLOWED) }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val currentItem = dataList[position].value

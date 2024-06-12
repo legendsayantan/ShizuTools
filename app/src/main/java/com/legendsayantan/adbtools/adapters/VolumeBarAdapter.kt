@@ -1,30 +1,43 @@
 package com.legendsayantan.adbtools.adapters
 
 import android.content.Context
+import android.media.AudioDeviceInfo
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.slider.Slider
 import com.legendsayantan.adbtools.R
+import com.legendsayantan.adbtools.data.AudioOutputBase
+import com.legendsayantan.adbtools.lib.AudioOutputMap
+import com.legendsayantan.adbtools.services.SoundMasterService
 
 /**
  * @author legendsayantan
  */
 class VolumeBarAdapter(
     val context: Context,
-    val data: HashMap<String, Float>,
-    val onVolumeChanged: (String, Float) -> Unit,
-    val onItemDetached: (String) -> Unit,
-    val onSliderGet:(String,Int)->Float,
-    val onSliderSet:(String,Int,Float)->Unit
+    val data: List<AudioOutputBase>,
+    val onVolumeChanged: (Int, Float) -> Unit,
+    val onItemDetached: (Int) -> Unit,
+    val onSliderGet:(Int, Int)->Float,
+    val onSliderSet:(Int, Int, Float)->Unit,
+    val getDevices: ()->List<AudioDeviceInfo>,
+    val setDeviceFor: (Int, AudioDeviceInfo)->Unit
 ) : RecyclerView.Adapter<VolumeBarAdapter.VolumeBarHolder>() {
     inner class VolumeBarHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val image = itemView.findViewById<ImageView>(R.id.image)
         val volumeBar = itemView.findViewById<Slider>(R.id.volume)
+        val outputName = itemView.findViewById<TextView>(R.id.outputDevice)
+        val switchOutput = itemView.findViewById<ImageView>(R.id.audioBtn)
+        val outputExpanded = itemView.findViewById<LinearLayout>(R.id.audioOutput)
+        val outputGroup = itemView.findViewById<RadioGroup>(R.id.outputGroup)
         val expand = itemView.findViewById<ImageView>(R.id.expandBtn)
         val expanded = itemView.findViewById<LinearLayout>(R.id.expanded)
         val otherSliders = listOf<Slider>(
@@ -53,33 +66,60 @@ class VolumeBarAdapter(
     }
 
     override fun onBindViewHolder(holder: VolumeBarHolder, position: Int) {
-        val currentItem = data.entries.elementAt(position)
+        val currentItem = data.elementAt(position)
         try {
             holder.image.setImageDrawable(
-                context.packageManager.getApplicationIcon(currentItem.key)
+                context.packageManager.getApplicationIcon(currentItem.pkg)
             )
         } catch (_: Exception) {
         }
-        holder.volumeBar.value = currentItem.value
-        holder.volumeBar.addOnChangeListener { slider, value, fromUser ->
-            onVolumeChanged(currentItem.key, value)
+        holder.volumeBar.value = currentItem.volume
+        holder.volumeBar.addOnChangeListener { _, value, _ ->
+            onVolumeChanged(position, value)
+        }
+        getDevices().find { it.id==currentItem.outputDevice }?.let {
+            showDevice(holder.outputName,it)
+        }
+        holder.switchOutput.setOnClickListener {
+            if (holder.outputExpanded.visibility == View.VISIBLE) {
+                holder.outputExpanded.visibility = View.GONE
+            } else if (SoundMasterService.running) {
+                holder.expanded.visibility = View.GONE
+                holder.outputExpanded.visibility = View.VISIBLE
+                //spawn radiobuttons
+                holder.outputGroup.removeAllViews()
+                getDevices().forEachIndexed { index, device ->
+                    val rButton = RadioButton(context)
+                    showDevice(rButton,device)
+                    rButton.setOnClickListener {
+                        setDeviceFor(position,device)
+                        showDevice(holder.outputName,device)
+                    }
+                    holder.outputGroup.addView(rButton)
+                }
+            }
         }
         holder.expand.setOnClickListener {
             if (holder.expanded.visibility == View.VISIBLE) {
                 holder.expanded.visibility = View.GONE
                 holder.expand.animate().rotationX(0f)
             } else {
+                holder.outputExpanded.visibility = View.GONE
                 holder.expanded.visibility = View.VISIBLE
                 holder.expand.animate().rotationX(180f)
+                holder.otherSliders.forEachIndexed { index, slider ->
+                    slider.value = onSliderGet(position,index)
+                    slider.addOnChangeListener { s, value, fromUser ->
+                        onSliderSet(position,index,value)
+                    }
+                }
             }
         }
 
-        holder.otherSliders.forEachIndexed { index, slider ->
-            slider.value = onSliderGet(currentItem.key,index)
-            slider.addOnChangeListener { s, value, fromUser ->
-                onSliderSet(currentItem.key,index,value)
-            }
-        }
+        holder.outputExpanded.visibility = View.GONE
+        holder.expanded.visibility = View.GONE
+
+
 
         //reset
         holder.resetBtns.forEachIndexed { index, imageView ->
@@ -89,6 +129,11 @@ class VolumeBarAdapter(
         }
 
         //detach
-        holder.detachBtn.setOnClickListener { onItemDetached(currentItem.key) }
+        holder.detachBtn.setOnClickListener { onItemDetached(position) }
+
+
+    }
+    fun showDevice(v:TextView,d:AudioDeviceInfo){
+        v.text = "${d.productName} (${AudioOutputMap.getName(d.type)})"
     }
 }

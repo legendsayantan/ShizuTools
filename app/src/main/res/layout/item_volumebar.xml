@@ -45,8 +45,26 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"/>
             </com.google.android.material.card.MaterialCardView>
+            <TextView
+                android:id="@+id/outputDevice"
+                android:layout_marginStart="65dp"
+                android:text="@string/default_"
+                android:gravity="center"
+                android:textColor="@color/white"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
         </androidx.constraintlayout.widget.ConstraintLayout>
-
+        <ImageView
+            android:id="@+id/audioBtn"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:scaleX="0.6"
+            android:scaleY="0.6"
+            android:src="@drawable/baseline_audiotrack_24"
+            app:tint="?attr/colorPrimary" />
         <ImageView
             android:id="@+id/expandBtn"
             android:layout_width="40dp"
@@ -220,5 +238,25 @@
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/audioOutput"
+        android:animateLayoutChanges="true"
+        android:paddingVertical="5dp"
+        android:paddingHorizontal="25dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <TextView
+            android:text="@string/switch_output_device"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+        <RadioGroup
+            android:id="@+id/outputGroup"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+        </RadioGroup>
     </LinearLayout>
 </LinearLayout>

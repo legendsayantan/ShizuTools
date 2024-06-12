@@ -38,4 +38,6 @@
     <string name="mid_bands">Mid Bands</string>
     <string name="high_bands">High Bands</string>
     <string name="command_getevent">getevent -q</string>
+    <string name="switch_output_device">Switch Output Device:</string>
+    <string name="default_">Default</string>
 </resources>

@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.database.ContentObserver
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
@@ -17,13 +18,13 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.provider.Settings
-import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.PackageManagerCompat
 import com.legendsayantan.adbtools.R
 import com.legendsayantan.adbtools.SoundMasterActivity
+import com.legendsayantan.adbtools.data.AudioOutputKey
+import com.legendsayantan.adbtools.lib.PlayBackThread
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import java.lang.Byte
 import java.util.Timer
@@ -42,8 +43,8 @@ class SoundMasterService : Service() {
     private val audioManager by lazy { getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     private var mediaProjectionManager: MediaProjectionManager? = null
     private var mediaProjection: MediaProjection? = null
-    var threadMap = hashMapOf<String, AudioThread>()
-    var apps = mutableListOf<String>()
+    var packageThreads = hashMapOf<String, PlayBackThread>()
+    var apps = mutableListOf<AudioOutputKey>()
     var latency = mutableListOf(0)
     var latencyUpdateTimer = Timer()
     override fun onBind(intent: Intent): IBinder {
@@ -69,8 +70,8 @@ class SoundMasterService : Service() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
         )
         latencyUpdateTimer.schedule(timerTask {
-            val avg = threadMap.values.map { it.getLatency() }.average().toInt()
-            threadMap.values.forEach { it.loadedCycles = 0 }
+            val avg = packageThreads.values.map { it.getLatency() }.average().toInt()
+            packageThreads.values.forEach { it.loadedCycles = 0 }
             builder.setContentTitle(applicationContext.getString(R.string.soundmaster) + " is controlling ${apps.size} apps.")
             builder.setContentText("Average Latency: $avg ms")
             latency.clear()
@@ -89,65 +90,90 @@ class SoundMasterService : Service() {
         mediaProjectionManager =
             applicationContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
-        getVolumeOf = {
-            (threadMap[it]?.volume?.times(100f)) ?: volumeTemp[it] ?: 100f
+        getAudioDevices = {
+            var dev = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).filter {
+                it.type !in arrayOf(7, 18, 25)
+            }
+            if(dev.find { it.type in 3..4 }!=null) dev = dev.filter { it.type !in 1..2 }
+            dev
         }
 
-        setVolumeOf = { pkg, vol ->
-            threadMap[pkg].let {
-                if (it != null) it.setCurrentVolume(vol) else volumeTemp[pkg] = vol
+        switchDeviceFor = { key, device ->
+            packageThreads[key.pkg]?.switchOutputDevice(key, device)
+        }
+
+        getVolumeOf = {
+            (packageThreads[it.pkg]?.getVolume(it) ?: volumeTemp[it] ?: 100f)
+        }
+
+        setVolumeOf = { key, vol ->
+            packageThreads[key.pkg].let {
+                if (it != null) it.setVolume(key.outputDevice, vol) else volumeTemp[key] = vol
             }
         }
 
         getBalanceOf = {
-            threadMap[it]?.getBalance() ?: 0f
+            packageThreads[it.pkg]?.getBalance(it.outputDevice) ?: 0f
         }
 
         setBalanceOf = { it, value ->
-            threadMap[it]?.setBalance(value)
+            packageThreads[it.pkg]?.setBalance(it.outputDevice, value)
         }
 
         getBandValueOf = { it, band ->
-            threadMap[it]?.savedBands?.get(band) ?: 50f
+            packageThreads[it.pkg]?.getBand(it.outputDevice, band) ?: 50f
         }
 
         setBandValueOf = { it, band, value ->
-            threadMap[it]?.setBand(band, value)
+            packageThreads[it.pkg]?.setBand(it.outputDevice, band, value)
         }
 
-        onDynamicAttach = { it ->
-            if (!threadMap.contains(it)) {
-                if (!apps.contains(it)) apps.add(it)
-                val mThread = AudioThread(applicationContext, it, mediaProjection!!)
-                mThread.targetVolume = volumeTemp[it] ?: 100f
+        onDynamicAttach = { key, device ->
+            if (!apps.contains(key)) apps.add(key)
+            if (packageThreads.contains(key.pkg)) {
+                packageThreads[key.pkg]?.createOutput(device)
+            } else {
+                val mThread = PlayBackThread(
+                    applicationContext,
+                    key.pkg,
+                    getAudioDevices().find { it.id == key.outputDevice },
+                    mediaProjection!!
+                )
+                mThread.targetVolume = volumeTemp[key] ?: 100f
                 mThread.latencyUpdate = { value ->
                     latency.add(value)
                 }
-                threadMap[it] = mThread
+                packageThreads[key.pkg] = mThread
                 mThread.start()
             }
         }
 
-        onDynamicDetach = { pkg ->
-            if (apps.contains(pkg)) {
-                apps.remove(pkg)
-                threadMap[pkg]?.interrupt()
-                threadMap.remove(pkg)
+        onDynamicDetach = { key ->
+            val thread = packageThreads[key.pkg]
+            thread?.deleteOutput(key.outputDevice)
+            if(thread?.mPlayers?.size==0){
+                packageThreads.remove(key.pkg)
             }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent != null) {
-            apps = intent.getStringArrayExtra("packages")?.toMutableList() ?: mutableListOf()
+            val pkgs = intent.getStringArrayExtra("packages")?.toMutableList() ?: mutableListOf()
+            val devices = intent.getIntArrayExtra("devices")?.toMutableList() ?: mutableListOf()
+            pkgs.forEachIndexed { index, s ->
+                apps.add(AudioOutputKey(s, devices[index]))
+            }
             if (apps.isNotEmpty()) {
                 running = true
                 mediaProjection = mediaProjectionManager?.getMediaProjection(
                     Activity.RESULT_OK,
                     projectionData!!
                 ) as MediaProjection
-                apps.forEach {
-                    onDynamicAttach(it)
+                apps.forEach { key ->
+                    onDynamicAttach(key,
+                        getAudioDevices().find { it.id == key.outputDevice }
+                    )
                 }
             }
         }
@@ -160,13 +186,15 @@ class SoundMasterService : Service() {
             override fun onChange(selfChange: Boolean) {
                 super.onChange(selfChange)
                 val newVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-                if(newVolume != prevVolume){
+                if (newVolume != prevVolume) {
                     prevVolume = newVolume
+
                     Handler(mainLooper).post {
-                        if(SoundMasterActivity.showing) SoundMasterActivity.interacted()
-                        else ShizukuRunner.runAdbCommand("am start -n $packageName/${SoundMasterActivity::class.java.canonicalName}",object : ShizukuRunner.CommandResultListener{
-                            override fun onCommandResult(output: String, done: Boolean) {}
-                        })
+                        if (SoundMasterActivity.showing) SoundMasterActivity.interacted()
+                        else ShizukuRunner.runAdbCommand("am start -n $packageName/${SoundMasterActivity::class.java.canonicalName}",
+                            object : ShizukuRunner.CommandResultListener {
+                                override fun onCommandResult(output: String, done: Boolean) {}
+                            })
                     }
                 }
             }
@@ -181,7 +209,7 @@ class SoundMasterService : Service() {
         running = false
         contentResolver.unregisterContentObserver(mVolumeObserver)
         latencyUpdateTimer.cancel()
-        threadMap.forEach { it.value.interrupt() }
+        packageThreads.forEach { it.value.interrupt() }
         mediaProjection?.stop()
         super.onDestroy()
     }
@@ -189,15 +217,17 @@ class SoundMasterService : Service() {
     companion object {
         var running = false
         var projectionData: Intent? = null
-        var onDynamicAttach: (String) -> Unit = {}
-        var onDynamicDetach: (String) -> Unit = {}
-        var volumeTemp = HashMap<String, Float>()
-        var setVolumeOf: (String, Float) -> Unit = { a, b -> volumeTemp[a] = b }
-        var getVolumeOf: (String) -> Float = { p -> volumeTemp[p] ?: 100f }
-        var setBalanceOf: (String, Float) -> Unit = { a, b -> }
-        var getBalanceOf: (String) -> Float = { _ -> 0f }
-        var setBandValueOf: (String, Int, Float) -> Unit = { _, _, _ -> }
-        var getBandValueOf: (String, Int) -> Float = { _, _ -> 50f }
+        var onDynamicAttach: (AudioOutputKey, AudioDeviceInfo?) -> Unit = { _, _ -> }
+        var onDynamicDetach: (AudioOutputKey) -> Unit = { _ -> }
+        var getAudioDevices: () -> List<AudioDeviceInfo> = { listOf() }
+        var switchDeviceFor: (AudioOutputKey, AudioDeviceInfo) -> Unit = { _, _ -> }
+        var volumeTemp = HashMap<AudioOutputKey, Float>()
+        var setVolumeOf: (AudioOutputKey, Float) -> Unit = { a, b -> volumeTemp[a] = b }
+        var getVolumeOf: (AudioOutputKey) -> Float = { p -> volumeTemp[p] ?: 100f }
+        var setBalanceOf: (AudioOutputKey, Float) -> Unit = { a, b -> }
+        var getBalanceOf: (AudioOutputKey) -> Float = { _ -> 0f }
+        var setBandValueOf: (AudioOutputKey, Int, Float) -> Unit = { _, _, _ -> }
+        var getBandValueOf: (AudioOutputKey, Int) -> Float = { _, _ -> 50f }
 
         const val NOTI_ID = 1
         const val notiUpdateTime = 30000L
