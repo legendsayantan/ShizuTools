@@ -6,6 +6,7 @@ import android.media.audiofx.Equalizer
 import android.media.audiofx.LoudnessEnhancer
 import android.media.audiofx.NoiseSuppressor
 import android.util.Log
+import com.legendsayantan.adbtools.lib.PlayBackThread.Companion.LOG_TAG
 import com.legendsayantan.adbtools.services.SoundMasterService
 
 /**
@@ -34,17 +35,17 @@ class AudioPlayer(
             enhancer.enabled = it > 100
             if (it > 100) enhancer.setTargetGain(((it.toInt() - 100) * 150))
         } catch (e: Exception) {
-            Log.i(SoundMasterService.LOG_TAG, "ENHANCER NOT SUPPORTED")
+            Log.i(LOG_TAG, "ENHANCER NOT SUPPORTED")
         }
         try {
             suppress.enabled = it > 100
         } catch (e: Exception) {
-            Log.i(SoundMasterService.LOG_TAG, "NOISE SUPPRESSION NOT SUPPORTED")
+            Log.i(LOG_TAG, "NOISE SUPPRESSION NOT SUPPORTED")
         }
         try {
             echoCancel.enabled = it > 100
         } catch (e: Exception) {
-            Log.i(SoundMasterService.LOG_TAG, "ECHO CANCELLATION NOT SUPPORTED")
+            Log.i(LOG_TAG, "ECHO CANCELLATION NOT SUPPORTED")
         }
     }
 
@@ -60,7 +61,7 @@ class AudioPlayer(
                         bandCompensations[bandRange]
             for (i in 0 until equalizer.numberOfBands) {
                 val centerFreq = equalizer.getCenterFreq(i.toShort()) / 1000
-                if (centerFreq in SoundMasterService.bandDivision[bandRange]..SoundMasterService.bandDivision[bandRange + 1]) {
+                if (centerFreq in bandDivision[bandRange]..bandDivision[bandRange + 1]) {
                     equalizer.setBandLevel(
                         i.toShort(),
                         if (percentage >= 0) modifiedLevel.toInt().toShort()
@@ -70,7 +71,7 @@ class AudioPlayer(
                 }
             }
         } catch (e: Exception) {
-            Log.i(SoundMasterService.LOG_TAG, "EQ NOT SUPPORTED")
+            Log.i(LOG_TAG, "EQ NOT SUPPORTED")
         }
     }
 
@@ -88,5 +89,9 @@ class AudioPlayer(
     fun setBand(band: Int, value: Float) {
         savedBands[band] = value
         updateBandLevel(band, value)
+    }
+
+    companion object{
+        val bandDivision = arrayOf(0, 250, 2000, 20000)
     }
 }

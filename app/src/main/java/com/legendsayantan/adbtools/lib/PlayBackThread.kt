@@ -17,10 +17,6 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import com.legendsayantan.adbtools.data.AudioOutputKey
-import com.legendsayantan.adbtools.services.SoundMasterService.Companion.BUF_SIZE
-import com.legendsayantan.adbtools.services.SoundMasterService.Companion.CHANNEL
-import com.legendsayantan.adbtools.services.SoundMasterService.Companion.LOG_TAG
-import com.legendsayantan.adbtools.services.SoundMasterService.Companion.SAMPLE_RATE
 import com.legendsayantan.adbtools.services.SoundMasterService.Companion.notiUpdateTime
 
 /**
@@ -187,5 +183,13 @@ class PlayBackThread(
 
     fun getVolume(it: AudioOutputKey): Float? {
         return mPlayers[it.outputDevice]?.volume?.times(100f)
+    }
+
+    companion object{
+        const val SAMPLE_RATE = 44100
+        const val LOG_TAG = "SoundMaster"
+        const val CHANNEL = AudioFormat.CHANNEL_IN_STEREO
+        val BUF_SIZE =
+            AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL, AudioFormat.ENCODING_PCM_16BIT)
     }
 }

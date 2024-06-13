@@ -195,7 +195,7 @@ class SoundMasterActivity : AppCompatActivity() {
                 interacted()
             } else {
                 Toast.makeText(
-                    this, "Request to obtain MediaProjection denied.",
+                    this, "Request to obtain MediaProjection failed.",
                     Toast.LENGTH_SHORT
                 ).show()
                 interacted()

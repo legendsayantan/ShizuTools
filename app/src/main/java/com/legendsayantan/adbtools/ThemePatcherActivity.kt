@@ -79,8 +79,8 @@ class ThemePatcherActivity : AppCompatActivity() {
             }
             runOnUiThread {
                 postNotification(
-                    "ThemePatcher",
-                    "Trial item detected, generating patch..", success = false
+                    getString(R.string.themepatcher),
+                    getString(R.string.trial_item_detected_generating_patch), success = false
                 )
             }
             Timer().schedule(15000) {
@@ -90,7 +90,7 @@ class ThemePatcherActivity : AppCompatActivity() {
                     }else{
                         runOnUiThread {
                             postNotification(
-                                "ThemePatcher",
+                                getString(R.string.themepatcher),
                                 "Error: $it", success = false
                             )
                         }
@@ -166,8 +166,8 @@ class ThemePatcherActivity : AppCompatActivity() {
 
     private fun postPatchNotification() {
         postNotification(
-            "ThemePatcher",
-            "Selected item was patched as permanent.",
+            getString(R.string.themepatcher),
+            getString(R.string.selected_item_was_patched_as_permanent),
             success = true
         )
     }

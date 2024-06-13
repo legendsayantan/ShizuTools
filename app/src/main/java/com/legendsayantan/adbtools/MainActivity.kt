@@ -28,6 +28,8 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.legendsayantan.adbtools.lib.ShizukuRunner
+import com.legendsayantan.adbtools.lib.Utils
+import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseNotiChannel
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.services.SoundMasterService
 import java.util.UUID
@@ -136,7 +138,7 @@ class MainActivity : AppCompatActivity() {
         commandBar.orientation = LinearLayout.HORIZONTAL
         commandBar.gravity = Gravity.CENTER
         val editText = EditText(this)
-        editText.hint = "Enter Command..."
+        editText.hint = getString(R.string.enter_command)
         editText.layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
@@ -144,7 +146,7 @@ class MainActivity : AppCompatActivity() {
             weight = 1f
         }
         val btn = MaterialButton(this)
-        btn.text = "Run"
+        btn.text = getString(R.string.run)
 
         btn.setOnClickListener {
             if (editText.text.isEmpty()) return@setOnClickListener
@@ -181,7 +183,7 @@ class MainActivity : AppCompatActivity() {
         layout.orientation = LinearLayout.VERTICAL
         val toggle = SwitchMaterial(this)
         toggle.isChecked = prefs.getBoolean("enabled",false)
-        toggle.text = "Accept adb intents"
+        toggle.text = getString(R.string.accept_adb_intents)
         toggle.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("enabled",isChecked).apply()
         }
@@ -189,22 +191,22 @@ class MainActivity : AppCompatActivity() {
         val editText = TextInputEditText(this)
         editText.setText(key)
         editText.focusable = View.NOT_FOCUSABLE
-        editText.hint = "Access key"
+        editText.hint = getString(R.string.access_key)
         editLayout.addView(editText)
         editText.setOnClickListener {
-            //copy to clipboar
+            //copy to clipboard
             val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
             val clip = ClipData.newPlainText("key", key)
             clipboard.setPrimaryClip(clip)
-            Toast.makeText(this,"Key copied to clipboard",Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.key_copied_to_clipboard),Toast.LENGTH_SHORT).show()
         }
         layout.addView(toggle)
         layout.addView(editLayout)
         MaterialAlertDialogBuilder(this)
-            .setTitle("Intent Shell")
-            .setMessage("Intent shell locks for 5 minutes after usage of a wrong access key, to prevent brute force attempts.")
+            .setTitle(getString(R.string.intent_shell))
+            .setMessage(getString(R.string.intent_shell_security))
             .setView(layout)
-            .setPositiveButton("OK") { _, _ -> }
+            .setPositiveButton(getString(R.string.ok)) { _, _ -> }
             .create().show()
     }
 }

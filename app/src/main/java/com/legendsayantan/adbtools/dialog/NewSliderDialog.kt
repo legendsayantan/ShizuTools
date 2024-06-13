@@ -31,7 +31,7 @@ class NewSliderDialog(context: Context,val onSelection:(String)->Unit) : Dialog(
                 val packageMap = linkedMapOf<String, String>()
                 val orderMap = linkedMapOf<String, String>()
                 packageList.forEach {
-                    if (it.isNotBlank() && (!it.equals(context.packageName))) orderMap.putIfAbsent(
+                    if (it.isNotBlank() && (it != context.packageName)) orderMap.putIfAbsent(
                         it,
                         Utils.getAppNameFromPackage(context, it)
                     )

@@ -5,9 +5,9 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.legendsayantan.adbtools.lib.GradleUpdate
+import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseNotiChannel
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import rikka.shizuku.Shizuku
 import rikka.shizuku.Shizuku.OnRequestPermissionResultListener
@@ -29,11 +29,11 @@ class InitialActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_initial)
         initialiseStatusBar()
-
+        initialiseNotiChannel()
         Shizuku.addRequestPermissionResultListener(requestPermissionResultListener)
         try {
-            if(!checkPermission(REQUEST_CODE)) Shizuku.requestPermission(REQUEST_CODE)
-        }catch (e:Exception){}
+            if(!checkPermission()) Shizuku.requestPermission(REQUEST_CODE)
+        }catch (_:Exception){}
 
         findViewById<TextView>(R.id.textView).setOnClickListener {
             val shizukuUrl = "https://shizuku.rikka.app/"
@@ -50,8 +50,8 @@ class InitialActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         try {
-            if(checkPermission(REQUEST_CODE)) onGranted()
-        }catch (e:Exception){}
+            if(checkPermission()) onGranted()
+        }catch (_:Exception){}
     }
     private fun onRequestPermissionsResult(requestCode: Int, grantResult: Int) {
         val granted = grantResult == PackageManager.PERMISSION_GRANTED
@@ -65,20 +65,20 @@ class InitialActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    private fun checkPermission(code: Int): Boolean {
+    private fun checkPermission(): Boolean {
             if (Shizuku.isPreV11()) {
                 // Pre-v11 is unsupported
                 return false
             }
-            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                // Granted
-                return true
-            } else if (Shizuku.shouldShowRequestPermissionRationale()) {
-                // Users choose "Deny and don't ask again"
-                return false
-            } else {
-                return false
-            }
+        return if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+            // Granted
+            true
+        } else if (Shizuku.shouldShowRequestPermissionRationale()) {
+            // Users choose "Deny and don't ask again"
+            false
+        } else {
+            false
+        }
     }
     private fun onGranted() {
         Intent(this, MainActivity::class.java).also {

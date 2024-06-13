@@ -133,7 +133,7 @@ class VolumeBarAdapter(
 
 
     }
-    fun showDevice(v:TextView,d:AudioDeviceInfo){
+    private fun showDevice(v:TextView, d:AudioDeviceInfo){
         v.text = "${d.productName} (${AudioOutputMap.getName(d.type)})"
     }
 }

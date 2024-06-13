@@ -231,14 +231,8 @@ class SoundMasterService : Service() {
 
         const val NOTI_ID = 1
         const val notiUpdateTime = 30000L
-        const val SAMPLE_RATE = 44100
-        const val LOG_TAG = "SoundMaster"
-        const val CHANNEL = AudioFormat.CHANNEL_IN_STEREO
-        val BUF_SIZE =
-            AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL, AudioFormat.ENCODING_PCM_16BIT)
 
         val zeroByte = Byte.valueOf(0)
-        val bandDivision = arrayOf(0, 250, 2000, 20000)
         lateinit var uiIntent: Intent
     }
 

@@ -40,4 +40,14 @@
     <string name="command_getevent">getevent -q</string>
     <string name="switch_output_device">Switch Output Device:</string>
     <string name="default_">Default</string>
+    <string name="run">Run</string>
+    <string name="enter_command">Enter Command...</string>
+    <string name="accept_adb_intents">Accept adb intents</string>
+    <string name="intent_shell_security">Intent shell locks for 5 minutes after usage of a wrong access key, to prevent brute force attempts.</string>
+    <string name="access_key">Access key</string>
+    <string name="ok">OK</string>
+    <string name="key_copied_to_clipboard">Key copied to clipboard</string>
+    <string name="trial_item_detected_generating_patch">Trial item detected, generating patch..</string>
+    <string name="selected_item_was_patched_as_permanent">Selected item was patched as permanent.</string>
+    <string name="do_not_un_mute_apps_that_are_being_controlled_by_soundmaster">Do not un-mute apps that are being controlled by SoundMaster.</string>
 </resources>
