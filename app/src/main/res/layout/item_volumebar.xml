@@ -76,7 +76,6 @@
     </LinearLayout>
     <LinearLayout
         android:id="@+id/expanded"
-        android:visibility="gone"
         android:animateLayoutChanges="true"
         android:paddingVertical="5dp"
         android:paddingHorizontal="25dp"

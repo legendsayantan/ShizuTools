@@ -31,7 +31,6 @@ class PlayBackThread(
     var targetVolume: Float = 100f
     val dataBuffer = ByteArray(BUF_SIZE)
     var loadedCycles = 0
-    var latencyUpdate: (Int) -> Unit = {}
 
     lateinit var mCapture: AudioRecord
     var mPlayers =  (hashMapOf <Int, AudioPlayer>())
@@ -70,20 +69,14 @@ class PlayBackThread(
                 .addMatchingUid(Utils.getAppUidFromPackage(context, pkg))
                 .build()
             val audioFormat = AudioFormat.Builder()
-                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .setEncoding(ENCODING)
                 .setSampleRate(SAMPLE_RATE)
                 .setChannelMask(CHANNEL)
                 .build()
 
             mCapture = AudioRecord.Builder()
                 .setAudioFormat(audioFormat)
-                .setBufferSizeInBytes(
-                    AudioRecord.getMinBufferSize(
-                        SAMPLE_RATE,
-                        CHANNEL,
-                        AudioFormat.ENCODING_PCM_16BIT
-                    )
-                )
+                .setBufferSizeInBytes(BUF_SIZE)
                 .setAudioPlaybackCaptureConfig(config)
                 .build()
 
@@ -113,7 +106,7 @@ class PlayBackThread(
         mPlayers[device?.id?:-1] = AudioPlayer(
             AudioManager.STREAM_MUSIC,
             SAMPLE_RATE, CHANNEL,
-            AudioFormat.ENCODING_PCM_16BIT, BUF_SIZE,
+            ENCODING, BUF_SIZE,
             AudioTrack.MODE_STREAM
         ).also {
             it.setCurrentVolume(targetVolume)
@@ -186,10 +179,11 @@ class PlayBackThread(
     }
 
     companion object{
-        const val SAMPLE_RATE = 44100
         const val LOG_TAG = "SoundMaster"
-        const val CHANNEL = AudioFormat.CHANNEL_IN_STEREO
+        const val SAMPLE_RATE = 44100
+        const val CHANNEL = AudioFormat.CHANNEL_IN_STEREO or AudioFormat.CHANNEL_OUT_STEREO
+        const val ENCODING = AudioFormat.ENCODING_PCM_16BIT
         val BUF_SIZE =
-            AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL, AudioFormat.ENCODING_PCM_16BIT)
+            AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL, ENCODING)
     }
 }

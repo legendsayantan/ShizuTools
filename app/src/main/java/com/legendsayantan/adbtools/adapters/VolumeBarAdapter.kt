@@ -26,11 +26,13 @@ class VolumeBarAdapter(
     val data: List<AudioOutputBase>,
     val onVolumeChanged: (Int, Float) -> Unit,
     val onItemDetached: (Int) -> Unit,
-    val onSliderGet:(Int, Int)->Float,
-    val onSliderSet:(Int, Int, Float)->Unit,
-    val getDevices: ()->List<AudioDeviceInfo>,
-    val setDeviceFor: (Int, AudioDeviceInfo)->Unit
+    val onSliderGet: (Int, Int) -> Float,
+    val onSliderSet: (Int, Int, Float) -> Unit,
+    val getDevices: () -> List<AudioDeviceInfo>,
+    val setDeviceFor: (Int, AudioDeviceInfo) -> Unit
 ) : RecyclerView.Adapter<VolumeBarAdapter.VolumeBarHolder>() {
+    val devices = getDevices()
+
     inner class VolumeBarHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val image = itemView.findViewById<ImageView>(R.id.image)
         val volumeBar = itemView.findViewById<Slider>(R.id.volume)
@@ -77,8 +79,8 @@ class VolumeBarAdapter(
         holder.volumeBar.addOnChangeListener { _, value, _ ->
             onVolumeChanged(position, value)
         }
-        getDevices().find { it.id==currentItem.outputDevice }?.let {
-            showDevice(holder.outputName,it)
+        devices.find { it.id == currentItem.outputDevice }?.let {
+            showDevice(holder.outputName, it)
         }
         holder.switchOutput.setOnClickListener {
             if (holder.outputExpanded.visibility == View.VISIBLE) {
@@ -88,12 +90,12 @@ class VolumeBarAdapter(
                 holder.outputExpanded.visibility = View.VISIBLE
                 //spawn radiobuttons
                 holder.outputGroup.removeAllViews()
-                getDevices().forEachIndexed { index, device ->
+                getDevices().forEach { device ->
                     val rButton = RadioButton(context)
-                    showDevice(rButton,device)
+                    showDevice(rButton, device)
                     rButton.setOnClickListener {
-                        setDeviceFor(position,device)
-                        showDevice(holder.outputName,device)
+                        setDeviceFor(position, device)
+                        showDevice(holder.outputName, device)
                     }
                     holder.outputGroup.addView(rButton)
                 }
@@ -108,9 +110,9 @@ class VolumeBarAdapter(
                 holder.expanded.visibility = View.VISIBLE
                 holder.expand.animate().rotationX(180f)
                 holder.otherSliders.forEachIndexed { index, slider ->
-                    slider.value = onSliderGet(position,index)
+                    slider.value = onSliderGet(position, index)
                     slider.addOnChangeListener { s, value, fromUser ->
-                        onSliderSet(position,index,value)
+                        onSliderSet(position, index, value)
                     }
                 }
             }
@@ -118,7 +120,6 @@ class VolumeBarAdapter(
 
         holder.outputExpanded.visibility = View.GONE
         holder.expanded.visibility = View.GONE
-
 
 
         //reset
@@ -133,7 +134,8 @@ class VolumeBarAdapter(
 
 
     }
-    private fun showDevice(v:TextView, d:AudioDeviceInfo){
+
+    private fun showDevice(v: TextView, d: AudioDeviceInfo) {
         v.text = "${d.productName} (${AudioOutputMap.getName(d.type)})"
     }
 }

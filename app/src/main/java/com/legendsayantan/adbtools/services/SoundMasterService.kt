@@ -9,9 +9,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.database.ContentObserver
 import android.media.AudioDeviceInfo
-import android.media.AudioFormat
 import android.media.AudioManager
-import android.media.AudioRecord
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -26,7 +24,6 @@ import com.legendsayantan.adbtools.SoundMasterActivity
 import com.legendsayantan.adbtools.data.AudioOutputKey
 import com.legendsayantan.adbtools.lib.PlayBackThread
 import com.legendsayantan.adbtools.lib.ShizukuRunner
-import java.lang.Byte
 import java.util.Timer
 import kotlin.Boolean
 import kotlin.Float
@@ -35,6 +32,8 @@ import kotlin.String
 import kotlin.Unit
 import kotlin.arrayOf
 import kotlin.concurrent.timerTask
+import kotlin.getValue
+import kotlin.lazy
 import kotlin.let
 
 
@@ -140,9 +139,6 @@ class SoundMasterService : Service() {
                     mediaProjection!!
                 )
                 mThread.targetVolume = volumeTemp[key] ?: 100f
-                mThread.latencyUpdate = { value ->
-                    latency.add(value)
-                }
                 packageThreads[key.pkg] = mThread
                 mThread.start()
             }
@@ -232,7 +228,6 @@ class SoundMasterService : Service() {
         const val NOTI_ID = 1
         const val notiUpdateTime = 30000L
 
-        val zeroByte = Byte.valueOf(0)
         lateinit var uiIntent: Intent
     }
 

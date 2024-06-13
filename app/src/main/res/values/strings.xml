@@ -1,4 +1,4 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <string name="app_name">ShizuTools</string>
     <string name="this_app_requires_u_shizuku">This app requires <u>Shizuku</u>.\nPlease make sure you have shizuku installed and running.</string>
     <string name="force_applying_mixedaudio_may_crash">Force applying MixedAudio may crash some apps, and doing so on system apps may crash your entire system.</string>
@@ -16,13 +16,13 @@
     <string name="desc_debloater">Uninstall unnecessary system apps to remove ads, save battery and improve performance.</string>
     <string name="_100">100</string>
     <string name="percentage_sign">%</string>
-    <string name="soundmaster">SoundMaster</string>
-    <string name="desc_soundmaster">Control audio output of individual apps, on Android 10 or newer device.</string>
+    <string name="soundmaster">SoundMaster beta</string>
+    <string name="desc_soundmaster">Control audio output of individual apps, play on multiple outputs simultaneously, and more! </string>
     <string name="new_slider_for">Select which app to control :</string>
     <string name="no_sliders_added">No sliders added</string>
     <string name="new_slider">New Slider</string>
     <string name="removable_apps">Removable apps -</string>
-    <string name="please_wait">Please wait...</string>
+    <string name="please_wait">Please wait…</string>
     <string name="welcome">Welcome!</string>
     <string name="ensure_no_adb_restrictions">Ensure you do not have any adb restrictions, from developer options.</string>
     <string name="directions_lookback">Select an apk file to be installed as a downgrade.</string>
@@ -41,7 +41,7 @@
     <string name="switch_output_device">Switch Output Device:</string>
     <string name="default_">Default</string>
     <string name="run">Run</string>
-    <string name="enter_command">Enter Command...</string>
+    <string name="enter_command">Enter Command…</string>
     <string name="accept_adb_intents">Accept adb intents</string>
     <string name="intent_shell_security">Intent shell locks for 5 minutes after usage of a wrong access key, to prevent brute force attempts.</string>
     <string name="access_key">Access key</string>
