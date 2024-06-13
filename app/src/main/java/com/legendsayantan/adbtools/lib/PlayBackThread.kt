@@ -24,7 +24,7 @@ import com.legendsayantan.adbtools.services.SoundMasterService.Companion.notiUpd
  */
 class PlayBackThread(
     val context: Context,
-    val pkg: String, val initialOutput : AudioDeviceInfo?,
+    val pkg: String, val initialOutput: AudioDeviceInfo?,
     private val mediaProjection: MediaProjection
 ) : Thread("$LOG_TAG : $pkg") {
     var playback = true
@@ -33,7 +33,7 @@ class PlayBackThread(
     var loadedCycles = 0
 
     lateinit var mCapture: AudioRecord
-    var mPlayers =  (hashMapOf <Int, AudioPlayer>())
+    var mPlayers = (hashMapOf<Int, AudioPlayer>())
     override fun start() {
         ShizukuRunner.runAdbCommand("appops set $pkg PLAY_AUDIO deny",
             object : ShizukuRunner.CommandResultListener {
@@ -91,62 +91,68 @@ class PlayBackThread(
         try {
             mCapture.startRecording()
             Log.i(LOG_TAG, "Audio Recording started")
-
+            val players = mPlayers.values
             while (playback) {
                 mCapture.read(dataBuffer, 0, BUF_SIZE)
-                mPlayers.values.forEach { it.write(dataBuffer, 0, dataBuffer.size) }
+                players.forEach {
+                    it.write(dataBuffer, 0, dataBuffer.size)
+                }
                 loadedCycles++
             }
         } catch (e: Exception) {
-            Log.e(LOG_TAG, "Error in VolumeThread: ${e.message}")
+            Log.e(LOG_TAG, "Error in VolumeThread")
+            e.printStackTrace()
         }
     }
 
-    fun hasOutput(deviceId:Int):Boolean{
+    fun hasOutput(deviceId: Int): Boolean {
         return mPlayers.contains(deviceId)
     }
 
     fun createOutput(
-        device:AudioDeviceInfo?=null,
-        startVolume:Float=targetVolume
-        , bal:Float?=null,
-        bands:Array<Float> = arrayOf()
-    ){
-        mPlayers[device?.id?:-1] = AudioPlayer(
+        device: AudioDeviceInfo? = null,
+        startVolume: Float = targetVolume, bal: Float? = null,
+        bands: Array<Float> = arrayOf()
+    ) {
+        val plyr = AudioPlayer(
             AudioManager.STREAM_MUSIC,
             SAMPLE_RATE, CHANNEL,
             ENCODING, BUF_SIZE,
             AudioTrack.MODE_STREAM
-        ).also { player ->
-            player.setCurrentVolume(startVolume)
-            player.playbackRate = SAMPLE_RATE
-            player.preferredDevice = device
-            player.play()
-            try {
-                player.equalizer.enabled = true
-            }catch (_:Exception){}
-            bal?.let { player.setBalance(bal) }
-            bands.forEachIndexed { index, fl -> player.setBand(index,fl) }
+        )
+        plyr.setCurrentVolume(startVolume)
+        plyr.playbackRate = SAMPLE_RATE
+        plyr.preferredDevice = device
+        plyr.play()
+        try {
+            plyr.equalizer.enabled = true
+        } catch (_: Exception) {
         }
+        bal?.let { plyr.setBalance(bal) }
+        bands.forEachIndexed { index, fl -> plyr.setBand(index, fl) }
+        mPlayers[device?.id ?: -1] = plyr
     }
 
-    fun deleteOutput(outputId:Int){
-        mPlayers[outputId]?.stop()
-        mPlayers.remove(outputId)
-        if(mPlayers.size==0){
+    fun deleteOutput(outputId: Int) {
+        val plyr = mPlayers.remove(outputId)
+        plyr?.stop()
+        if (mPlayers.size == 0) {
             interrupt()
         }
     }
 
-    fun switchOutputDevice(key:AudioOutputKey, newDevice:AudioDeviceInfo?){
-       mPlayers[key.outputDevice]?.let {
-           val vol = it.volume*100f
-           val balance = it.getBalance()
-           val bands = it.savedBands
-           createOutput(newDevice,vol,balance,bands)
-           deleteOutput(key.outputDevice)
-       }
+    fun switchOutputDevice(key: AudioOutputKey, newDevice: AudioDeviceInfo?):Boolean{
+        if(mPlayers.contains(newDevice?.id?:-1)) return false
+        mPlayers[key.outputDevice]?.let {
+            val vol = it.volume * 100f
+            val balance = it.getBalance()
+            val bands = it.savedBands
+            createOutput(newDevice, vol, balance, bands)
+            deleteOutput(key.outputDevice)
+        }
+        return true
     }
+
     fun getLatency(): Float {
         return notiUpdateTime.toFloat() / loadedCycles.coerceAtLeast(1).also { loadedCycles = 0 }
     }
@@ -168,20 +174,20 @@ class PlayBackThread(
         super.interrupt()
     }
 
-    fun getBalance(device:Int): Float? {
+    fun getBalance(device: Int): Float? {
         return mPlayers[device]?.getBalance()
     }
 
-    fun setBalance(device:Int,value: Float) {
+    fun setBalance(device: Int, value: Float) {
         mPlayers[device]?.setBalance(value)
     }
 
-    fun getBand(deviceId:Int,band:Int): Float?{
+    fun getBand(deviceId: Int, band: Int): Float? {
         return mPlayers[deviceId]?.savedBands?.get(band)
     }
 
-    fun setBand(device:Int,band: Int, value: Float) {
-        mPlayers[device]?.setBand(band,value)
+    fun setBand(device: Int, band: Int, value: Float) {
+        mPlayers[device]?.setBand(band, value)
     }
 
     fun setVolume(outputDevice: Int, vol: Float) {
@@ -192,7 +198,7 @@ class PlayBackThread(
         return mPlayers[it.outputDevice]?.volume?.times(100f)
     }
 
-    companion object{
+    companion object {
         const val LOG_TAG = "SoundMaster"
         const val SAMPLE_RATE = 44100
         const val CHANNEL = AudioFormat.CHANNEL_IN_STEREO or AudioFormat.CHANNEL_OUT_STEREO

@@ -87,9 +87,7 @@ class SoundMasterActivity : AppCompatActivity() {
                         packageSliders = newPackages
                         if (SoundMasterService.running) SoundMasterService.onDynamicAttach(key, device)
                         updateSliders()
-                    }else{
-                        Toast.makeText(applicationContext,"Combination already exists.",Toast.LENGTH_SHORT).show()
-                    }
+                    }else combinationExists()
                     interacted()
                 }.show()
             }.show()
@@ -257,17 +255,26 @@ class SoundMasterActivity : AppCompatActivity() {
                     SoundMasterService.getAudioDevices()
                 }, { pkg, device ->
                     interacted()
-                    SoundMasterService.switchDeviceFor(sliders[pkg], device)
-                    val newPackages = packageSliders
-                    newPackages[pkg] = AudioOutputKey(sliders[pkg].pkg, device?.id?:-1)
-                    packageSliders = newPackages
-                    updateSliders()
+                    if(SoundMasterService.switchDeviceFor(sliders[pkg], device)){
+                        val newPackages = packageSliders
+                        newPackages[pkg] = AudioOutputKey(sliders[pkg].pkg, device?.id?:-1)
+                        packageSliders = newPackages
+                        updateSliders()
+                        true
+                    }else {
+                        combinationExists()
+                        false
+                    }
                 })
             runOnUiThread {
                 volumeBarView.adapter = adapter
                 volumeBarView.invalidate()
             }
         }.start()
+    }
+
+    private fun combinationExists(){
+        Toast.makeText(applicationContext,"Combination already exists.",Toast.LENGTH_SHORT).show()
     }
 
     companion object {

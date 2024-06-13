@@ -101,7 +101,7 @@ class SoundMasterService : Service() {
         }
 
         switchDeviceFor = { key, device ->
-            packageThreads[key.pkg]?.switchOutputDevice(key, device)
+            packageThreads[key.pkg]?.switchOutputDevice(key, device) == true
         }
 
         getVolumeOf = {
@@ -225,7 +225,7 @@ class SoundMasterService : Service() {
         var onDynamicAttach: (AudioOutputKey, AudioDeviceInfo?) -> Unit = { _, _ -> }
         var onDynamicDetach: (AudioOutputKey) -> Unit = { _ -> }
         var getAudioDevices: () -> List<AudioDeviceInfo?> = { listOf() }
-        var switchDeviceFor: (AudioOutputKey, AudioDeviceInfo?) -> Unit = { _, _ -> }
+        var switchDeviceFor: (AudioOutputKey, AudioDeviceInfo?) -> Boolean = { _, _ -> false }
         var volumeTemp = HashMap<AudioOutputKey, Float>()
         var setVolumeOf: (AudioOutputKey, Float) -> Unit = { a, b -> volumeTemp[a] = b }
         var getVolumeOf: (AudioOutputKey) -> Float = { p -> volumeTemp[p] ?: 100f }

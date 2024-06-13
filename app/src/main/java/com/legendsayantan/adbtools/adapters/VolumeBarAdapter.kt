@@ -29,7 +29,7 @@ class VolumeBarAdapter(
     val onSliderGet: (Int, Int) -> Float,
     val onSliderSet: (Int, Int, Float) -> Unit,
     val getDevices: () -> List<AudioDeviceInfo?>,
-    val setDeviceFor: (Int, AudioDeviceInfo?) -> Unit
+    val setDeviceFor: (Int, AudioDeviceInfo?) -> Boolean
 ) : RecyclerView.Adapter<VolumeBarAdapter.VolumeBarHolder>() {
     val devices = getDevices()
 
@@ -95,8 +95,8 @@ class VolumeBarAdapter(
                         val rButton = RadioButton(context)
                         showDevice(rButton, device)
                         rButton.setOnClickListener {
-                            setDeviceFor(position, device)
-                            showDevice(holder.outputName, device)
+                            if(setDeviceFor(position, device)) showDevice(holder.outputName, device)
+                            else rButton.isChecked = false
                         }
                         holder.outputGroup.addView(rButton)
                     }
