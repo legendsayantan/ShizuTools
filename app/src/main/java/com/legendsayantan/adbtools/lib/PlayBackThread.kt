@@ -106,20 +106,27 @@ class PlayBackThread(
         return mPlayers.contains(deviceId)
     }
 
-    fun createOutput(device:AudioDeviceInfo?=null){
+    fun createOutput(
+        device:AudioDeviceInfo?=null,
+        startVolume:Float=targetVolume
+        , bal:Float?=null,
+        bands:Array<Float> = arrayOf()
+    ){
         mPlayers[device?.id?:-1] = AudioPlayer(
             AudioManager.STREAM_MUSIC,
             SAMPLE_RATE, CHANNEL,
             ENCODING, BUF_SIZE,
             AudioTrack.MODE_STREAM
-        ).also {
-            it.setCurrentVolume(targetVolume)
-            it.playbackRate = SAMPLE_RATE
-            it.preferredDevice = device
-            it.play()
+        ).also { player ->
+            player.setCurrentVolume(startVolume)
+            player.playbackRate = SAMPLE_RATE
+            player.preferredDevice = device
+            player.play()
             try {
-                it.equalizer.enabled = true
+                player.equalizer.enabled = true
             }catch (_:Exception){}
+            bal?.let { player.setBalance(bal) }
+            bands.forEachIndexed { index, fl -> player.setBand(index,fl) }
         }
     }
 
@@ -132,10 +139,13 @@ class PlayBackThread(
     }
 
     fun switchOutputDevice(key:AudioOutputKey, newDevice:AudioDeviceInfo?){
-        val playerKey = if(mPlayers.contains(key.outputDevice)) key.outputDevice else -1
-        mPlayers[playerKey]?.preferredDevice = newDevice
-        mPlayers[newDevice?.id?:-1] = mPlayers[playerKey]!!
-        mPlayers.remove(playerKey)
+       mPlayers[key.outputDevice]?.let {
+           val vol = it.volume*100f
+           val balance = it.getBalance()
+           val bands = it.savedBands
+           createOutput(newDevice,vol,balance,bands)
+           deleteOutput(key.outputDevice)
+       }
     }
     fun getLatency(): Float {
         return notiUpdateTime.toFloat() / loadedCycles.coerceAtLeast(1).also { loadedCycles = 0 }

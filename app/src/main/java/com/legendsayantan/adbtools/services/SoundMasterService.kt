@@ -93,8 +93,10 @@ class SoundMasterService : Service() {
             var dev = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).filter {
                 it.type !in arrayOf(7, 18, 25)
             }
-            if(dev.find { it?.type in 3..4 }!=null) dev = dev.filter { it?.type !in 1..2 }
-            if(dev.all { it?.type in 1..2 }) dev = dev.filter { it?.type!=1 }
+            //block builtin outputs
+            if(dev.any { it?.type in 3..4 }) dev = dev.filter { it?.type !in 1..2 }
+            //block earpiece only
+            if(dev.all { it?.type in 1..2 } || dev.any { it?.type==8 }) dev = dev.filter { it?.type!=1 }
             listOf(null) + dev
         }
 
@@ -154,6 +156,7 @@ class SoundMasterService : Service() {
             thread?.deleteOutput(key.outputDevice)
             if(thread?.mPlayers?.size==0){
                 packageThreads.remove(key.pkg)
+                apps.remove(key)
             }
         }
     }
