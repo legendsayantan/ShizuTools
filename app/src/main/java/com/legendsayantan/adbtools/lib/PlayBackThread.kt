@@ -102,6 +102,10 @@ class PlayBackThread(
         }
     }
 
+    fun hasOutput(deviceId:Int):Boolean{
+        return mPlayers.contains(deviceId)
+    }
+
     fun createOutput(device:AudioDeviceInfo?=null){
         mPlayers[device?.id?:-1] = AudioPlayer(
             AudioManager.STREAM_MUSIC,
@@ -111,7 +115,7 @@ class PlayBackThread(
         ).also {
             it.setCurrentVolume(targetVolume)
             it.playbackRate = SAMPLE_RATE
-            if(device!=null) it.preferredDevice = device
+            it.preferredDevice = device
             it.play()
             try {
                 it.equalizer.enabled = true
@@ -127,10 +131,10 @@ class PlayBackThread(
         }
     }
 
-    fun switchOutputDevice(key:AudioOutputKey, newDevice:AudioDeviceInfo){
+    fun switchOutputDevice(key:AudioOutputKey, newDevice:AudioDeviceInfo?){
         val playerKey = if(mPlayers.contains(key.outputDevice)) key.outputDevice else -1
         mPlayers[playerKey]?.preferredDevice = newDevice
-        mPlayers[newDevice.id] = mPlayers[playerKey]!!
+        mPlayers[newDevice?.id?:-1] = mPlayers[playerKey]!!
         mPlayers.remove(playerKey)
     }
     fun getLatency(): Float {

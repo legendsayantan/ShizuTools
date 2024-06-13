@@ -71,7 +71,7 @@ class SoundMasterService : Service() {
         latencyUpdateTimer.schedule(timerTask {
             val avg = packageThreads.values.map { it.getLatency() }.average().toInt()
             packageThreads.values.forEach { it.loadedCycles = 0 }
-            builder.setContentTitle(applicationContext.getString(R.string.soundmaster) + " is controlling ${apps.size} apps.")
+            builder.setContentTitle(applicationContext.getString(R.string.soundmaster) + " is controlling ${packageThreads.size} apps.")
             builder.setContentText("Average Latency: $avg ms")
             latency.clear()
             if (ActivityCompat.checkSelfPermission(
@@ -93,8 +93,9 @@ class SoundMasterService : Service() {
             var dev = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).filter {
                 it.type !in arrayOf(7, 18, 25)
             }
-            if(dev.find { it.type in 3..4 }!=null) dev = dev.filter { it.type !in 1..2 }
-            dev
+            if(dev.find { it?.type in 3..4 }!=null) dev = dev.filter { it?.type !in 1..2 }
+            if(dev.all { it?.type in 1..2 }) dev = dev.filter { it?.type!=1 }
+            listOf(null) + dev
         }
 
         switchDeviceFor = { key, device ->
@@ -127,6 +128,10 @@ class SoundMasterService : Service() {
             packageThreads[it.pkg]?.setBand(it.outputDevice, band, value)
         }
 
+        isAttachable = {key->
+            !(packageThreads.contains(key.pkg) && packageThreads[key.pkg]?.hasOutput(key.outputDevice) == true)
+        }
+
         onDynamicAttach = { key, device ->
             if (!apps.contains(key)) apps.add(key)
             if (packageThreads.contains(key.pkg)) {
@@ -135,7 +140,7 @@ class SoundMasterService : Service() {
                 val mThread = PlayBackThread(
                     applicationContext,
                     key.pkg,
-                    getAudioDevices().find { it.id == key.outputDevice },
+                    getAudioDevices().find { it?.id == key.outputDevice },
                     mediaProjection!!
                 )
                 mThread.targetVolume = volumeTemp[key] ?: 100f
@@ -168,7 +173,7 @@ class SoundMasterService : Service() {
                 ) as MediaProjection
                 apps.forEach { key ->
                     onDynamicAttach(key,
-                        getAudioDevices().find { it.id == key.outputDevice }
+                        getAudioDevices().find { it?.id == key.outputDevice }
                     )
                 }
             }
@@ -213,10 +218,11 @@ class SoundMasterService : Service() {
     companion object {
         var running = false
         var projectionData: Intent? = null
+        var isAttachable : (AudioOutputKey) -> Boolean = {false}
         var onDynamicAttach: (AudioOutputKey, AudioDeviceInfo?) -> Unit = { _, _ -> }
         var onDynamicDetach: (AudioOutputKey) -> Unit = { _ -> }
-        var getAudioDevices: () -> List<AudioDeviceInfo> = { listOf() }
-        var switchDeviceFor: (AudioOutputKey, AudioDeviceInfo) -> Unit = { _, _ -> }
+        var getAudioDevices: () -> List<AudioDeviceInfo?> = { listOf() }
+        var switchDeviceFor: (AudioOutputKey, AudioDeviceInfo?) -> Unit = { _, _ -> }
         var volumeTemp = HashMap<AudioOutputKey, Float>()
         var setVolumeOf: (AudioOutputKey, Float) -> Unit = { a, b -> volumeTemp[a] = b }
         var getVolumeOf: (AudioOutputKey) -> Float = { p -> volumeTemp[p] ?: 100f }

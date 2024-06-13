@@ -21,7 +21,8 @@ import com.google.android.material.card.MaterialCardView
 import com.legendsayantan.adbtools.adapters.VolumeBarAdapter
 import com.legendsayantan.adbtools.data.AudioOutputBase
 import com.legendsayantan.adbtools.data.AudioOutputKey
-import com.legendsayantan.adbtools.dialog.NewSliderDialog
+import com.legendsayantan.adbtools.dialog.AppSelectionDialog
+import com.legendsayantan.adbtools.dialog.OutputSelectionDialog
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.services.SoundMasterService
@@ -38,11 +39,11 @@ class SoundMasterActivity : AppCompatActivity() {
     private lateinit var mediaProjectionManager: MediaProjectionManager
     private var packageSliders: MutableList<AudioOutputKey>
         get() = try {
-            File(applicationContext.filesDir, FILENAME_SOUNDMASTER).let { file->
-                file.readText().split("\n").let{ text ->
-                    if(!text.any { it.isBlank() }) text.map { line ->
+            File(applicationContext.filesDir, FILENAME_SOUNDMASTER).let { file ->
+                file.readText().split("\n").let { text ->
+                    if (!text.any { it.isBlank() }) text.map { line ->
                         val splits = line.split("/")
-                        AudioOutputKey(splits[0],splits[splits.size-1].toInt())
+                        AudioOutputKey(splits[0], splits[splits.size - 1].toInt())
                     }.toMutableList()
                     else {
                         file.delete()
@@ -59,7 +60,7 @@ class SoundMasterActivity : AppCompatActivity() {
                 file.parentFile?.mkdirs()
                 file.createNewFile()
             }
-            file.writeText(value.joinToString("\n"){ it.pkg+"/"+it.outputDevice })
+            file.writeText(value.joinToString("\n") { it.pkg + "/" + it.outputDevice })
         }
 
     val volumeBarView by lazy { findViewById<RecyclerView>(R.id.volumeBars) }
@@ -74,13 +75,23 @@ class SoundMasterActivity : AppCompatActivity() {
         //new slider
         findViewById<MaterialCardView>(R.id.newSlider).setOnClickListener {
             lastInteractionAt = -1
-            NewSliderDialog(this@SoundMasterActivity) { pkg ->
-                val newPackages = packageSliders
-                newPackages.add(AudioOutputKey(pkg))
-                packageSliders = newPackages
-                if (SoundMasterService.running) SoundMasterService.onDynamicAttach(AudioOutputKey(pkg,-1),null)
-                updateSliders()
-                interacted()
+            AppSelectionDialog(this@SoundMasterActivity) { pkg ->
+                OutputSelectionDialog(this@SoundMasterActivity) { device ->
+                    val key = AudioOutputKey(pkg, device?.id ?: -1)
+                    if (
+                        if (SoundMasterService.running) SoundMasterService.isAttachable(key)
+                        else (packageSliders.find { it.pkg == key.pkg && it.outputDevice == key.outputDevice }==null)
+                    ) {
+                        val newPackages = packageSliders
+                        newPackages.add(key)
+                        packageSliders = newPackages
+                        if (SoundMasterService.running) SoundMasterService.onDynamicAttach(key, device)
+                        updateSliders()
+                    }else{
+                        Toast.makeText(applicationContext,"Combination already exists.",Toast.LENGTH_SHORT).show()
+                    }
+                    interacted()
+                }.show()
             }.show()
         }
 
@@ -248,7 +259,7 @@ class SoundMasterActivity : AppCompatActivity() {
                     interacted()
                     SoundMasterService.switchDeviceFor(sliders[pkg], device)
                     val newPackages = packageSliders
-                    newPackages[pkg] = AudioOutputKey(sliders[pkg].pkg,device.id)
+                    newPackages[pkg] = AudioOutputKey(sliders[pkg].pkg, device?.id?:-1)
                     packageSliders = newPackages
                     updateSliders()
                 })

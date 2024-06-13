@@ -28,8 +28,8 @@ class VolumeBarAdapter(
     val onItemDetached: (Int) -> Unit,
     val onSliderGet: (Int, Int) -> Float,
     val onSliderSet: (Int, Int, Float) -> Unit,
-    val getDevices: () -> List<AudioDeviceInfo>,
-    val setDeviceFor: (Int, AudioDeviceInfo) -> Unit
+    val getDevices: () -> List<AudioDeviceInfo?>,
+    val setDeviceFor: (Int, AudioDeviceInfo?) -> Unit
 ) : RecyclerView.Adapter<VolumeBarAdapter.VolumeBarHolder>() {
     val devices = getDevices()
 
@@ -79,7 +79,7 @@ class VolumeBarAdapter(
         holder.volumeBar.addOnChangeListener { _, value, _ ->
             onVolumeChanged(position, value)
         }
-        devices.find { it.id == currentItem.outputDevice }?.let {
+        devices.find { it?.id == currentItem.outputDevice }?.let {
             showDevice(holder.outputName, it)
         }
         holder.switchOutput.setOnClickListener {
@@ -135,7 +135,12 @@ class VolumeBarAdapter(
 
     }
 
-    private fun showDevice(v: TextView, d: AudioDeviceInfo) {
-        v.text = "${d.productName} (${AudioOutputMap.getName(d.type)})"
+    private fun showDevice(v: TextView, d: AudioDeviceInfo?) {
+        v.text = formatDevice(d)
+    }
+    companion object{
+        fun formatDevice(d:AudioDeviceInfo?):String{
+            return if(d==null) "Default" else "${d.productName} (${AudioOutputMap.getName(d.type)})"
+        }
     }
 }
