@@ -91,13 +91,15 @@ class VolumeBarAdapter(
                 //spawn radiobuttons
                 holder.outputGroup.removeAllViews()
                 getDevices().forEach { device ->
-                    val rButton = RadioButton(context)
-                    showDevice(rButton, device)
-                    rButton.setOnClickListener {
-                        setDeviceFor(position, device)
-                        showDevice(holder.outputName, device)
+                    if ((device?.id?:-1) != currentItem.outputDevice){
+                        val rButton = RadioButton(context)
+                        showDevice(rButton, device)
+                        rButton.setOnClickListener {
+                            setDeviceFor(position, device)
+                            showDevice(holder.outputName, device)
+                        }
+                        holder.outputGroup.addView(rButton)
                     }
-                    holder.outputGroup.addView(rButton)
                 }
             }
         }
