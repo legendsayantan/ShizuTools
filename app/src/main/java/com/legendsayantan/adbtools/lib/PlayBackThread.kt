@@ -24,7 +24,7 @@ import com.legendsayantan.adbtools.services.SoundMasterService.Companion.notiUpd
  */
 class PlayBackThread(
     val context: Context,
-    val pkg: String, val initialOutput: AudioDeviceInfo?,
+    val pkg: String,
     private val mediaProjection: MediaProjection
 ) : Thread("$LOG_TAG : $pkg") {
     var playback = true
@@ -80,8 +80,7 @@ class PlayBackThread(
                 .setAudioPlaybackCaptureConfig(config)
                 .build()
 
-            createOutput(initialOutput)
-            mPlayers[initialOutput?.id]?.setCurrentVolume(targetVolume)
+
         } catch (e: Exception) {
             Log.e(
                 "Error",
@@ -100,7 +99,7 @@ class PlayBackThread(
                 loadedCycles++
             }
         } catch (e: Exception) {
-            Log.e(LOG_TAG, "Error in VolumeThread")
+            Log.e(LOG_TAG, "Error in PlayBackThread")
             e.printStackTrace()
         }
     }
@@ -111,6 +110,7 @@ class PlayBackThread(
 
     fun createOutput(
         device: AudioDeviceInfo? = null,
+        outputKey:Int=device?.id?:-1,
         startVolume: Float = targetVolume, bal: Float? = null,
         bands: Array<Float> = arrayOf()
     ) {
@@ -130,11 +130,11 @@ class PlayBackThread(
         }
         bal?.let { plyr.setBalance(bal) }
         bands.forEachIndexed { index, fl -> plyr.setBand(index, fl) }
-        mPlayers[device?.id ?: -1] = plyr
+        mPlayers[outputKey] = plyr
     }
 
-    fun deleteOutput(outputId: Int, interruption:Boolean=true): AudioPlayer? {
-        val plyr = mPlayers.remove(outputId)
+    fun deleteOutput(outputKey: Int, interruption:Boolean=true): AudioPlayer? {
+        val plyr = mPlayers.remove(outputKey)
         plyr?.stop()
         if (mPlayers.size == 0 && interruption) {
             interrupt()
@@ -144,8 +144,8 @@ class PlayBackThread(
 
     fun switchOutputDevice(key: AudioOutputKey, newDevice: AudioDeviceInfo?): Boolean {
         if (mPlayers.contains(newDevice?.id ?: -1)) return false
-        deleteOutput(key.outputDevice,false)?.let {
-            createOutput(newDevice, it.volume * 100f, it.getBalance(), it.savedBands)
+        deleteOutput(key.output,false)?.let {
+            createOutput(newDevice, startVolume = it.volume * 100f, bal = it.getBalance(), bands = it.savedBands)
         }
         return true
     }
@@ -194,7 +194,7 @@ class PlayBackThread(
     }
 
     fun getVolume(it: AudioOutputKey): Float? {
-        return mPlayers[it.outputDevice]?.volume?.times(100f)
+        return mPlayers[it.output]?.volume?.times(100f)
     }
 
     companion object {

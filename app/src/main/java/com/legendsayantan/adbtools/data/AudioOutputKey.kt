@@ -5,5 +5,5 @@ package com.legendsayantan.adbtools.data
  */
 open class AudioOutputKey(
     val pkg:String,
-    val outputDevice:Int=-1
+    val output:Int=-1
 )

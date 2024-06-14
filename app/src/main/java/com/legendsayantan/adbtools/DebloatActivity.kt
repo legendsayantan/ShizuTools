@@ -34,6 +34,8 @@ import com.legendsayantan.adbtools.lib.Utils.Companion.extractUrls
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.lib.Utils.Companion.loadApps
+import com.legendsayantan.adbtools.services.SoundMasterService
+import com.legendsayantan.adbtools.services.SoundMasterService.Companion.prepareGetAudioDevices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -74,6 +76,7 @@ class DebloatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_debloat)
         initialiseStatusBar()
+        prepareGetAudioDevices()
         list = findViewById(R.id.apps_list)
         ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.QUERY_ALL_PACKAGES",
             object : ShizukuRunner.CommandResultListener {

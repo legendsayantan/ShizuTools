@@ -79,7 +79,7 @@ class VolumeBarAdapter(
         holder.volumeBar.addOnChangeListener { _, value, _ ->
             onVolumeChanged(position, value)
         }
-        devices.find { it?.id == currentItem.outputDevice }?.let {
+        devices.find { it?.id == currentItem.output }?.let {
             showDevice(holder.outputName, it)
         }
         holder.switchOutput.setOnClickListener {
@@ -93,7 +93,7 @@ class VolumeBarAdapter(
                 getDevices().forEach { device ->
                     val rButton = RadioButton(context)
                     showDevice(rButton, device)
-                    if ((device?.id?:-1) == currentItem.outputDevice){
+                    if ((device?.id?:-1) == currentItem.output){
                         rButton.isChecked = true
                     }else rButton.setOnClickListener {
                         if(setDeviceFor(position, device)) showDevice(holder.outputName, device)

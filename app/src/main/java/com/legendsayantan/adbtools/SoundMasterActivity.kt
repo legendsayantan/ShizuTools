@@ -60,7 +60,7 @@ class SoundMasterActivity : AppCompatActivity() {
                 file.parentFile?.mkdirs()
                 file.createNewFile()
             }
-            file.writeText(value.joinToString("\n") { it.pkg + "/" + it.outputDevice })
+            file.writeText(value.joinToString("\n") { it.pkg + "/" + it.output })
         }
 
     val volumeBarView by lazy { findViewById<RecyclerView>(R.id.volumeBars) }
@@ -80,7 +80,7 @@ class SoundMasterActivity : AppCompatActivity() {
                     val key = AudioOutputKey(pkg, device?.id ?: -1)
                     if (
                         if (SoundMasterService.running) SoundMasterService.isAttachable(key)
-                        else (packageSliders.find { it.pkg == key.pkg && it.outputDevice == key.outputDevice }==null)
+                        else (packageSliders.find { it.pkg == key.pkg && it.output == key.output }==null)
                     ) {
                         val newPackages = packageSliders
                         newPackages.add(key)
@@ -199,7 +199,7 @@ class SoundMasterActivity : AppCompatActivity() {
                 SoundMasterService.projectionData = data
                 startService(Intent(this, SoundMasterService::class.java).apply {
                     putExtra("packages", packageSliders.map { it.pkg }.toTypedArray())
-                    putExtra("devices", packageSliders.map { it.outputDevice }.toIntArray())
+                    putExtra("devices", packageSliders.map { it.output }.toIntArray())
                 })
                 interacted()
             } else {
@@ -227,7 +227,7 @@ class SoundMasterActivity : AppCompatActivity() {
                 val volume = SoundMasterService.getVolumeOf(pkg)
                 sliders.add(
                     AudioOutputBase(
-                        pkg.pkg, pkg.outputDevice, volume
+                        pkg.pkg, pkg.output, volume
                     )
                 )
             }

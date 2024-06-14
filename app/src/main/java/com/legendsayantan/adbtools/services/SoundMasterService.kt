@@ -89,16 +89,7 @@ class SoundMasterService : Service() {
         mediaProjectionManager =
             applicationContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
-        getAudioDevices = {
-            var dev = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).filter {
-                it.type !in arrayOf(7, 18, 25)
-            }
-            //block builtin outputs
-            if(dev.any { it?.type in 3..4 }) dev = dev.filter { it?.type !in 1..2 }
-            //block earpiece only
-            if(dev.all { it?.type in 1..2 } || dev.any { it?.type==8 }) dev = dev.filter { it?.type!=1 }
-            listOf(null) + dev
-        }
+        prepareGetAudioDevices()
 
         switchDeviceFor = { key, device ->
             packageThreads[key.pkg]?.switchOutputDevice(key, device) == true
@@ -110,51 +101,49 @@ class SoundMasterService : Service() {
 
         setVolumeOf = { key, vol ->
             packageThreads[key.pkg].let {
-                if (it != null) it.setVolume(key.outputDevice, vol) else volumeTemp[key] = vol
+                if (it != null) it.setVolume(key.output, vol) else volumeTemp[key] = vol
             }
         }
 
         getBalanceOf = {
-            packageThreads[it.pkg]?.getBalance(it.outputDevice) ?: 0f
+            packageThreads[it.pkg]?.getBalance(it.output) ?: 0f
         }
 
         setBalanceOf = { it, value ->
-            packageThreads[it.pkg]?.setBalance(it.outputDevice, value)
+            packageThreads[it.pkg]?.setBalance(it.output, value)
         }
 
         getBandValueOf = { it, band ->
-            packageThreads[it.pkg]?.getBand(it.outputDevice, band) ?: 50f
+            packageThreads[it.pkg]?.getBand(it.output, band) ?: 50f
         }
 
         setBandValueOf = { it, band, value ->
-            packageThreads[it.pkg]?.setBand(it.outputDevice, band, value)
+            packageThreads[it.pkg]?.setBand(it.output, band, value)
         }
 
-        isAttachable = {key->
-            !(packageThreads.contains(key.pkg) && packageThreads[key.pkg]?.hasOutput(key.outputDevice) == true)
+        isAttachable = { key ->
+            !(packageThreads.contains(key.pkg) && packageThreads[key.pkg]?.hasOutput(key.output) == true)
         }
 
         onDynamicAttach = { key, device ->
             if (!apps.contains(key)) apps.add(key)
-            if (packageThreads.contains(key.pkg)) {
-                packageThreads[key.pkg]?.createOutput(device)
-            } else {
+            if (!packageThreads.contains(key.pkg)) {
                 val mThread = PlayBackThread(
                     applicationContext,
                     key.pkg,
-                    getAudioDevices().find { it?.id == key.outputDevice },
                     mediaProjection!!
                 )
                 mThread.targetVolume = volumeTemp[key] ?: 100f
                 packageThreads[key.pkg] = mThread
                 mThread.start()
             }
+            packageThreads[key.pkg]?.createOutput(device, outputKey = key.output)
         }
 
         onDynamicDetach = { key ->
             val thread = packageThreads[key.pkg]
-            thread?.deleteOutput(key.outputDevice)
-            if(thread?.mPlayers?.size==0){
+            thread?.deleteOutput(key.output)
+            if (thread?.mPlayers?.size == 0) {
                 packageThreads.remove(key.pkg)
                 apps.remove(key)
             }
@@ -176,7 +165,7 @@ class SoundMasterService : Service() {
                 ) as MediaProjection
                 apps.forEach { key ->
                     onDynamicAttach(key,
-                        getAudioDevices().find { it?.id == key.outputDevice }
+                        getAudioDevices().find { it?.id == key.output }
                     )
                 }
             }
@@ -221,7 +210,7 @@ class SoundMasterService : Service() {
     companion object {
         var running = false
         var projectionData: Intent? = null
-        var isAttachable : (AudioOutputKey) -> Boolean = {false}
+        var isAttachable: (AudioOutputKey) -> Boolean = { false }
         var onDynamicAttach: (AudioOutputKey, AudioDeviceInfo?) -> Unit = { _, _ -> }
         var onDynamicDetach: (AudioOutputKey) -> Unit = { _ -> }
         var getAudioDevices: () -> List<AudioDeviceInfo?> = { listOf() }
@@ -238,6 +227,23 @@ class SoundMasterService : Service() {
         const val notiUpdateTime = 30000L
 
         lateinit var uiIntent: Intent
+
+        fun Context.prepareGetAudioDevices() {
+            if (getAudioDevices().isEmpty())
+                getAudioDevices = {
+                    var dev = (getSystemService(Context.AUDIO_SERVICE) as AudioManager).getDevices(
+                        AudioManager.GET_DEVICES_OUTPUTS
+                    ).filter {
+                        it.type !in arrayOf(7, 18, 25)
+                    }
+                    //block builtin outputs
+                    if (dev.any { it?.type in 3..4 }) dev = dev.filter { it?.type !in 1..2 }
+                    //block earpiece only
+                    if (dev.all { it?.type in 1..2 } || dev.any { it?.type == 8 }) dev =
+                        dev.filter { it?.type != 1 }
+                    listOf(null) + dev
+                }
+        }
     }
 
 }
