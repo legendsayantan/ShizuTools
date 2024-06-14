@@ -26,6 +26,7 @@ import com.legendsayantan.adbtools.dialog.OutputSelectionDialog
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.services.SoundMasterService
+import com.legendsayantan.adbtools.services.SoundMasterService.Companion.prepareGetAudioDevices
 import java.io.File
 import java.io.FileNotFoundException
 import java.util.Timer
@@ -37,13 +38,13 @@ import kotlin.concurrent.timerTask
 
 class SoundMasterActivity : AppCompatActivity() {
     private lateinit var mediaProjectionManager: MediaProjectionManager
-    private var packageSliders: MutableList<AudioOutputKey>
+    private var packageSliders: MutableList<AudioOutputBase>
         get() = try {
             File(applicationContext.filesDir, FILENAME_SOUNDMASTER).let { file ->
                 file.readText().split("\n").let { text ->
                     if (!text.any { it.isBlank() }) text.map { line ->
                         val splits = line.split("/")
-                        AudioOutputKey(splits[0], splits[splits.size - 1].toInt())
+                        AudioOutputBase(splits[0], splits[1].toInt(), splits[2].toFloatOrNull()?:100f)
                     }.toMutableList()
                     else {
                         file.delete()
@@ -51,7 +52,8 @@ class SoundMasterActivity : AppCompatActivity() {
                     }
                 }
             }
-        } catch (f: FileNotFoundException) {
+        } catch (e: Exception) {
+            File(applicationContext.filesDir, FILENAME_SOUNDMASTER).delete()
             mutableListOf()
         }
         set(value) {
@@ -60,7 +62,7 @@ class SoundMasterActivity : AppCompatActivity() {
                 file.parentFile?.mkdirs()
                 file.createNewFile()
             }
-            file.writeText(value.joinToString("\n") { it.pkg + "/" + it.output })
+            file.writeText(value.joinToString("\n") { it.pkg + "/" + it.output + "/" + it.volume})
         }
 
     val volumeBarView by lazy { findViewById<RecyclerView>(R.id.volumeBars) }
@@ -71,13 +73,14 @@ class SoundMasterActivity : AppCompatActivity() {
         showing = true
         setContentView(R.layout.activity_sound_master)
         initialiseStatusBar()
+        prepareGetAudioDevices()
         interacted()
         //new slider
         findViewById<MaterialCardView>(R.id.newSlider).setOnClickListener {
             lastInteractionAt = -1
             AppSelectionDialog(this@SoundMasterActivity) { pkg ->
-                OutputSelectionDialog(this@SoundMasterActivity) { device ->
-                    val key = AudioOutputKey(pkg, device?.id ?: -1)
+                OutputSelectionDialog(this@SoundMasterActivity,SoundMasterService.getAudioDevices()) { device ->
+                    val key = AudioOutputBase(pkg, device?.id ?: -1, 100f)
                     if (
                         if (SoundMasterService.running) SoundMasterService.isAttachable(key)
                         else (packageSliders.find { it.pkg == key.pkg && it.output == key.output }==null)
@@ -200,6 +203,7 @@ class SoundMasterActivity : AppCompatActivity() {
                 startService(Intent(this, SoundMasterService::class.java).apply {
                     putExtra("packages", packageSliders.map { it.pkg }.toTypedArray())
                     putExtra("devices", packageSliders.map { it.output }.toIntArray())
+                    putExtra("volumes",packageSliders.map { it.volume }.toFloatArray())
                 })
                 interacted()
             } else {
@@ -222,42 +226,36 @@ class SoundMasterActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.none).visibility =
             if (packageSliders.size > 0) View.GONE else View.VISIBLE
         Thread {
-            val sliders = mutableListOf<AudioOutputBase>()
-            for (pkg in packageSliders) {
-                val volume = SoundMasterService.getVolumeOf(pkg)
-                sliders.add(
-                    AudioOutputBase(
-                        pkg.pkg, pkg.output, volume
-                    )
-                )
-            }
             val adapter =
-                VolumeBarAdapter(this@SoundMasterActivity, sliders, { app, vol ->
+                VolumeBarAdapter(this@SoundMasterActivity, packageSliders, { app, vol ->
                     interacted()
-                    SoundMasterService.setVolumeOf(sliders[app], vol)
+                    val newPackages = packageSliders
+                    newPackages[app] = AudioOutputBase(packageSliders[app].pkg, packageSliders[app].output, vol)
+                    packageSliders = newPackages
+                    SoundMasterService.setVolumeOf(packageSliders[app], vol)
                 }, {
                     interacted()
                     val newPackages = packageSliders
                     newPackages.removeAt(it)
                     packageSliders = newPackages
                     updateSliders()
-                    SoundMasterService.onDynamicDetach(sliders[it])
+                    SoundMasterService.onDynamicDetach(packageSliders[it])
                 }, { app, sliderIndex ->
                     interacted()
-                    if (sliderIndex == 0) SoundMasterService.getBalanceOf(sliders[app])
-                    else SoundMasterService.getBandValueOf(sliders[app], sliderIndex - 1)
+                    if (sliderIndex == 0) SoundMasterService.getBalanceOf(packageSliders[app])
+                    else SoundMasterService.getBandValueOf(packageSliders[app], sliderIndex - 1)
                 }, { app, slider, value ->
                     interacted()
-                    if (slider == 0) SoundMasterService.setBalanceOf(sliders[app], value)
-                    else SoundMasterService.setBandValueOf(sliders[app], slider - 1, value)
+                    if (slider == 0) SoundMasterService.setBalanceOf(packageSliders[app], value)
+                    else SoundMasterService.setBandValueOf(packageSliders[app], slider - 1, value)
                 }, {
                     interacted()
                     SoundMasterService.getAudioDevices()
                 }, { pkg, device ->
                     interacted()
-                    if(SoundMasterService.switchDeviceFor(sliders[pkg], device)){
+                    if(SoundMasterService.switchDeviceFor(packageSliders[pkg], device)){
                         val newPackages = packageSliders
-                        newPackages[pkg] = AudioOutputKey(sliders[pkg].pkg, device?.id?:-1)
+                        newPackages[pkg] = AudioOutputBase(packageSliders[pkg].pkg, device?.id?:-1, packageSliders[pkg].volume)
                         packageSliders = newPackages
                         updateSliders()
                         true

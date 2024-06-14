@@ -51,4 +51,6 @@
     <string name="selected_item_was_patched_as_permanent">Selected item was patched as permanent.</string>
     <string name="do_not_un_mute_apps_that_are_being_controlled_by_soundmaster">Do not un-mute apps that are being controlled by SoundMaster.</string>
     <string name="select_audio_output">Select Audio Output :</string>
+    <string name="confirm_to_uninstall">Confirm to uninstall</string>
+    <string name="links">Links :</string>
 </resources>

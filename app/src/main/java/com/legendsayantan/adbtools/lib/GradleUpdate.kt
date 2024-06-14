@@ -60,14 +60,14 @@ class GradleUpdate(val context: Context,val gradleFileUrl: String,val checkInter
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val intent = Intent(Intent.ACTION_VIEW,android.net.Uri.parse(apkUrl))
             val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
-            val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                notificationManager.createNotificationChannel(
-                    NotificationChannel(
-                        "${context.packageName}.update",
-                        "Updates",
-                        NotificationManager.IMPORTANCE_HIGH
-                    )
+            notificationManager.createNotificationChannel(
+                NotificationChannel(
+                    "${context.packageName}.update",
+                    "Updates",
+                    NotificationManager.IMPORTANCE_HIGH
                 )
+            )
+            val notification =
                 Notification.Builder(context, "${context.packageName}.update")
                     .setContentTitle("Update available")
                     .setContentText("New version $version available, click to download.")
@@ -75,15 +75,6 @@ class GradleUpdate(val context: Context,val gradleFileUrl: String,val checkInter
                     .setContentIntent(pendingIntent)
                     .setSmallIcon(smallIcon)
                     .build()
-            } else {
-                Notification.Builder(context)
-                    .setContentTitle("Update available")
-                    .setContentText("New version $version available")
-                    .setAutoCancel(true)
-                    .setContentIntent(pendingIntent)
-                    .setSmallIcon(smallIcon)
-                    .build()
-            }
             notificationManager.notify(1, notification)
         }, {})
     }

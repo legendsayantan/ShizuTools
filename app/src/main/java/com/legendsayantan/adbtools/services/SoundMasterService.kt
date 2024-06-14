@@ -21,6 +21,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.legendsayantan.adbtools.R
 import com.legendsayantan.adbtools.SoundMasterActivity
+import com.legendsayantan.adbtools.data.AudioOutputBase
 import com.legendsayantan.adbtools.data.AudioOutputKey
 import com.legendsayantan.adbtools.lib.PlayBackThread
 import com.legendsayantan.adbtools.lib.ShizukuRunner
@@ -43,7 +44,7 @@ class SoundMasterService : Service() {
     private var mediaProjectionManager: MediaProjectionManager? = null
     private var mediaProjection: MediaProjection? = null
     var packageThreads = hashMapOf<String, PlayBackThread>()
-    var apps = mutableListOf<AudioOutputKey>()
+    var apps = mutableListOf<AudioOutputBase>()
     var latency = mutableListOf(0)
     var latencyUpdateTimer = Timer()
     override fun onBind(intent: Intent): IBinder {
@@ -82,7 +83,7 @@ class SoundMasterService : Service() {
                 NotificationManagerCompat.from(applicationContext)
                     .notify(NOTI_ID, builder.build())
             }
-        }, notiUpdateTime, notiUpdateTime)
+        }, updateInterval, updateInterval)
 
         initVolumeBtnControl()
 
@@ -95,14 +96,12 @@ class SoundMasterService : Service() {
             packageThreads[key.pkg]?.switchOutputDevice(key, device) == true
         }
 
-        getVolumeOf = {
-            (packageThreads[it.pkg]?.getVolume(it) ?: volumeTemp[it] ?: 100f)
+        getVolumeOf = { key ->
+            (packageThreads[key.pkg]?.getVolume(key) ?: apps.find { it.pkg==key.pkg && it.output==key.output }?.volume ?: 100f)
         }
 
         setVolumeOf = { key, vol ->
-            packageThreads[key.pkg].let {
-                if (it != null) it.setVolume(key.output, vol) else volumeTemp[key] = vol
-            }
+            packageThreads[key.pkg]?.setVolume(key.output, vol)
         }
 
         getBalanceOf = {
@@ -126,18 +125,17 @@ class SoundMasterService : Service() {
         }
 
         onDynamicAttach = { key, device ->
-            if (!apps.contains(key)) apps.add(key)
+            if (!apps.contains(key)) apps.add(AudioOutputBase(key.pkg,key.output,key.volume))
             if (!packageThreads.contains(key.pkg)) {
                 val mThread = PlayBackThread(
                     applicationContext,
                     key.pkg,
                     mediaProjection!!
                 )
-                mThread.targetVolume = volumeTemp[key] ?: 100f
                 packageThreads[key.pkg] = mThread
                 mThread.start()
             }
-            packageThreads[key.pkg]?.createOutput(device, outputKey = key.output)
+            packageThreads[key.pkg]?.createOutput(device, outputKey = key.output, startVolume = key.volume)
         }
 
         onDynamicDetach = { key ->
@@ -154,8 +152,9 @@ class SoundMasterService : Service() {
         if (intent != null) {
             val pkgs = intent.getStringArrayExtra("packages")?.toMutableList() ?: mutableListOf()
             val devices = intent.getIntArrayExtra("devices")?.toMutableList() ?: mutableListOf()
+            val volumes = intent.getFloatArrayExtra("volumes")?.toMutableList() ?: mutableListOf()
             pkgs.forEachIndexed { index, s ->
-                apps.add(AudioOutputKey(s, devices[index]))
+                apps.add(AudioOutputBase(s, devices[index], volumes[index]))
             }
             if (apps.isNotEmpty()) {
                 running = true
@@ -163,9 +162,9 @@ class SoundMasterService : Service() {
                     Activity.RESULT_OK,
                     projectionData!!
                 ) as MediaProjection
-                apps.forEach { key ->
-                    onDynamicAttach(key,
-                        getAudioDevices().find { it?.id == key.output }
+                apps.forEach { base ->
+                    onDynamicAttach(base,
+                        getAudioDevices().find { it?.id == base.output }
                     )
                 }
             }
@@ -211,20 +210,19 @@ class SoundMasterService : Service() {
         var running = false
         var projectionData: Intent? = null
         var isAttachable: (AudioOutputKey) -> Boolean = { false }
-        var onDynamicAttach: (AudioOutputKey, AudioDeviceInfo?) -> Unit = { _, _ -> }
+        var onDynamicAttach: (AudioOutputBase, AudioDeviceInfo?) -> Unit = { _, _ -> }
         var onDynamicDetach: (AudioOutputKey) -> Unit = { _ -> }
         var getAudioDevices: () -> List<AudioDeviceInfo?> = { listOf() }
         var switchDeviceFor: (AudioOutputKey, AudioDeviceInfo?) -> Boolean = { _, _ -> false }
-        var volumeTemp = HashMap<AudioOutputKey, Float>()
-        var setVolumeOf: (AudioOutputKey, Float) -> Unit = { a, b -> volumeTemp[a] = b }
-        var getVolumeOf: (AudioOutputKey) -> Float = { p -> volumeTemp[p] ?: 100f }
+        var setVolumeOf: (AudioOutputKey, Float) -> Unit = { a, b ->  }
+        var getVolumeOf: (AudioOutputKey) -> Float = { p -> 100f }
         var setBalanceOf: (AudioOutputKey, Float) -> Unit = { a, b -> }
         var getBalanceOf: (AudioOutputKey) -> Float = { _ -> 0f }
         var setBandValueOf: (AudioOutputKey, Int, Float) -> Unit = { _, _, _ -> }
         var getBandValueOf: (AudioOutputKey, Int) -> Float = { _, _ -> 50f }
 
         const val NOTI_ID = 1
-        const val notiUpdateTime = 30000L
+        const val updateInterval = 30000L
 
         lateinit var uiIntent: Intent
 

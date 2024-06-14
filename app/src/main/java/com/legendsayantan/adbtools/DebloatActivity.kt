@@ -1,6 +1,5 @@
 package com.legendsayantan.adbtools
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -26,7 +25,6 @@ import com.google.gson.JsonDeserializer
 import com.google.gson.JsonElement
 import com.google.gson.reflect.TypeToken
 import com.legendsayantan.adbtools.adapters.DebloatAdapter
-import com.legendsayantan.adbtools.adapters.AudioStateAdapter
 import com.legendsayantan.adbtools.adapters.SimpleAdapter
 import com.legendsayantan.adbtools.data.AppData
 import com.legendsayantan.adbtools.lib.ShizukuRunner
@@ -34,8 +32,6 @@ import com.legendsayantan.adbtools.lib.Utils.Companion.extractUrls
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.lib.Utils.Companion.loadApps
-import com.legendsayantan.adbtools.services.SoundMasterService
-import com.legendsayantan.adbtools.services.SoundMasterService.Companion.prepareGetAudioDevices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -72,11 +68,11 @@ class DebloatActivity : AppCompatActivity() {
     lateinit var list: ListView
     var filterMode = false
     lateinit var cachedApps: HashMap<String, AppData>
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_debloat)
         initialiseStatusBar()
-        prepareGetAudioDevices()
         list = findViewById(R.id.apps_list)
         ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.QUERY_ALL_PACKAGES",
             object : ShizukuRunner.CommandResultListener {
@@ -89,17 +85,17 @@ class DebloatActivity : AppCompatActivity() {
                 val app = apps.values.toList()[position]
                 //show dialog
                 val links = MaterialTextView(this)
-                links.text = "Links :"
+                links.text = getString(R.string.links)
                 val listOfLinks = app.description.extractUrls()
                 val linkView = ListView(this)
                 linkView.adapter =
                     ArrayAdapter(this, android.R.layout.simple_list_item_1, listOfLinks)
-                linkView.setOnItemClickListener { _, _, position, _ ->
+                linkView.setOnItemClickListener { _, _, linkPosition, _ ->
                     //open link
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(listOfLinks[position])))
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(listOfLinks[linkPosition])))
                 }
                 val uninstallBtn = MaterialButton(this)
-                uninstallBtn.text = "Confirm to uninstall"
+                uninstallBtn.text = getString(R.string.confirm_to_uninstall)
                 uninstallBtn.setOnClickListener {
                     //uninstall app
                     Toast.makeText(this, "Uninstalling ${app.name}", Toast.LENGTH_SHORT).show()
@@ -134,7 +130,7 @@ class DebloatActivity : AppCompatActivity() {
                 val btnContainer = LinearLayout(this)
                 btnContainer.addView(uninstallBtn)
                 btnContainer.setPadding(20, 20, 20, 20)
-                btnContainer.gravity = Gravity.RIGHT
+                btnContainer.gravity = Gravity.END
                 val dialogView = LinearLayout(this)
                 dialogView.orientation = LinearLayout.VERTICAL
                 dialogView.setPadding(20, 0, 20, 20)
@@ -307,7 +303,7 @@ class DebloatActivity : AppCompatActivity() {
             object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
                     if (done) {
-                        val allApps = output.replace("package:", "").split("\n");
+                        val allApps = output.replace("package:", "").split("\n")
                         loadApps { installed ->
                             val uninstalled = allApps.filter { !installed.contains(it) }
                             println(uninstalled)

@@ -16,19 +16,19 @@ import kotlin.concurrent.schedule
  * @author legendsayantan
  */
 class ThemePatcherActivity : AppCompatActivity() {
-    val zeroByDefault = listOf(
+    private val zeroByDefault = listOf(
         "persist.sys.trial.theme",
         "persist.sys.trial_theme",
         "persist.sys.trial.font",
         "persist.sys.trial.live_wp",
     )
-    val negativeOneByDefault = listOf(
+    private val negativeOneByDefault = listOf(
         "persist.sys.oplus.theme_uuid",
         "persist.sys.oppo.theme.uuid",
         "persist.sys.oppo.theme.uuid",
         "persist.sys.oppo.theme_uuid"
     )
-    val otherDefaults = hashMapOf(
+    private val otherDefaults = hashMapOf(
         Pair("persist.sys.oplus.live_wp_uuid", "default_live_wp_package_name"),
         Pair("persist.sys.oppo.live_wp_uuid", "default_live_wp_package_name")
     )

@@ -51,8 +51,7 @@ class DebloatAdapter(private val activity: Activity, private val dataList: HashM
         val background = view.findViewById<MaterialCardView>(R.id.background)
 
         val desc = if(data.second.description.isNotEmpty()){
-            var copy = data.second.description
-            copy.replace("\n\n","\n").removeUrls()
+            data.second.description.replace("\n\n","\n").removeUrls()
         }else{
             data.first
         }

@@ -17,7 +17,7 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import com.legendsayantan.adbtools.data.AudioOutputKey
-import com.legendsayantan.adbtools.services.SoundMasterService.Companion.notiUpdateTime
+import com.legendsayantan.adbtools.services.SoundMasterService.Companion.updateInterval
 
 /**
  * @author legendsayantan
@@ -28,7 +28,6 @@ class PlayBackThread(
     private val mediaProjection: MediaProjection
 ) : Thread("$LOG_TAG : $pkg") {
     var playback = true
-    var targetVolume: Float = 100f
     val dataBuffer = ByteArray(BUF_SIZE)
     var loadedCycles = 0
 
@@ -111,7 +110,7 @@ class PlayBackThread(
     fun createOutput(
         device: AudioDeviceInfo? = null,
         outputKey:Int=device?.id?:-1,
-        startVolume: Float = targetVolume, bal: Float? = null,
+        startVolume: Float, bal: Float? = null,
         bands: Array<Float> = arrayOf()
     ) {
         val plyr = AudioPlayer(
@@ -126,8 +125,7 @@ class PlayBackThread(
         plyr.play()
         try {
             plyr.equalizer.enabled = true
-        } catch (_: Exception) {
-        }
+        } catch (_: Exception) { }
         bal?.let { plyr.setBalance(bal) }
         bands.forEachIndexed { index, fl -> plyr.setBand(index, fl) }
         mPlayers[outputKey] = plyr
@@ -151,7 +149,7 @@ class PlayBackThread(
     }
 
     fun getLatency(): Float {
-        return notiUpdateTime.toFloat() / loadedCycles.coerceAtLeast(1).also { loadedCycles = 0 }
+        return updateInterval.toFloat() / loadedCycles.coerceAtLeast(1).also { loadedCycles = 0 }
     }
 
     override fun interrupt() {
