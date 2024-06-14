@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
     android:layout_width="match_parent"
     android:background="@drawable/gradient"
     android:fitsSystemWindows="true"
@@ -56,7 +58,8 @@
                 android:id="@+id/cardDebloat"
                 style="@style/Theme.AdbTools"
                 android:layout_width="match_parent"
-                android:layout_height="100dp"
+                android:layout_height="wrap_content"
+                android:minHeight="90dp"
                 app:strokeWidth="1dp"
                 android:layout_marginVertical="10dp">
 
@@ -64,7 +67,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_marginHorizontal="15dp"
-                    android:layout_marginVertical="10dp"
+                    android:layout_marginVertical="15dp"
                     android:gravity="center"
                     android:orientation="vertical">
 
@@ -102,7 +105,8 @@
                 android:id="@+id/cardThemePatcher"
                 android:layout_width="match_parent"
                 style="@style/Theme.AdbTools"
-                android:layout_height="100dp"
+                android:layout_height="wrap_content"
+                android:minHeight="90dp"
                 app:strokeWidth="1dp"
                 android:layout_marginVertical="10dp">
 
@@ -110,7 +114,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_marginHorizontal="15dp"
-                    android:layout_marginVertical="10dp"
+                    android:layout_marginVertical="15dp"
                     android:gravity="center"
                     android:orientation="vertical">
 
@@ -149,7 +153,8 @@
                 android:id="@+id/cardMixedAudio"
                 style="@style/Theme.AdbTools"
                 android:layout_width="match_parent"
-                android:layout_height="100dp"
+                android:layout_height="wrap_content"
+                android:minHeight="90dp"
                 app:strokeWidth="1dp"
                 android:layout_marginVertical="10dp">
 
@@ -157,7 +162,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_marginHorizontal="15dp"
-                    android:layout_marginVertical="10dp"
+                    android:layout_marginVertical="15dp"
                     android:gravity="center"
                     android:orientation="vertical">
 
@@ -195,7 +200,8 @@
                 android:id="@+id/cardSoundMaster"
                 style="@style/Theme.AdbTools"
                 android:layout_width="match_parent"
-                android:layout_height="100dp"
+                android:layout_height="wrap_content"
+                android:minHeight="90dp"
                 app:strokeWidth="1dp"
                 android:layout_marginVertical="10dp">
 
@@ -203,7 +209,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_marginHorizontal="15dp"
-                    android:layout_marginVertical="10dp"
+                    android:layout_marginVertical="15dp"
                     android:gravity="center"
                     android:orientation="vertical">
 
@@ -241,7 +247,8 @@
                 android:id="@+id/cardLookBack"
                 style="@style/Theme.AdbTools"
                 android:layout_width="match_parent"
-                android:layout_height="100dp"
+                android:layout_height="wrap_content"
+                android:minHeight="90dp"
                 app:strokeWidth="1dp"
                 android:layout_marginVertical="10dp">
 
@@ -249,7 +256,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_marginHorizontal="15dp"
-                    android:layout_marginVertical="10dp"
+                    android:layout_marginVertical="15dp"
                     android:gravity="center"
                     android:orientation="vertical">
 
@@ -288,7 +295,8 @@
                 android:id="@+id/cardShell"
                 style="@style/Theme.AdbTools"
                 android:layout_width="match_parent"
-                android:layout_height="100dp"
+                android:layout_height="wrap_content"
+                android:minHeight="90dp"
                 app:strokeWidth="1dp"
                 android:layout_marginVertical="10dp">
 
@@ -296,7 +304,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_marginHorizontal="15dp"
-                    android:layout_marginVertical="10dp"
+                    android:layout_marginVertical="15dp"
                     android:gravity="center"
                     android:orientation="vertical">
 
@@ -332,7 +340,8 @@
                 android:id="@+id/cardIntentShell"
                 style="@style/Theme.AdbTools"
                 android:layout_width="match_parent"
-                android:layout_height="100dp"
+                android:layout_height="wrap_content"
+                android:minHeight="90dp"
                 app:strokeWidth="1dp"
                 android:layout_marginVertical="10dp">
 
@@ -340,7 +349,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_marginHorizontal="15dp"
-                    android:layout_marginVertical="10dp"
+                    android:layout_marginVertical="15dp"
                     android:gravity="center"
                     android:orientation="vertical">
 
@@ -378,4 +387,4 @@
     </ScrollView>
 
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>
