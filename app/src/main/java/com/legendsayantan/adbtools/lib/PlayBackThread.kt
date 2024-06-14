@@ -91,9 +91,9 @@ class PlayBackThread(
         try {
             mCapture.startRecording()
             Log.i(LOG_TAG, "Audio Recording started")
-            val players = mPlayers.values
             while (playback) {
                 mCapture.read(dataBuffer, 0, BUF_SIZE)
+                val players = mPlayers.values.toList()
                 players.forEach {
                     it.write(dataBuffer, 0, dataBuffer.size)
                 }
@@ -133,22 +133,19 @@ class PlayBackThread(
         mPlayers[device?.id ?: -1] = plyr
     }
 
-    fun deleteOutput(outputId: Int) {
+    fun deleteOutput(outputId: Int, interruption:Boolean=true): AudioPlayer? {
         val plyr = mPlayers.remove(outputId)
         plyr?.stop()
-        if (mPlayers.size == 0) {
+        if (mPlayers.size == 0 && interruption) {
             interrupt()
         }
+        return plyr
     }
 
-    fun switchOutputDevice(key: AudioOutputKey, newDevice: AudioDeviceInfo?):Boolean{
-        if(mPlayers.contains(newDevice?.id?:-1)) return false
-        mPlayers[key.outputDevice]?.let {
-            val vol = it.volume * 100f
-            val balance = it.getBalance()
-            val bands = it.savedBands
-            createOutput(newDevice, vol, balance, bands)
-            deleteOutput(key.outputDevice)
+    fun switchOutputDevice(key: AudioOutputKey, newDevice: AudioDeviceInfo?): Boolean {
+        if (mPlayers.contains(newDevice?.id ?: -1)) return false
+        deleteOutput(key.outputDevice,false)?.let {
+            createOutput(newDevice, it.volume * 100f, it.getBalance(), it.savedBands)
         }
         return true
     }
@@ -168,8 +165,10 @@ class PlayBackThread(
                     }
                 }
             })
-        mCapture.stop()
-        mCapture.release()
+        try {
+            mCapture.stop()
+            mCapture.release()
+        }catch (_:Exception){}
         mPlayers.values.forEach { it.stop() }
         super.interrupt()
     }
