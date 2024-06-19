@@ -48,7 +48,6 @@
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
                     android:text="@string/new_slider"
-                    android:translationY="2dp"
                     android:textSize="22sp"
                     android:textColor="@color/white"
                     android:layout_marginHorizontal="7dp"
@@ -106,7 +105,6 @@
             android:background="@drawable/gradient"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="25dp"
             android:animateLayoutChanges="true"
             android:theme="@style/Base.Theme.AdbTools"
             android:minHeight="100dp"
@@ -121,6 +119,7 @@
             <Space
                 android:id="@+id/insetSpace"
                 android:layout_width="wrap_content"
+                android:minHeight="50dp"
                 android:layout_height="wrap_content"/>
         </LinearLayout>
 

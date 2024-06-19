@@ -224,6 +224,13 @@ class MixedAudioActivity : AppCompatActivity() {
                                 reloadApps()
                             }
                         }
+
+                        override fun onCommandError(error: String) {
+                            runOnUiThread {
+                                Toast.makeText(this@MixedAudioActivity, "Error: $error", Toast.LENGTH_SHORT).show()
+                                dialog.dismiss()
+                            }
+                        }
                     })
                 }
             })

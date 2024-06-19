@@ -12,6 +12,7 @@ import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.lib.Utils.Companion.postNotification
 import java.util.Timer
 import kotlin.concurrent.schedule
+
 /**
  * @author legendsayantan
  */
@@ -37,15 +38,12 @@ class ThemePatcherActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_theme_patcher)
         initialiseStatusBar()
-        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.WRITE_SETTINGS",object : ShizukuRunner.CommandResultListener{
-            override fun onCommandResult(output: String, done: Boolean) {}
-        })
-        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.WRITE_SECURE_SETTINGS",object : ShizukuRunner.CommandResultListener{
-            override fun onCommandResult(output: String, done: Boolean) {}
-        })
-        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.POST_NOTIFICATIONS",object : ShizukuRunner.CommandResultListener{
-            override fun onCommandResult(output: String, done: Boolean) {}
-        })
+        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.WRITE_SETTINGS",
+            object : ShizukuRunner.CommandResultListener { })
+        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.WRITE_SECURE_SETTINGS",
+            object : ShizukuRunner.CommandResultListener { })
+        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.POST_NOTIFICATIONS",
+            object : ShizukuRunner.CommandResultListener { })
         var themeStores =
             packageManager.getAllInstalledApps().filter { it.packageName.contains("theme") }
         if (themeStores.any { it.loadLabel(packageManager).contains("theme") }) themeStores =
@@ -84,10 +82,10 @@ class ThemePatcherActivity : AppCompatActivity() {
                 )
             }
             Timer().schedule(15000) {
-                patchAll(storepackage){
-                    if(it.isEmpty()){
+                patchAll(storepackage) {
+                    if (it.isEmpty()) {
                         patched()
-                    }else{
+                    } else {
                         runOnUiThread {
                             postNotification(
                                 getString(R.string.themepatcher),
@@ -104,37 +102,28 @@ class ThemePatcherActivity : AppCompatActivity() {
     private fun patchAll(storepackage: String, done: (String) -> Unit) {
         if (isOnTrial()) {
             //patch
-            if(storepackage.isNotEmpty()){
-                ShizukuRunner.runAdbCommand("am force-stop $storepackage",object : ShizukuRunner.CommandResultListener{
-                    override fun onCommandResult(output: String, done: Boolean) {}
-                })
+            if (storepackage.isNotEmpty()) {
+                ShizukuRunner.runAdbCommand("am force-stop $storepackage",
+                    object : ShizukuRunner.CommandResultListener { })
             }
-
-            zeroByDefault.forEach {
-                ShizukuRunner.runAdbCommand("settings put system $it 0",object : ShizukuRunner.CommandResultListener{
-                    override fun onCommandResult(output: String, done: Boolean) {}
-                })
-                ShizukuRunner.runAdbCommand("settings put secure $it 0",object : ShizukuRunner.CommandResultListener{
-                    override fun onCommandResult(output: String, done: Boolean) {}
-                })
-            }
-            negativeOneByDefault.forEach {
-                ShizukuRunner.runAdbCommand("settings put system $it -1",object : ShizukuRunner.CommandResultListener{
-                    override fun onCommandResult(output: String, done: Boolean) {}
-                })
-                ShizukuRunner.runAdbCommand("settings put secure $it -1",object : ShizukuRunner.CommandResultListener{
-                    override fun onCommandResult(output: String, done: Boolean) {}
-                })
-            }
-            otherDefaults.forEach {
-                ShizukuRunner.runAdbCommand("settings put system ${it.key} ${it.value}",object : ShizukuRunner.CommandResultListener{
-                    override fun onCommandResult(output: String, done: Boolean) {}
-                })
-                ShizukuRunner.runAdbCommand("settings put secure ${it.key} ${it.value}",object : ShizukuRunner.CommandResultListener{
-                    override fun onCommandResult(output: String, done: Boolean) {
-                        runOnUiThread { done(output) }
-                    }
-                })
+            val tables = listOf("system", "secure")
+            tables.forEachIndexed { index, table ->
+                zeroByDefault.forEach {
+                    ShizukuRunner.runAdbCommand("settings put $table $it 0",
+                        object : ShizukuRunner.CommandResultListener { })
+                }
+                negativeOneByDefault.forEach {
+                    ShizukuRunner.runAdbCommand("settings put $table $it -1",
+                        object : ShizukuRunner.CommandResultListener { })
+                }
+                otherDefaults.forEach {
+                    ShizukuRunner.runAdbCommand("settings put $table ${it.key} ${it.value}",
+                        object : ShizukuRunner.CommandResultListener {
+                            override fun onCommandResult(output: String, done: Boolean) {
+                                if (index == tables.size - 1) runOnUiThread { done(output) }
+                            }
+                        })
+                }
             }
         }
     }
@@ -171,8 +160,6 @@ class ThemePatcherActivity : AppCompatActivity() {
             success = true
         )
     }
-
-
 
 
 }

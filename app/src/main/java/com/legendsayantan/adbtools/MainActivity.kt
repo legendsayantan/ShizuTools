@@ -28,8 +28,6 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.legendsayantan.adbtools.lib.ShizukuRunner
-import com.legendsayantan.adbtools.lib.Utils
-import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseNotiChannel
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.services.SoundMasterService
 import java.util.UUID
@@ -122,19 +120,20 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        cardShell.setOnClickListener { openShell() }
+        cardShell.setOnClickListener { localShell() }
         cardIntentShell.setOnClickListener { intentShell() }
     }
 
-    private fun openShell() {
+    private fun localShell() {
         val dialog = MaterialAlertDialogBuilder(this)
-        dialog.setTitle("ADB Shell")
+        dialog.setTitle(getString(R.string.localshell))
         val scrollContainer = ScrollView(this)
         val layout = LinearLayout(this)
         layout.orientation = LinearLayout.VERTICAL
         layout.setPadding(30, 25, 30, 15)
         val commandOut = TextView(this)
         val commandBar = LinearLayout(this)
+        commandOut.typeface = resources.getFont(R.font.consolas)
         commandBar.orientation = LinearLayout.HORIZONTAL
         commandBar.gravity = Gravity.CENTER
         val editText = EditText(this)
@@ -158,6 +157,12 @@ class MainActivity : AppCompatActivity() {
                         btn.isEnabled = done
                     }
                 }
+
+                override fun onCommandError(error: String) {
+                    runOnUiThread {
+                        commandOut.text = "ERROR:\n$error"
+                    }
+                }
             })
             editText.selectAll()
         }
@@ -174,9 +179,9 @@ class MainActivity : AppCompatActivity() {
     private fun intentShell(){
         val prefs = getSharedPreferences("execution", MODE_PRIVATE)
         if(prefs.getString("key",null)==null){
-            prefs.edit().putString("key",UUID.randomUUID().toString()).apply()
+            prefs.edit().putString("key",UUID.randomUUID().toString().replace("-","")).apply()
         }
-        val key = prefs.getString("key",null)
+        val key = prefs.getString("key",null)?.replace("-","")
         val layout = LinearLayout(this).apply {
             setPadding(60,0,60,0)
         }

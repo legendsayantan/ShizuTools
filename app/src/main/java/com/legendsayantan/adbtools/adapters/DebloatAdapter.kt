@@ -40,7 +40,7 @@ class DebloatAdapter(private val activity: Activity, private val dataList: HashM
         val view: View = if (convertView == null) {
             val inflater =
                 activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-            inflater.inflate(R.layout.debloat_item, null)
+            inflater.inflate(R.layout.item_debloat, null)
         } else {
             convertView
         }

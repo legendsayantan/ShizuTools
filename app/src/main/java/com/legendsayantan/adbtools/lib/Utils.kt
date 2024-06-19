@@ -90,8 +90,10 @@ class Utils {
                 "pm list packages",
                 object : ShizukuRunner.CommandResultListener {
                     override fun onCommandResult(output: String, done: Boolean) {
-                        val packages = output.replace("package:", "").split("\n")
-                        callback(packages)
+                        if(done){
+                            val packages = output.replace("package:", "").split("\n")
+                            callback(packages)
+                        }
                     }
                 })
         }

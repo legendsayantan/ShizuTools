@@ -208,8 +208,7 @@ class DebloatActivity : AppCompatActivity() {
         onFailure: () -> Unit
     ) {
         try {
-            val url =
-                URL("https://cdn.jsdelivr.net/gh/Universal-Debloater-Alliance/universal-android-debloater-next-generation@main/resources/assets/uad_lists.json")
+            val url = URL(getString(R.string.url_uad_lists))
             GlobalScope.launch(Dispatchers.IO) {
                 try {
                     // Read the JSON content from the URL
@@ -306,7 +305,6 @@ class DebloatActivity : AppCompatActivity() {
                         val allApps = output.replace("package:", "").split("\n")
                         loadApps { installed ->
                             val uninstalled = allApps.filter { !installed.contains(it) }
-                            println(uninstalled)
                             runOnUiThread {
                                 val appsView = RecyclerView(activityContext)
                                 val dialog = MaterialAlertDialogBuilder(activityContext)
@@ -350,6 +348,6 @@ class DebloatActivity : AppCompatActivity() {
     }
 
     companion object{
-        val FILENAME_DATABASE: String = "debloat-list.json"
+        const val FILENAME_DATABASE: String = "debloat-list.json"
     }
 }

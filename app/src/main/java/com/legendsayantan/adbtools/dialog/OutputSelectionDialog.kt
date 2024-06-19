@@ -14,7 +14,8 @@ import com.legendsayantan.adbtools.adapters.VolumeBarAdapter
  */
 class OutputSelectionDialog(
     c: Context,
-    private val devices: List<AudioDeviceInfo?>, val onDeviceSelected: (AudioDeviceInfo?) -> Unit
+    private val devices: List<AudioDeviceInfo?>,
+    val onDeviceSelected: (AudioDeviceInfo?) -> Unit
 ) : Dialog(c) {
     init {
         setContentView(R.layout.dialog_outputs)

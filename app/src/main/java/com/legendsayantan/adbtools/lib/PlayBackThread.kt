@@ -36,10 +36,9 @@ class PlayBackThread(
     override fun start() {
         ShizukuRunner.runAdbCommand("appops set $pkg PLAY_AUDIO deny",
             object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {}
                 override fun onCommandError(error: String) {
                     Handler(context.mainLooper).post {
-                        Toast.makeText(context, "Shizuku Error", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Error: $error", Toast.LENGTH_SHORT).show()
                     }
                 }
             })
@@ -156,10 +155,9 @@ class PlayBackThread(
         playback = false
         ShizukuRunner.runAdbCommand("appops set $pkg PLAY_AUDIO allow",
             object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {}
                 override fun onCommandError(error: String) {
                     Handler(context.mainLooper).post {
-                        Toast.makeText(context, "Shizuku Error", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Error: $error", Toast.LENGTH_SHORT).show()
                     }
                 }
             })

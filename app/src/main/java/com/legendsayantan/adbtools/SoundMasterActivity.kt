@@ -7,6 +7,7 @@ import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.os.Handler
+import android.view.Gravity
 import android.view.View
 import android.widget.ImageView
 import android.widget.Space
@@ -20,7 +21,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import com.legendsayantan.adbtools.adapters.VolumeBarAdapter
 import com.legendsayantan.adbtools.data.AudioOutputBase
-import com.legendsayantan.adbtools.data.AudioOutputKey
 import com.legendsayantan.adbtools.dialog.AppSelectionDialog
 import com.legendsayantan.adbtools.dialog.OutputSelectionDialog
 import com.legendsayantan.adbtools.lib.ShizukuRunner
@@ -28,7 +28,6 @@ import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.services.SoundMasterService
 import com.legendsayantan.adbtools.services.SoundMasterService.Companion.prepareGetAudioDevices
 import java.io.File
-import java.io.FileNotFoundException
 import java.util.Timer
 import kotlin.concurrent.timerTask
 
@@ -44,7 +43,11 @@ class SoundMasterActivity : AppCompatActivity() {
                 file.readText().split("\n").let { text ->
                     if (!text.any { it.isBlank() }) text.map { line ->
                         val splits = line.split("/")
-                        AudioOutputBase(splits[0], splits[1].toInt(), splits[2].toFloatOrNull()?:100f)
+                        AudioOutputBase(
+                            splits[0],
+                            splits[1].toInt(),
+                            splits[2].toFloatOrNull() ?: 100f
+                        )
                     }.toMutableList()
                     else {
                         file.delete()
@@ -62,7 +65,7 @@ class SoundMasterActivity : AppCompatActivity() {
                 file.parentFile?.mkdirs()
                 file.createNewFile()
             }
-            file.writeText(value.joinToString("\n") { it.pkg + "/" + it.output + "/" + it.volume})
+            file.writeText(value.joinToString("\n") { it.pkg + "/" + it.output + "/" + it.volume })
         }
 
     val volumeBarView by lazy { findViewById<RecyclerView>(R.id.volumeBars) }
@@ -79,18 +82,24 @@ class SoundMasterActivity : AppCompatActivity() {
         findViewById<MaterialCardView>(R.id.newSlider).setOnClickListener {
             lastInteractionAt = -1
             AppSelectionDialog(this@SoundMasterActivity) { pkg ->
-                OutputSelectionDialog(this@SoundMasterActivity,SoundMasterService.getAudioDevices()) { device ->
+                OutputSelectionDialog(
+                    this@SoundMasterActivity,
+                    SoundMasterService.getAudioDevices()
+                ) { device ->
                     val key = AudioOutputBase(pkg, device?.id ?: -1, 100f)
                     if (
                         if (SoundMasterService.running) SoundMasterService.isAttachable(key)
-                        else (packageSliders.find { it.pkg == key.pkg && it.output == key.output }==null)
+                        else (packageSliders.find { it.pkg == key.pkg && it.output == key.output } == null)
                     ) {
                         val newPackages = packageSliders
                         newPackages.add(key)
                         packageSliders = newPackages
-                        if (SoundMasterService.running) SoundMasterService.onDynamicAttach(key, device)
+                        if (SoundMasterService.running) SoundMasterService.onDynamicAttach(
+                            key,
+                            device
+                        )
                         updateSliders()
-                    }else combinationExists()
+                    } else combinationExists()
                     interacted()
                 }.show()
             }.show()
@@ -127,7 +136,7 @@ class SoundMasterActivity : AppCompatActivity() {
         super.onResume()
     }
 
-    fun updateBtnState() {
+    private fun updateBtnState() {
         val btnImage = findViewById<ImageView>(R.id.playPauseButton)
         btnImage.setImageResource(if (SoundMasterService.running) R.drawable.baseline_stop_24 else R.drawable.baseline_play_arrow_24)
         btnImage.setOnClickListener {
@@ -153,12 +162,24 @@ class SoundMasterActivity : AppCompatActivity() {
                                                 done: Boolean
                                             ) {
                                                 if (done) {
-                                                    mediaProjectionManager =
-                                                        applicationContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-                                                    startActivityForResult(
-                                                        mediaProjectionManager.createScreenCaptureIntent(),
-                                                        MEDIA_PROJECTION_REQUEST_CODE
-                                                    )
+                                                    if (output.isBlank()){
+                                                        mediaProjectionManager =
+                                                            applicationContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                                                        startActivityForResult(
+                                                            mediaProjectionManager.createScreenCaptureIntent(),
+                                                            MEDIA_PROJECTION_REQUEST_CODE
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            override fun onCommandError(error: String) {
+                                                Handler(mainLooper).post {
+                                                    Toast.makeText(
+                                                        applicationContext,
+                                                        getString(R.string.permission_error),
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
                                                 }
                                             }
                                         })
@@ -169,8 +190,8 @@ class SoundMasterActivity : AppCompatActivity() {
                                 Handler(mainLooper).post {
                                     Toast.makeText(
                                         applicationContext,
-                                        "Shizuku Error",
-                                        Toast.LENGTH_SHORT
+                                        getString(R.string.permission_error),
+                                        Toast.LENGTH_LONG
                                     ).show()
                                 }
                             }
@@ -203,16 +224,15 @@ class SoundMasterActivity : AppCompatActivity() {
                 startService(Intent(this, SoundMasterService::class.java).apply {
                     putExtra("packages", packageSliders.map { it.pkg }.toTypedArray())
                     putExtra("devices", packageSliders.map { it.output }.toIntArray())
-                    putExtra("volumes",packageSliders.map { it.volume }.toFloatArray())
+                    putExtra("volumes", packageSliders.map { it.volume }.toFloatArray())
                 })
-                interacted()
             } else {
                 Toast.makeText(
                     this, "Request to obtain MediaProjection failed.",
                     Toast.LENGTH_SHORT
                 ).show()
-                interacted()
             }
+            interacted()
         }
     }
 
@@ -230,7 +250,8 @@ class SoundMasterActivity : AppCompatActivity() {
                 VolumeBarAdapter(this@SoundMasterActivity, packageSliders, { app, vol ->
                     interacted()
                     val newPackages = packageSliders
-                    newPackages[app] = AudioOutputBase(packageSliders[app].pkg, packageSliders[app].output, vol)
+                    newPackages[app] =
+                        AudioOutputBase(packageSliders[app].pkg, packageSliders[app].output, vol)
                     packageSliders = newPackages
                     SoundMasterService.setVolumeOf(packageSliders[app], vol)
                 }, {
@@ -253,13 +274,17 @@ class SoundMasterActivity : AppCompatActivity() {
                     SoundMasterService.getAudioDevices()
                 }, { pkg, device ->
                     interacted()
-                    if(SoundMasterService.switchDeviceFor(packageSliders[pkg], device)){
+                    if (SoundMasterService.switchDeviceFor(packageSliders[pkg], device)) {
                         val newPackages = packageSliders
-                        newPackages[pkg] = AudioOutputBase(packageSliders[pkg].pkg, device?.id?:-1, packageSliders[pkg].volume)
+                        newPackages[pkg] = AudioOutputBase(
+                            packageSliders[pkg].pkg,
+                            device?.id ?: -1,
+                            packageSliders[pkg].volume
+                        )
                         packageSliders = newPackages
                         updateSliders()
                         true
-                    }else {
+                    } else {
                         combinationExists()
                         false
                     }
@@ -271,8 +296,9 @@ class SoundMasterActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun combinationExists(){
-        Toast.makeText(applicationContext,"Combination already exists.",Toast.LENGTH_SHORT).show()
+    private fun combinationExists() {
+        Toast.makeText(applicationContext, "Combination already exists.", Toast.LENGTH_SHORT)
+            .apply { setGravity(Gravity.TOP, 0, 100) }.show()
     }
 
     companion object {

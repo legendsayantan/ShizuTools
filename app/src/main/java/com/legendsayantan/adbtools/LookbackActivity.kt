@@ -59,15 +59,19 @@ class LookbackActivity : AppCompatActivity() {
                                                     "Installed Successfully.",
                                                     Toast.LENGTH_SHORT
                                                 ).show()
-                                            } else {
-                                                Toast.makeText(
-                                                    applicationContext,
-                                                    "Failure: ${output}",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
                                             }
                                             cacheFile.delete()
                                         }
+                                    }
+                                }
+
+                                override fun onCommandError(error: String) {
+                                    Handler(mainLooper).post {
+                                        Toast.makeText(
+                                            applicationContext,
+                                            "Failure: $error",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                 }
                             })

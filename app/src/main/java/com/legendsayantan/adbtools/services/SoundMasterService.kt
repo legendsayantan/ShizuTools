@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.database.ContentObserver
+import android.media.AudioAttributes.ALLOW_CAPTURE_BY_NONE
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.projection.MediaProjection
@@ -35,7 +36,6 @@ import kotlin.arrayOf
 import kotlin.concurrent.timerTask
 import kotlin.getValue
 import kotlin.lazy
-import kotlin.let
 
 
 class SoundMasterService : Service() {
@@ -60,7 +60,11 @@ class SoundMasterService : Service() {
         }
 
         val builder = NotificationCompat.Builder(this, "notifications")
-            .setContentText("You can change volume to configure ${applicationContext.getString(R.string.soundmaster)} as well.")
+            .setContentText(
+                getString(
+                    R.string.soundmaster_initial_noti,
+                    applicationContext.getString(R.string.soundmaster)
+                ))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOnlyAlertOnce(true)
@@ -90,6 +94,7 @@ class SoundMasterService : Service() {
         mediaProjectionManager =
             applicationContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
+        audioManager.setAllowedCapturePolicy(ALLOW_CAPTURE_BY_NONE)
         prepareGetAudioDevices()
 
         switchDeviceFor = { key, device ->
@@ -184,9 +189,7 @@ class SoundMasterService : Service() {
                     Handler(mainLooper).post {
                         if (SoundMasterActivity.showing) SoundMasterActivity.interacted()
                         else ShizukuRunner.runAdbCommand("am start -n $packageName/${SoundMasterActivity::class.java.canonicalName}",
-                            object : ShizukuRunner.CommandResultListener {
-                                override fun onCommandResult(output: String, done: Boolean) {}
-                            })
+                            object : ShizukuRunner.CommandResultListener { })
                     }
                 }
             }
@@ -214,10 +217,10 @@ class SoundMasterService : Service() {
         var onDynamicDetach: (AudioOutputKey) -> Unit = { _ -> }
         var getAudioDevices: () -> List<AudioDeviceInfo?> = { listOf() }
         var switchDeviceFor: (AudioOutputKey, AudioDeviceInfo?) -> Boolean = { _, _ -> false }
-        var setVolumeOf: (AudioOutputKey, Float) -> Unit = { a, b ->  }
-        var getVolumeOf: (AudioOutputKey) -> Float = { p -> 100f }
-        var setBalanceOf: (AudioOutputKey, Float) -> Unit = { a, b -> }
-        var getBalanceOf: (AudioOutputKey) -> Float = { _ -> 0f }
+        var setVolumeOf: (AudioOutputKey, Float) -> Unit = { _, _ ->  }
+        var getVolumeOf: (AudioOutputKey) -> Float = { 100f }
+        var setBalanceOf: (AudioOutputKey, Float) -> Unit = { _, _ -> }
+        var getBalanceOf: (AudioOutputKey) -> Float = { 0f }
         var setBandValueOf: (AudioOutputKey, Int, Float) -> Unit = { _, _, _ -> }
         var getBandValueOf: (AudioOutputKey, Int) -> Float = { _, _ -> 50f }
 
@@ -232,13 +235,10 @@ class SoundMasterService : Service() {
                     var dev = (getSystemService(Context.AUDIO_SERVICE) as AudioManager).getDevices(
                         AudioManager.GET_DEVICES_OUTPUTS
                     ).filter {
-                        it.type !in arrayOf(7, 18, 25)
+                        it.type !in arrayOf(1, 7, 18, 25)
                     }
                     //block builtin outputs
-                    if (dev.any { it?.type in 3..4 }) dev = dev.filter { it?.type !in 1..2 }
-                    //block earpiece only
-                    if (dev.all { it?.type in 1..2 } || dev.any { it?.type == 8 }) dev =
-                        dev.filter { it?.type != 1 }
+                    if (dev.any { it?.type in 3..4 }) dev = dev.filter { it?.type != 2 }
                     listOf(null) + dev
                 }
         }

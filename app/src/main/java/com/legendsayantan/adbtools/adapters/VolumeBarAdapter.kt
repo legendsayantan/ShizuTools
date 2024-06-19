@@ -54,7 +54,6 @@ class VolumeBarAdapter(
             itemView.findViewById(R.id.midReset),
             itemView.findViewById(R.id.highReset)
         )
-        val detachBtn = itemView.findViewById<MaterialCardView>(R.id.detachBtn)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VolumeBarHolder {
@@ -90,6 +89,11 @@ class VolumeBarAdapter(
                 holder.outputExpanded.visibility = View.VISIBLE
                 //spawn radiobuttons
                 holder.outputGroup.removeAllViews()
+                holder.outputGroup.addView(RadioButton(context).apply {
+                    //detach
+                    text = context.getString(R.string.none)
+                    setOnClickListener { onItemDetached(position) }
+                })
                 getDevices().forEach { device ->
                     val rButton = RadioButton(context)
                     showDevice(rButton, device)
@@ -113,7 +117,7 @@ class VolumeBarAdapter(
                 holder.expand.animate().rotationX(180f)
                 holder.otherSliders.forEachIndexed { index, slider ->
                     slider.value = onSliderGet(position, index)
-                    slider.addOnChangeListener { s, value, fromUser ->
+                    slider.addOnChangeListener { _, value, _ ->
                         onSliderSet(position, index, value)
                     }
                 }
@@ -130,11 +134,6 @@ class VolumeBarAdapter(
                 holder.otherSliders[index].value = if (index == 0) 0f else 50f
             }
         }
-
-        //detach
-        holder.detachBtn.setOnClickListener { onItemDetached(position) }
-
-
     }
 
     private fun showDevice(v: TextView, d: AudioDeviceInfo?) {
