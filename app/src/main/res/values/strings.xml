@@ -58,4 +58,6 @@
     <string name="none">None</string>
     <string name="permission_error">Permission error! Open the shizuku app to learn more.</string>
     <string name="shizuku_error">Shizuku Error!</string>
+    <string name="universalpip">UniversalPip beta</string>
+    <string name="desc_universalpip">Switch apps to picture-in-picture mode forcefully.</string>
 </resources>

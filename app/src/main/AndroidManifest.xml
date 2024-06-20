@@ -29,6 +29,18 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AdbTools"
         tools:targetApi="31">
+        <receiver
+            android:name=".receivers.PipReceiver"
+            android:enabled="true"
+            android:exported="true"></receiver>
+
+        <activity
+            android:name=".ForcePipActivity"
+            android:exported="false" />
+        <activity
+            android:name=".PipStarterActivity"
+            android:excludeFromRecents="true"
+            android:exported="true" />
 
         <service
             android:name=".services.SoundMasterService"
@@ -50,9 +62,9 @@
 
         <activity
             android:name=".SoundMasterActivity"
+            android:excludeFromRecents="true"
             android:exported="true"
             android:label=""
-            android:excludeFromRecents="true"
             android:theme="@style/DialogActivityTheme" />
         <activity
             android:name=".MixedAudioActivity"

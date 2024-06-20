@@ -86,4 +86,11 @@ class InitialActivity : AppCompatActivity() {
             finish()
         }
     }
+
+    private fun startOnPip(intent:Intent){
+        val pipFlag = intent.getBooleanExtra("pip", false)
+        if(pipFlag){
+            startActivity(Intent(this, PipStarterActivity::class.java))
+        }
+    }
 }

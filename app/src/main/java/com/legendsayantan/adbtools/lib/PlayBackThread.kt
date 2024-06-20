@@ -27,7 +27,7 @@ class PlayBackThread(
     val pkg: String,
     private val mediaProjection: MediaProjection
 ) : Thread("$LOG_TAG : $pkg") {
-    var playback = true
+    @Volatile var playback = true
     val dataBuffer = ByteArray(BUF_SIZE)
     var loadedCycles = 0
 

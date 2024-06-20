@@ -29,6 +29,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
+import com.legendsayantan.adbtools.receivers.PipReceiver
 import com.legendsayantan.adbtools.services.SoundMasterService
 import java.util.UUID
 /**
@@ -54,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         val cardLookBack = findViewById<MaterialCardView>(R.id.cardLookBack)
         val cardMixedAudio = findViewById<MaterialCardView>(R.id.cardMixedAudio)
         val cardSoundMaster = findViewById<MaterialCardView>(R.id.cardSoundMaster)
+        val cardForcePip = findViewById<MaterialCardView>(R.id.cardForcePip)
         val cardShell = findViewById<MaterialCardView>(R.id.cardShell)
         val cardIntentShell = findViewById<MaterialCardView>(R.id.cardIntentShell)
         cardDebloat.setOnClickListener {
@@ -117,6 +119,35 @@ class MainActivity : AppCompatActivity() {
                     ) == PackageManager.PERMISSION_GRANTED
                 ) {
                     notify(3, notificationBuilder.build())
+                }
+            }
+        }
+        cardForcePip.setOnClickListener {
+            val intent = Intent(this, PipReceiver::class.java)
+            SoundMasterService.uiIntent = intent
+            val channelId = "notifications"
+            val notificationBuilder = NotificationCompat.Builder(applicationContext, channelId)
+                .setSmallIcon(R.drawable.outline_info_24)
+                .setContentTitle("Tap to toggle "+getString(R.string.universalpip))
+                .setOngoing(true)
+                .setContentIntent(
+                    PendingIntent.getBroadcast(
+                        this,
+                        0,
+                        intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                )
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+
+            // Show the notification.
+            with(NotificationManagerCompat.from(applicationContext)) {
+                if (ActivityCompat.checkSelfPermission(
+                        applicationContext,
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    notify(4, notificationBuilder.build())
                 }
             }
         }
