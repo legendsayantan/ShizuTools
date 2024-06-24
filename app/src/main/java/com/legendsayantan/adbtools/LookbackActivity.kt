@@ -89,6 +89,10 @@ class LookbackActivity : AppCompatActivity() {
         }
 
         try {
+            if(!outputFile.exists()){
+                outputFile.parentFile?.mkdirs()
+                outputFile.createNewFile()
+            }
             val outputStream = FileOutputStream(outputFile)
             inputStream.use { input ->
                 outputStream.use { output ->

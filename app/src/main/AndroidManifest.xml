@@ -32,15 +32,14 @@
         <receiver
             android:name=".receivers.PipReceiver"
             android:enabled="true"
-            android:exported="true"></receiver>
+            android:exported="true" />
 
-        <activity
-            android:name=".ForcePipActivity"
-            android:exported="false" />
         <activity
             android:name=".PipStarterActivity"
             android:excludeFromRecents="true"
-            android:exported="true" />
+            android:exported="true"
+            android:label=""
+            android:theme="@style/DialogActivityTheme" />
 
         <service
             android:name=".services.SoundMasterService"
