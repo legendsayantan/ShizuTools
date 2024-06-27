@@ -429,6 +429,10 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <Space
+                android:layout_width="wrap_content"
+                android:layout_height="100dp"/>
+
         </LinearLayout>
     </ScrollView>
 

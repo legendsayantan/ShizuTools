@@ -2,6 +2,7 @@ package com.legendsayantan.adbtools
 
 import android.content.Context
 import android.os.Bundle
+import android.os.Handler
 import android.view.KeyEvent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -33,12 +34,16 @@ class PipStarterActivity : AppCompatActivity() {
                     arrayOf(KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,KeyEvent.KEYCODE_DPAD_RIGHT),
                     arrayOf(KeyEvent.KEYCODE_MEDIA_NEXT)
                 )
-                controls.forEachIndexed { index, materialCardView ->
-                    materialCardView.setOnClickListener {
-                        keys[index].forEach { key ->
-                            getExternalWindowId { window-> ShizukuRunner.runAdbCommand("input -d $window keyevent $key",
-                                object : ShizukuRunner.CommandResultListener {}) }
-                            interacted()
+                getExternalDisplayId { display->
+                    Handler(mainLooper).post {
+                        controls.forEachIndexed { index, materialCardView ->
+                            materialCardView.setOnClickListener {
+                                keys[index].forEach { key ->
+                                    ShizukuRunner.runAdbCommand("input -d $display keyevent $key",
+                                        object : ShizukuRunner.CommandResultListener {})
+                                    interacted()
+                                }
+                            }
                         }
                     }
                 }
@@ -49,7 +54,7 @@ class PipStarterActivity : AppCompatActivity() {
                 extraBtns[0].setOnClickListener {
                     interacted()
                     val metrics = getWindowParams()
-                    getExternalWindowId {
+                    getExternalDisplayId {
                         ShizukuRunner.runAdbCommand("input -d $it tap ${(metrics.first * 0.95).toInt()} ${(metrics.second*0.86).toInt()}",
                             object : ShizukuRunner.CommandResultListener {})
                     }
@@ -95,7 +100,7 @@ class PipStarterActivity : AppCompatActivity() {
             val metrics = resources.displayMetrics
             return Pair(metrics.widthPixels,((metrics.widthPixels / (metrics.heightPixels.toFloat() / metrics.widthPixels)) + 100).toInt())
         }
-        fun getExternalWindowId(callback:(Int)->Unit){
+        fun getExternalDisplayId(callback:(Int)->Unit){
             ShizukuRunner.runAdbCommand("dumpsys display | grep 'Display [0-9][0-9]*'",
                 object :
                     ShizukuRunner.CommandResultListener {
@@ -160,7 +165,7 @@ class PipStarterActivity : AppCompatActivity() {
                                         ) {
                                             if (done) {
                                                 Timer().schedule(timerTask {
-                                                    getExternalWindowId { newDisplayId->
+                                                    getExternalDisplayId { newDisplayId->
                                                         val command =
                                                             "am start -n $packageName/${PipStarterActivity::class.java.canonicalName} --es package $pipPackage --display $newDisplayId"
                                                         ShizukuRunner.runAdbCommand(
