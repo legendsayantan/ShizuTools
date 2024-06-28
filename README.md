@@ -10,9 +10,9 @@ Contains some easy-to-use tools to go beyond the level of control allowed by And
   ⚠ SoundMaster may not work on apps with strong copyright protection, like Spotify. In case SoundMaster crashes and some apps lose sound output, use MixedAudio to unmute them.
 
 - [x] **LookBack** - Allows downgrade of apps, without uninstallation. *Not an entirely stable feature.*
-- [x] **UniversalPip** - Enforces Picture-in-Picture mode for all apps, even if they don't allow it.
-- [x] **ADB Shell** - Manually execute other raw ADB commands.
-- [x] **Intent Shell** - Allows other apps (Tasker,MacroDroid,etc) to run ADB commands via intent requests. [How to use](https://github.com/legendsayantan/ShizuTools/wiki/IntentShell)
+- [x] **UniversalPip** - Enforces Picture-in-Picture mode for all apps, even if they don't allow it. [How to use](https://github.com/legendsayantan/ShizuTools/wiki/UniversalPip).
+- [x] **LocalShell** - Manually execute other raw ADB commands.
+- [x] **IntentShell** - Allows other apps (Tasker,MacroDroid,etc) to run ADB commands via intent requests. [How to use](https://github.com/legendsayantan/ShizuTools/wiki/IntentShell)
 
 #### This app is still on development phase, and not everything is always reliable. Feel free to suggest new features, report bugs or contribute to the project.
 

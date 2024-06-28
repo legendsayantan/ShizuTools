@@ -28,6 +28,7 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.legendsayantan.adbtools.lib.ShizukuRunner
+import com.legendsayantan.adbtools.lib.Utils.Companion.getNotiPerms
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.receivers.PipReceiver
 import com.legendsayantan.adbtools.services.SoundMasterService
@@ -41,6 +42,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         initialiseStatusBar()
+        getNotiPerms()
         findViewById<ImageView>(R.id.github).setOnClickListener {
             val shizukuUrl = "https://github.com/legendsayantan/shizutools"
             startActivity(

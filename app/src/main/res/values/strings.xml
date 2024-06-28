@@ -53,11 +53,11 @@
     <string name="select_audio_output">Select Audio Output :</string>
     <string name="confirm_to_uninstall">Confirm to uninstall</string>
     <string name="links">Links :</string>
-    <string name="soundmaster_initial_noti">You can change volume to configure %1$s as well. Make sure to disable it before you power off the device.</string>
+    <string name="soundmaster_initial_noti">You can now change volume to configure %1$s as well. Make sure to disable it before you power off the device.</string>
     <string name="url_uad_lists">https://cdn.jsdelivr.net/gh/Universal-Debloater-Alliance/universal-android-debloater-next-generation@main/resources/assets/uad_lists.json</string>
     <string name="none">None</string>
     <string name="permission_error">Permission error! Open the shizuku app to learn more.</string>
     <string name="shizuku_error">Shizuku Error!</string>
     <string name="universalpip">UniversalPip beta</string>
-    <string name="desc_universalpip">Switch apps to picture-in-picture mode even if they don\'t allow it.</string>
+    <string name="desc_universalpip">Switch apps to picture-in-picture mode even if they don\'t allow it. May not support some launchers.</string>
 </resources>

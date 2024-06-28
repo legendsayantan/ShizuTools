@@ -85,6 +85,13 @@ class Utils {
             notificationManager.createNotificationChannel(channel)
         }
 
+        fun Context.getNotiPerms(){
+            try{
+                ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.POST_NOTIFICATIONS",
+                    object : ShizukuRunner.CommandResultListener { })
+            }catch (_:Exception){}
+        }
+
         fun loadApps(callback: (List<String>) -> Unit) {
             ShizukuRunner.runAdbCommand(
                 "pm list packages",

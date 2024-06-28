@@ -42,8 +42,6 @@ class ThemePatcherActivity : AppCompatActivity() {
             object : ShizukuRunner.CommandResultListener { })
         ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.WRITE_SECURE_SETTINGS",
             object : ShizukuRunner.CommandResultListener { })
-        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.POST_NOTIFICATIONS",
-            object : ShizukuRunner.CommandResultListener { })
         var themeStores =
             packageManager.getAllInstalledApps().filter { it.packageName.contains("theme") }
         if (themeStores.any { it.loadLabel(packageManager).contains("theme") }) themeStores =
