@@ -84,7 +84,7 @@ class VolumeBarAdapter(
         holder.switchOutput.setOnClickListener {
             if (holder.outputExpanded.visibility == View.VISIBLE) {
                 holder.outputExpanded.visibility = View.GONE
-            } else if (SoundMasterService.running) {
+            } else {
                 holder.expanded.visibility = View.GONE
                 holder.outputExpanded.visibility = View.VISIBLE
                 //spawn radiobuttons
@@ -94,16 +94,21 @@ class VolumeBarAdapter(
                     text = context.getString(R.string.none)
                     setOnClickListener { onItemDetached(position) }
                 })
-                getDevices().forEach { device ->
-                    val rButton = RadioButton(context)
-                    showDevice(rButton, device)
-                    if ((device?.id?:-1) == currentItem.output){
-                        rButton.isChecked = true
-                    }else rButton.setOnClickListener {
-                        if(setDeviceFor(position, device)) showDevice(holder.outputName, device)
-                        else rButton.isChecked = false
+                if (SoundMasterService.running) {
+                    getDevices().forEach { device ->
+                        val rButton = RadioButton(context)
+                        showDevice(rButton, device)
+                        if ((device?.id ?: -1) == currentItem.output) {
+                            rButton.isChecked = true
+                        } else rButton.setOnClickListener {
+                            if (setDeviceFor(position, device)) showDevice(
+                                holder.outputName,
+                                device
+                            )
+                            else rButton.isChecked = false
+                        }
+                        holder.outputGroup.addView(rButton)
                     }
-                    holder.outputGroup.addView(rButton)
                 }
             }
         }

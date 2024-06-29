@@ -122,9 +122,6 @@ class PlayBackThread(
         plyr.playbackRate = SAMPLE_RATE
         plyr.preferredDevice = device
         plyr.play()
-        try {
-            plyr.equalizer.enabled = true
-        } catch (_: Exception) { }
         bal?.let { plyr.setBalance(bal) }
         bands.forEachIndexed { index, fl -> plyr.setBand(index, fl) }
         mPlayers[outputKey] = plyr

@@ -88,7 +88,10 @@ class AudioPlayer(
     }
     fun setBand(band: Int, value: Float) {
         savedBands[band] = value
-        updateBandLevel(band, value)
+        try {
+            equalizer.enabled = savedBands.any { it!=50f }
+            updateBandLevel(band, value)
+        } catch (_: Exception) { }
     }
 
     companion object{
