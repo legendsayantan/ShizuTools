@@ -182,7 +182,7 @@ class MainActivity : AppCompatActivity() {
 
         btn.setOnClickListener {
             if (editText.text.isEmpty()) return@setOnClickListener
-            ShizukuRunner.runAdbCommand(editText.text.toString(), object :
+            ShizukuRunner.command(editText.text.toString(), object :
                 ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
                     runOnUiThread {

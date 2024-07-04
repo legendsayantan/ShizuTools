@@ -38,9 +38,9 @@ class ThemePatcherActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_theme_patcher)
         initialiseStatusBar()
-        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.WRITE_SETTINGS",
+        ShizukuRunner.command("pm grant $packageName android.permission.WRITE_SETTINGS",
             object : ShizukuRunner.CommandResultListener { })
-        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.WRITE_SECURE_SETTINGS",
+        ShizukuRunner.command("pm grant $packageName android.permission.WRITE_SECURE_SETTINGS",
             object : ShizukuRunner.CommandResultListener { })
         var themeStores =
             packageManager.getAllInstalledApps().filter { it.packageName.contains("theme") }
@@ -101,21 +101,21 @@ class ThemePatcherActivity : AppCompatActivity() {
         if (isOnTrial()) {
             //patch
             if (storepackage.isNotEmpty()) {
-                ShizukuRunner.runAdbCommand("am force-stop $storepackage",
+                ShizukuRunner.command("am force-stop $storepackage",
                     object : ShizukuRunner.CommandResultListener { })
             }
             val tables = listOf("system", "secure")
             tables.forEachIndexed { index, table ->
                 zeroByDefault.forEach {
-                    ShizukuRunner.runAdbCommand("settings put $table $it 0",
+                    ShizukuRunner.command("settings put $table $it 0",
                         object : ShizukuRunner.CommandResultListener { })
                 }
                 negativeOneByDefault.forEach {
-                    ShizukuRunner.runAdbCommand("settings put $table $it -1",
+                    ShizukuRunner.command("settings put $table $it -1",
                         object : ShizukuRunner.CommandResultListener { })
                 }
                 otherDefaults.forEach {
-                    ShizukuRunner.runAdbCommand("settings put $table ${it.key} ${it.value}",
+                    ShizukuRunner.command("settings put $table ${it.key} ${it.value}",
                         object : ShizukuRunner.CommandResultListener {
                             override fun onCommandResult(output: String, done: Boolean) {
                                 if (index == tables.size - 1) runOnUiThread { done(output) }

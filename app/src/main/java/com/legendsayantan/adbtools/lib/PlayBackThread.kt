@@ -34,7 +34,7 @@ class PlayBackThread(
     lateinit var mCapture: AudioRecord
     var mPlayers = (hashMapOf<Int, AudioPlayer>())
     override fun start() {
-        ShizukuRunner.runAdbCommand("appops set $pkg PLAY_AUDIO deny",
+        ShizukuRunner.command("appops set $pkg PLAY_AUDIO deny",
             object : ShizukuRunner.CommandResultListener {
                 override fun onCommandError(error: String) {
                     Handler(context.mainLooper).post {
@@ -150,7 +150,7 @@ class PlayBackThread(
 
     override fun interrupt() {
         playback = false
-        ShizukuRunner.runAdbCommand("appops set $pkg PLAY_AUDIO allow",
+        ShizukuRunner.command("appops set $pkg PLAY_AUDIO allow",
             object : ShizukuRunner.CommandResultListener {
                 override fun onCommandError(error: String) {
                     Handler(context.mainLooper).post {

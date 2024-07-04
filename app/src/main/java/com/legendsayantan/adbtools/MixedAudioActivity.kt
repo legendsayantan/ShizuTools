@@ -4,12 +4,17 @@ import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.legendsayantan.adbtools.adapters.AudioStateAdapter
+import com.legendsayantan.adbtools.adapters.DebloatAdapter
+import com.legendsayantan.adbtools.data.AppData
 import com.legendsayantan.adbtools.data.AudioState
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
@@ -22,6 +27,9 @@ import com.legendsayantan.adbtools.services.SoundMasterService
 class MixedAudioActivity : AppCompatActivity() {
     val muteMap = HashMap<String, Boolean>()
     val focusMap = HashMap<String, AudioState>()
+    lateinit var filterBtn : ImageView
+    var filterBy = ""
+    lateinit var recyclerView: RecyclerView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,13 +47,16 @@ class MixedAudioActivity : AppCompatActivity() {
             setPositiveButton("understood") { _, _ -> }
             create().show()
         }
+        filterBtn = findViewById(R.id.imageSearch)
+        filterBtn.setOnClickListener { filter() }
+        findViewById<ImageView>(R.id.imageRestore).setOnClickListener { restoreAll() }
     }
 
     private fun reloadApps() {
         //read muted status
         muteMap.clear()
         focusMap.clear()
-        ShizukuRunner.runAdbCommand("appops query-op PLAY_AUDIO deny",
+        ShizukuRunner.command("appops query-op PLAY_AUDIO deny",
             object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(
                     output: String,
@@ -53,7 +64,7 @@ class MixedAudioActivity : AppCompatActivity() {
                 ) {
                     if (done) {
                         output.split("\n").forEach { muteMap.putIfAbsent(it, true) }
-                        ShizukuRunner.runAdbCommand("appops query-op PLAY_AUDIO allow",
+                        ShizukuRunner.command("appops query-op PLAY_AUDIO allow",
                             object : ShizukuRunner.CommandResultListener {
                                 override fun onCommandResult(
                                     output: String,
@@ -65,7 +76,7 @@ class MixedAudioActivity : AppCompatActivity() {
                                     }
 
                                     //read focus status
-                                    ShizukuRunner.runAdbCommand("appops query-op TAKE_AUDIO_FOCUS ignore ",
+                                    ShizukuRunner.command("appops query-op TAKE_AUDIO_FOCUS ignore ",
                                         object : ShizukuRunner.CommandResultListener {
                                             override fun onCommandResult(
                                                 output: String,
@@ -83,7 +94,7 @@ class MixedAudioActivity : AppCompatActivity() {
                                                                 )
                                                             )
                                                     }
-                                                    ShizukuRunner.runAdbCommand("appops query-op TAKE_AUDIO_FOCUS deny ",
+                                                    ShizukuRunner.command("appops query-op TAKE_AUDIO_FOCUS deny ",
                                                         object :
                                                             ShizukuRunner.CommandResultListener {
                                                             override fun onCommandResult(
@@ -103,7 +114,7 @@ class MixedAudioActivity : AppCompatActivity() {
                                                                                 )
                                                                             )
                                                                     }
-                                                                    ShizukuRunner.runAdbCommand("appops query-op TAKE_AUDIO_FOCUS allow ",
+                                                                    ShizukuRunner.command("appops query-op TAKE_AUDIO_FOCUS allow ",
                                                                         object :
                                                                             ShizukuRunner.CommandResultListener {
                                                                             override fun onCommandResult(
@@ -142,10 +153,11 @@ class MixedAudioActivity : AppCompatActivity() {
                                                                                             )
                                                                                         }
 
+                                                                                        focusMap.remove("")
                                                                                         //update UI
                                                                                         runOnUiThread {
-                                                                                            val recyclerView =
-                                                                                                findViewById<RecyclerView>(
+                                                                                            recyclerView =
+                                                                                                findViewById(
                                                                                                     R.id.apps
                                                                                                 )
                                                                                             recyclerView.adapter =
@@ -186,6 +198,85 @@ class MixedAudioActivity : AppCompatActivity() {
         return pkg
     }
 
+    private fun filter() = if (filterBy.isNotBlank()) {
+        filterBy=""
+        recyclerView.adapter =
+            AudioStateAdapter(
+                this@MixedAudioActivity,
+                focusMap
+            ) { pkg, state ->
+                showChangeDialog(
+                    pkg,
+                    state
+                )
+            }
+        filterBtn.setImageResource(R.drawable.baseline_filter_list_24)
+    } else {
+        val layout = TextInputLayout(this)
+        val editText = TextInputEditText(this)
+        editText.hint = "Enter app name/package"
+        layout.addView(editText)
+        layout.setPadding(50, 0, 50, 0)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(layout)
+            .setCancelable(true)
+            .setTitle("Filter")
+            .setPositiveButton(
+                "Apply"
+            ) { dialog, which ->
+                filterBy = editText.text.toString()
+                recyclerView.adapter =
+                    AudioStateAdapter(
+                        this@MixedAudioActivity,
+                        focusMap.filter { it.key.contains(filterBy, true) || it.value.name.contains(filterBy, true)} as HashMap<String, AudioState>
+                    ) { pkg, state ->
+                        showChangeDialog(
+                            pkg,
+                            state
+                        )
+                    }
+                dialog.dismiss()
+                filterBtn.setImageResource(R.drawable.baseline_filter_list_off_24)
+            }
+            .show()
+    }
+
+    private fun restoreAll(){
+        val dialog = MaterialAlertDialogBuilder(this).apply {
+            setPositiveButton("Cancel") { _, _ -> }
+        }.create()
+        dialog.setTitle("Restore settings")
+        dialog.setMessage("Select operation for all apps:")
+        val layout = LinearLayout(this)
+        layout.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        layout.setPadding(50, 0, 50, 0)
+        layout.orientation = LinearLayout.VERTICAL
+        layout.addView(MaterialButton(this).apply {
+            text = context.getString(R.string.unmute_all_apps)
+            setOnClickListener {
+                focusMap.filter { it.value.muted }.forEach { (t, u) ->
+                    runCommand("appops set $t PLAY_AUDIO allow",false)
+                }
+                dialog.dismiss()
+                reloadApps()
+            }
+        })
+        layout.addView(MaterialButton(this).apply {
+            text = context.getString(R.string.disable_all_mixedaudio)
+            setOnClickListener {
+                focusMap.filter { it.value.focus != AudioState.Focus.ALLOWED }.forEach { (t, u) ->
+                    runCommand("appops set $t TAKE_AUDIO_FOCUS allow",false)
+                }
+                dialog.dismiss()
+                reloadApps()
+            }
+        })
+        dialog.setView(layout)
+        dialog.show()
+    }
+
     private fun showChangeDialog(packageName: String, state: AudioState) {
         val dialog = MaterialAlertDialogBuilder(this).apply {
             setPositiveButton("Cancel") { _, _ -> }
@@ -212,30 +303,32 @@ class MixedAudioActivity : AppCompatActivity() {
             layout.addView(MaterialButton(this).apply {
                 text = t
                 setOnClickListener {
-                    ShizukuRunner.runAdbCommand(u, object : ShizukuRunner.CommandResultListener {
-                        override fun onCommandResult(output: String, done: Boolean) {
-                            if (done) {
-                                runOnUiThread {
-                                    Toast.makeText(this@MixedAudioActivity,
-                                        output.ifBlank { "Success" }, Toast.LENGTH_SHORT
-                                    ).show()
-                                    dialog.dismiss()
-                                }
-                                reloadApps()
-                            }
-                        }
-
-                        override fun onCommandError(error: String) {
-                            runOnUiThread {
-                                Toast.makeText(this@MixedAudioActivity, "Error: $error", Toast.LENGTH_SHORT).show()
-                                dialog.dismiss()
-                            }
-                        }
-                    })
+                    runCommand(u)
+                    dialog.dismiss()
                 }
             })
         }
         dialog.setView(layout)
         dialog.show()
+    }
+    private fun runCommand(cmd:String,reload:Boolean=true){
+        ShizukuRunner.command(cmd, object : ShizukuRunner.CommandResultListener {
+            override fun onCommandResult(output: String, done: Boolean) {
+                if (done) {
+                    runOnUiThread {
+                        Toast.makeText(this@MixedAudioActivity,
+                            output.ifBlank { "Success" }, Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    if(reload)reloadApps()
+                }
+            }
+
+            override fun onCommandError(error: String) {
+                runOnUiThread {
+                    Toast.makeText(this@MixedAudioActivity, "Error: $error", Toast.LENGTH_SHORT).show()
+                }
+            }
+        })
     }
 }

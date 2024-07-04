@@ -38,6 +38,6 @@ class IntentReceiver : BroadcastReceiver() {
                 context.postNotification("Command Execution Error", error, false)
             }
         }
-        ShizukuRunner.runAdbCommand(command.toString(), listener)
+        ShizukuRunner.command(command.toString(), listener)
     }
 }

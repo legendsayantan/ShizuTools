@@ -39,7 +39,7 @@ class PipStarterActivity : AppCompatActivity() {
                         controls.forEachIndexed { index, materialCardView ->
                             materialCardView.setOnClickListener {
                                 keys[index].forEach { key ->
-                                    ShizukuRunner.runAdbCommand("input -d $display keyevent $key",
+                                    ShizukuRunner.command("input -d $display keyevent $key",
                                         object : ShizukuRunner.CommandResultListener {})
                                     interacted()
                                 }
@@ -55,7 +55,7 @@ class PipStarterActivity : AppCompatActivity() {
                     interacted()
                     val metrics = getWindowParams()
                     getExternalDisplayId {
-                        ShizukuRunner.runAdbCommand("input -d $it tap ${(metrics.first * 0.95).toInt()} ${(metrics.second*0.86).toInt()}",
+                        ShizukuRunner.command("input -d $it tap ${(metrics.first * 0.95).toInt()} ${(metrics.second*0.86).toInt()}",
                             object : ShizukuRunner.CommandResultListener {})
                     }
                 }
@@ -101,7 +101,7 @@ class PipStarterActivity : AppCompatActivity() {
             return Pair(metrics.widthPixels,((metrics.widthPixels / (metrics.heightPixels.toFloat() / metrics.widthPixels)) + 100).toInt())
         }
         fun getExternalDisplayId(callback:(Int)->Unit){
-            ShizukuRunner.runAdbCommand("dumpsys display | grep 'Display [0-9][0-9]*'",
+            ShizukuRunner.command("dumpsys display | grep 'Display [0-9][0-9]*'",
                 object :
                     ShizukuRunner.CommandResultListener {
                     override fun onCommandResult(
@@ -126,14 +126,14 @@ class PipStarterActivity : AppCompatActivity() {
 
 
         fun Context.handlePip() {
-            ShizukuRunner.runAdbCommand("settings get global overlay_display_devices",
+            ShizukuRunner.command("settings get global overlay_display_devices",
                 object : ShizukuRunner.CommandResultListener {
                     override fun onCommandResult(output: String, done: Boolean) {
                         if (done) {
                             if (output.trim().contains("null", true)) {
                                 enablePip()
                             } else {
-                                ShizukuRunner.runAdbCommand("am start -n $packageName/${PipStarterActivity::class.java.canonicalName} --display 0",
+                                ShizukuRunner.command("am start -n $packageName/${PipStarterActivity::class.java.canonicalName} --display 0",
                                     object : ShizukuRunner.CommandResultListener {
                                         override fun onCommandError(
                                             error: String
@@ -150,14 +150,14 @@ class PipStarterActivity : AppCompatActivity() {
 
         fun Context.enablePip() {
             Timer().schedule(timerTask {
-                ShizukuRunner.runAdbCommand(
+                ShizukuRunner.command(
                     "dumpsys window displays | grep -E 'mCurrentFocus'",
                     object : ShizukuRunner.CommandResultListener {
                         override fun onCommandResult(output: String, done: Boolean) {
                             if (done) {
                                 val pipPackage = output.split(" ")[4].split("/")[0]
                                 val metrics = getWindowParams()
-                                ShizukuRunner.runAdbCommand("settings put global overlay_display_devices ${metrics.first}x${metrics.second}/240",
+                                ShizukuRunner.command("settings put global overlay_display_devices ${metrics.first}x${metrics.second}/240",
                                     object : ShizukuRunner.CommandResultListener {
                                         override fun onCommandResult(
                                             output: String,
@@ -168,7 +168,7 @@ class PipStarterActivity : AppCompatActivity() {
                                                     getExternalDisplayId { newDisplayId->
                                                         val command =
                                                             "am start -n $packageName/${PipStarterActivity::class.java.canonicalName} --es package $pipPackage --display $newDisplayId"
-                                                        ShizukuRunner.runAdbCommand(
+                                                        ShizukuRunner.command(
                                                             command,
                                                             object :
                                                                 ShizukuRunner.CommandResultListener {
@@ -205,7 +205,7 @@ class PipStarterActivity : AppCompatActivity() {
         }
 
         fun disablePip() {
-            ShizukuRunner.runAdbCommand("settings put global overlay_display_devices null",
+            ShizukuRunner.command("settings put global overlay_display_devices null",
                 object : ShizukuRunner.CommandResultListener {
                     override fun onCommandResult(output: String, done: Boolean) {
                         playVideo()
@@ -215,7 +215,7 @@ class PipStarterActivity : AppCompatActivity() {
 
         fun playVideo() {
             Timer().schedule(timerTask {
-                ShizukuRunner.runAdbCommand("input keyevent ${KeyEvent.KEYCODE_MEDIA_PLAY}",
+                ShizukuRunner.command("input keyevent ${KeyEvent.KEYCODE_MEDIA_PLAY}",
                     object : ShizukuRunner.CommandResultListener {})
             }, 1500)
         }

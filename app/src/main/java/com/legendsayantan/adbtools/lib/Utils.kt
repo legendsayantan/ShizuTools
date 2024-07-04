@@ -7,16 +7,11 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.graphics.Color
-import android.os.Environment
 import android.view.WindowManager
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
-import androidx.core.graphics.ColorUtils
 import com.legendsayantan.adbtools.R
-import java.io.File
 
 /**
  * @author legendsayantan
@@ -87,13 +82,13 @@ class Utils {
 
         fun Context.getNotiPerms(){
             try{
-                ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.POST_NOTIFICATIONS",
+                ShizukuRunner.command("pm grant $packageName android.permission.POST_NOTIFICATIONS",
                     object : ShizukuRunner.CommandResultListener { })
             }catch (_:Exception){}
         }
 
         fun loadApps(callback: (List<String>) -> Unit) {
-            ShizukuRunner.runAdbCommand(
+            ShizukuRunner.command(
                 "pm list packages",
                 object : ShizukuRunner.CommandResultListener {
                     override fun onCommandResult(output: String, done: Boolean) {

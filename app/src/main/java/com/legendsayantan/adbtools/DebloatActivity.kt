@@ -74,7 +74,7 @@ class DebloatActivity : AppCompatActivity() {
         setContentView(R.layout.activity_debloat)
         initialiseStatusBar()
         list = findViewById(R.id.apps_list)
-        ShizukuRunner.runAdbCommand("pm grant $packageName android.permission.QUERY_ALL_PACKAGES",
+        ShizukuRunner.command("pm grant $packageName android.permission.QUERY_ALL_PACKAGES",
             object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {}
             })
@@ -99,7 +99,7 @@ class DebloatActivity : AppCompatActivity() {
                 uninstallBtn.setOnClickListener {
                     //uninstall app
                     Toast.makeText(this, "Uninstalling ${app.name}", Toast.LENGTH_SHORT).show()
-                    ShizukuRunner.runAdbCommand("cmd package uninstall -k --user 0 ${id}",
+                    ShizukuRunner.command("cmd package uninstall -k --user 0 ${id}",
                         object : ShizukuRunner.CommandResultListener {
                             override fun onCommandResult(output: String, done: Boolean) {
                                 if (done) {
@@ -298,7 +298,7 @@ class DebloatActivity : AppCompatActivity() {
 
     fun restoreMode() {
         val activityContext = this
-        ShizukuRunner.runAdbCommand("cmd package list packages -u",
+        ShizukuRunner.command("cmd package list packages -u",
             object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
                     if (done) {
@@ -319,7 +319,7 @@ class DebloatActivity : AppCompatActivity() {
                                     LinearLayoutManager(activityContext)
                                 appsView.adapter =
                                     SimpleAdapter(uninstalled) {
-                                        ShizukuRunner.runAdbCommand("cmd package install-existing ${uninstalled[it]}",
+                                        ShizukuRunner.command("cmd package install-existing ${uninstalled[it]}",
                                             object :
                                                 ShizukuRunner.CommandResultListener {
                                                 override fun onCommandResult(

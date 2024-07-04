@@ -151,11 +151,11 @@ class SoundMasterActivity : AppCompatActivity() {
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
-                    ShizukuRunner.runAdbCommand("pm grant ${baseContext.packageName} android.permission.RECORD_AUDIO",
+                    ShizukuRunner.command("pm grant ${baseContext.packageName} android.permission.RECORD_AUDIO",
                         object : ShizukuRunner.CommandResultListener {
                             override fun onCommandResult(output: String, done: Boolean) {
                                 if (done) {
-                                    ShizukuRunner.runAdbCommand("appops set ${baseContext.packageName} PROJECT_MEDIA allow",
+                                    ShizukuRunner.command("appops set ${baseContext.packageName} PROJECT_MEDIA allow",
                                         object : ShizukuRunner.CommandResultListener {
                                             override fun onCommandResult(
                                                 output: String,

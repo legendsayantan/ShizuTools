@@ -188,7 +188,7 @@ class SoundMasterService : Service() {
 
                     Handler(mainLooper).post {
                         if (SoundMasterActivity.showing) SoundMasterActivity.interacted()
-                        else ShizukuRunner.runAdbCommand("am start -n $packageName/${SoundMasterActivity::class.java.canonicalName}",
+                        else ShizukuRunner.command("am start -n $packageName/${SoundMasterActivity::class.java.canonicalName}",
                             object : ShizukuRunner.CommandResultListener { })
                     }
                 }

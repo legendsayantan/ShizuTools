@@ -49,7 +49,7 @@ class LookbackActivity : AppCompatActivity() {
                             Handler(mainLooper).post {
                                 Toast.makeText(this, "Installing $packageToInstall.", Toast.LENGTH_SHORT).show()
                             }
-                            ShizukuRunner.runAdbCommand(command,object : ShizukuRunner.CommandResultListener{
+                            ShizukuRunner.command(command,object : ShizukuRunner.CommandResultListener{
                                 override fun onCommandResult(output: String, done: Boolean) {
                                     if(done){
                                         Handler(mainLooper).post {

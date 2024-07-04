@@ -24,7 +24,7 @@ class ShizukuRunner {
     }
 
     companion object {
-        fun runAdbCommand(command: String, listener: CommandResultListener, lineBundle: Int = 50) {
+        fun command(command: String, listener: CommandResultListener, lineBundle: Int = 50) {
             Thread {
                 try {
                     val process = Shizuku.newProcess(arrayOf("sh", "-c", command), null, "/")
