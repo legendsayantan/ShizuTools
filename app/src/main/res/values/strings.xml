@@ -51,7 +51,7 @@
     <string name="selected_item_was_patched_as_permanent">Selected item was patched as permanent.</string>
     <string name="do_not_un_mute_apps_that_are_being_controlled_by_soundmaster">Do not un-mute apps that are being controlled by SoundMaster, while SoundMaster is running.</string>
     <string name="select_audio_output">Select Audio Output :</string>
-    <string name="confirm_to_uninstall">Confirm to uninstall</string>
+    <string name="confirm_to_uninstall">Uninstall</string>
     <string name="links">Links :</string>
     <string name="soundmaster_initial_noti">You can now change volume to configure %1$s as well. Make sure to disable it before you power off the device.</string>
     <string name="url_uad_lists">https://cdn.jsdelivr.net/gh/Universal-Debloater-Alliance/universal-android-debloater-next-generation@main/resources/assets/uad_lists.json</string>
@@ -62,4 +62,6 @@
     <string name="desc_universalpip">Switch apps to picture-in-picture mode even if they don\'t allow it. May not support some launchers.</string>
     <string name="unmute_all_apps">Unmute All Apps</string>
     <string name="disable_all_mixedaudio">Disable All MixedAudio</string>
+    <string name="confirm_to_disable">Disable</string>
+    <string name="confirm_to_enable">Enable</string>
 </resources>

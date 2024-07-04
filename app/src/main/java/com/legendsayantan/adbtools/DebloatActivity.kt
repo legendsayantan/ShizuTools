@@ -12,6 +12,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.marginEnd
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
@@ -94,6 +95,46 @@ class DebloatActivity : AppCompatActivity() {
                     //open link
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(listOfLinks[linkPosition])))
                 }
+                val disableBtn = MaterialButton(this)
+                ShizukuRunner.command("pm list packages -d",object : ShizukuRunner.CommandResultListener{
+                    override fun onCommandResult(output: String, done: Boolean) {
+                        if (done){
+                            val isDisabled = output.contains(id)
+                            disableBtn.text = if(isDisabled) getString(R.string.confirm_to_enable) else getString(R.string.confirm_to_disable)
+                            disableBtn.setOnClickListener {
+                                //disable app
+                                ShizukuRunner.command("cmd package ${if(isDisabled)"enable" else "disable"} -k --user 0 $id",
+                                    object : ShizukuRunner.CommandResultListener {
+                                        override fun onCommandResult(output: String, done: Boolean) {
+                                            if (done) {
+                                                runOnUiThread {
+                                                    if (output.contains("Success", true)) {
+                                                        list.adapter =
+                                                            DebloatAdapter(this@DebloatActivity, apps)
+                                                        Toast.makeText(
+                                                            applicationContext,
+                                                            "Disabled ${app.name}",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                    } else {
+                                                        Toast.makeText(
+                                                            applicationContext,
+                                                            "Failed,\n$output",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                    }
+                                                    dialog?.dismiss()
+                                                }
+                                            }
+                                        }
+                                    })
+                            }
+                        }
+                    }
+                })
+                disableBtn.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    setMargins(0,0,25,0)
+                }
                 val uninstallBtn = MaterialButton(this)
                 uninstallBtn.text = getString(R.string.confirm_to_uninstall)
                 uninstallBtn.setOnClickListener {
@@ -128,6 +169,8 @@ class DebloatActivity : AppCompatActivity() {
                         })
                 }
                 val btnContainer = LinearLayout(this)
+                btnContainer.orientation = LinearLayout.HORIZONTAL
+                btnContainer.addView(disableBtn)
                 btnContainer.addView(uninstallBtn)
                 btnContainer.setPadding(20, 20, 20, 20)
                 btnContainer.gravity = Gravity.END
