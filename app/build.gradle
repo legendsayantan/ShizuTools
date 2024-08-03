@@ -32,8 +32,8 @@ android {
 }
 
 dependencies {
-    implementation "dev.rikka.shizuku:api:12.1.0"
-    implementation "dev.rikka.shizuku:provider:12.1.0"
+    implementation "dev.rikka.shizuku:api:13.1.5"
+    implementation "dev.rikka.shizuku:provider:13.1.5"
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'

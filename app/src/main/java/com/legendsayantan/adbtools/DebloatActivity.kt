@@ -113,7 +113,7 @@ class DebloatActivity : AppCompatActivity() {
                                                             DebloatAdapter(this@DebloatActivity, apps)
                                                         Toast.makeText(
                                                             applicationContext,
-                                                            "Disabled ${app.name}",
+                                                            "Success for ${app.name}",
                                                             Toast.LENGTH_LONG
                                                         ).show()
                                                     } else {

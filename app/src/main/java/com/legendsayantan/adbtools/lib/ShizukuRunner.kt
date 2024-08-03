@@ -3,8 +3,10 @@ package com.legendsayantan.adbtools.lib
 /**
  * @author legendsayantan
  */
+import moe.shizuku.server.IShizukuService
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
+import java.io.FileInputStream
 import java.io.InputStreamReader
 
 class ShizukuRunner {
@@ -27,9 +29,10 @@ class ShizukuRunner {
         fun command(command: String, listener: CommandResultListener, lineBundle: Int = 50) {
             Thread {
                 try {
-                    val process = Shizuku.newProcess(arrayOf("sh", "-c", command), null, "/")
-                    val reader = BufferedReader(InputStreamReader(process.inputStream))
-                    val err = BufferedReader(InputStreamReader(process.errorStream))
+                    val process = IShizukuService.Stub.asInterface(Shizuku.getBinder())
+                        .newProcess(arrayOf("sh","-c",command), null, null)
+                    val reader = BufferedReader(InputStreamReader(FileInputStream(process.inputStream.fileDescriptor)))
+                    val err = BufferedReader(InputStreamReader(FileInputStream(process.errorStream.fileDescriptor)))
                     val output = StringBuilder()
                     val errordata = StringBuilder()
                     var line: String?
