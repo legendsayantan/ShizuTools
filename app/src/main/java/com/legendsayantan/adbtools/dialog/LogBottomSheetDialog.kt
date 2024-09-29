@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.widget.TextView
+import android.widget.Toast
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.tabs.TabItem
@@ -29,12 +30,20 @@ class LogBottomSheetDialog(context: Context) : BottomSheetDialog(context) {
                 }
             }
 
-            override fun onTabUnselected(tab: TabLayout.Tab?) {
-            }
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
 
-            override fun onTabReselected(tab: TabLayout.Tab?) {
-            }
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
+        findViewById<MaterialCardView>(R.id.copy_logs)?.setOnClickListener {
+            context.readLog(tablayout?.selectedTabPosition==0){
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val clip = android.content.ClipData.newPlainText("Logs", it)
+                clipboard.setPrimaryClip(clip)
+                Handler(context.mainLooper).post {
+                    Toast.makeText(context, "Logs copied to clipboard.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
         findViewById<MaterialCardView>(R.id.clear_logs)?.setOnClickListener {
             context.clearLogs(tablayout?.selectedTabPosition==0);
         }
