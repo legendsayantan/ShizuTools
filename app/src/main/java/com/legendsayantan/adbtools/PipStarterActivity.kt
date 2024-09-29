@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.google.android.material.card.MaterialCardView
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import java.util.Timer
 import kotlin.concurrent.timerTask
@@ -16,6 +17,9 @@ class PipStarterActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        log = {
+            applicationContext.log(it)
+        }
         intent.getStringExtra("package").let { pkg ->
             if (pkg == null) {
                 showing = true
@@ -40,7 +44,11 @@ class PipStarterActivity : AppCompatActivity() {
                             materialCardView.setOnClickListener {
                                 keys[index].forEach { key ->
                                     ShizukuRunner.command("input -d $display keyevent $key",
-                                        object : ShizukuRunner.CommandResultListener {})
+                                        object : ShizukuRunner.CommandResultListener {
+                                            override fun onCommandError(error: String) {
+                                                applicationContext.log(error)
+                                            }
+                                        })
                                     interacted()
                                 }
                             }
@@ -56,7 +64,11 @@ class PipStarterActivity : AppCompatActivity() {
                     val metrics = getWindowParams()
                     getExternalDisplayId {
                         ShizukuRunner.command("input -d $it tap ${(metrics.first * 0.95).toInt()} ${(metrics.second*0.86).toInt()}",
-                            object : ShizukuRunner.CommandResultListener {})
+                            object : ShizukuRunner.CommandResultListener {
+                                override fun onCommandError(error: String) {
+                                    applicationContext.log(error)
+                                }
+                            })
                     }
                 }
                 extraBtns[1].setOnClickListener {
@@ -71,8 +83,12 @@ class PipStarterActivity : AppCompatActivity() {
 
                 setupAutoHide()
             } else {
-                startActivity(packageManager.getLaunchIntentForPackage(pkg))
-                playVideo()
+                try {
+                    startActivity(packageManager.getLaunchIntentForPackage(pkg))
+                    playVideo()
+                }catch (e:Exception){
+                    log(e.stackTraceToString(),true)
+                }
                 finish()
             }
         }
@@ -96,6 +112,7 @@ class PipStarterActivity : AppCompatActivity() {
         var interacted = {
             lastInteractionAt = System.currentTimeMillis()
         }
+        var log : (String)->Unit = {}
         fun Context.getWindowParams():Pair<Int,Int>{
             val metrics = resources.displayMetrics
             return Pair(metrics.widthPixels,((metrics.widthPixels / (metrics.heightPixels.toFloat() / metrics.widthPixels)) + 100).toInt())
@@ -120,6 +137,7 @@ class PipStarterActivity : AppCompatActivity() {
                     override fun onCommandError(error: String) {
                         println(error)
                         disablePip()
+                        log(error)
                     }
                 })
         }
@@ -140,6 +158,7 @@ class PipStarterActivity : AppCompatActivity() {
                                         ) {
                                             disablePip()
                                             println(error)
+                                            log(error)
                                         }
                                     })
                             }
@@ -186,6 +205,7 @@ class PipStarterActivity : AppCompatActivity() {
                                                                 ) {
                                                                     disablePip()
                                                                     println(error)
+                                                                    log(error)
                                                                 }
                                                             })
                                                     }
@@ -196,6 +216,7 @@ class PipStarterActivity : AppCompatActivity() {
                                         override fun onCommandError(error: String) {
                                             disablePip()
                                             println(error)
+                                            log(error)
                                         }
                                     })
                             }
@@ -210,13 +231,21 @@ class PipStarterActivity : AppCompatActivity() {
                     override fun onCommandResult(output: String, done: Boolean) {
                         playVideo()
                     }
+
+                    override fun onCommandError(error: String) {
+                        log(error)
+                    }
                 })
         }
 
         fun playVideo() {
             Timer().schedule(timerTask {
                 ShizukuRunner.command("input keyevent ${KeyEvent.KEYCODE_MEDIA_PLAY}",
-                    object : ShizukuRunner.CommandResultListener {})
+                    object : ShizukuRunner.CommandResultListener {
+                        override fun onCommandError(error: String) {
+                            log(error)
+                        }
+                    })
             }, 1500)
         }
     }

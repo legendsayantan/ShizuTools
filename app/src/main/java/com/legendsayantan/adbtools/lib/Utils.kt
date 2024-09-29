@@ -87,7 +87,7 @@ class Utils {
             }catch (_:Exception){}
         }
 
-        fun loadApps(callback: (List<String>) -> Unit) {
+        fun loadApps(callback: (List<String>) -> Unit,errorCallback:(String)->Unit={}) {
             ShizukuRunner.command(
                 "pm list packages",
                 object : ShizukuRunner.CommandResultListener {
@@ -96,6 +96,9 @@ class Utils {
                             val packages = output.replace("package:", "").split("\n")
                             callback(packages)
                         }
+                    }
+                    override fun onCommandError(error: String) {
+                        errorCallback(error)
                     }
                 })
         }

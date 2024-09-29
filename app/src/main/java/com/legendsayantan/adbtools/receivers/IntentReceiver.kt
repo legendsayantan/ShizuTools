@@ -3,6 +3,7 @@ package com.legendsayantan.adbtools.receivers
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.postNotification
 
@@ -36,6 +37,7 @@ class IntentReceiver : BroadcastReceiver() {
             }
             override fun onCommandError(error: String) {
                 context.postNotification("Command Execution Error", error, false)
+                context.log(error)
             }
         }
         ShizukuRunner.command(command.toString(), listener)

@@ -27,12 +27,16 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import com.legendsayantan.adbtools.dialog.LogBottomSheetDialog
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.getNotiPerms
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.receivers.PipReceiver
 import com.legendsayantan.adbtools.services.SoundMasterService
 import java.util.UUID
+import kotlin.system.exitProcess
+
 /**
  * @author legendsayantan
  */
@@ -43,14 +47,22 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         initialiseStatusBar()
         getNotiPerms()
+        registerGlobalExceptionLogger()
+        findViewById<ImageView>(R.id.logs).setOnClickListener {
+            LogBottomSheetDialog(this).show()
+        }
         findViewById<ImageView>(R.id.github).setOnClickListener {
             val shizukuUrl = "https://github.com/legendsayantan/shizutools"
-            startActivity(
-                Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse(shizukuUrl)
-                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
+            try {
+                startActivity(
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse(shizukuUrl)
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }catch (e:Exception){
+                log(e.stackTraceToString(),true)
+            }
         }
         val cardDebloat = findViewById<MaterialCardView>(R.id.cardDebloat)
         val cardThemePatcher = findViewById<MaterialCardView>(R.id.cardThemePatcher)
@@ -195,6 +207,7 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         commandOut.text = "ERROR:\n$error"
                     }
+                    applicationContext.log(error)
                 }
             })
             editText.selectAll()
@@ -246,5 +259,13 @@ class MainActivity : AppCompatActivity() {
             .setView(layout)
             .setPositiveButton(getString(R.string.ok)) { _, _ -> }
             .create().show()
+    }
+
+    private fun registerGlobalExceptionLogger(){
+        Thread.setDefaultUncaughtExceptionHandler { _, e ->
+            e.printStackTrace()
+            applicationContext.log(e.stackTraceToString(),true)
+            exitProcess(0)
+        }
     }
 }

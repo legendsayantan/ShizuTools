@@ -4,9 +4,11 @@ import android.app.Dialog
 import android.content.Context
 import android.os.Handler
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.legendsayantan.adbtools.R
 import com.legendsayantan.adbtools.adapters.SimpleAdapter
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.Utils
 import com.legendsayantan.adbtools.lib.Utils.Companion.loadApps
 
@@ -24,8 +26,13 @@ class AppSelectionDialog(context: Context, val onSelection:(String)->Unit) : Dia
     override fun show() {
         super.show()
         val list = findViewById<RecyclerView>(R.id.appSelection)
+        val handler = Handler(context.mainLooper);
+        Toast.makeText(context, "Loading apps...", Toast.LENGTH_SHORT).show()
         Thread {
-            loadApps { packageList ->
+            loadApps ({ packageList ->
+                handler.post {
+                    Toast.makeText(context, "${packageList.size} apps found", Toast.LENGTH_LONG).show()
+                }
                 val packageMap = linkedMapOf<String, String>()
                 val orderMap = linkedMapOf<String, String>()
                 packageList.forEach {
@@ -47,7 +54,12 @@ class AppSelectionDialog(context: Context, val onSelection:(String)->Unit) : Dia
                     list.adapter = adapter
                     list.invalidate()
                 }
-            }
+            },{
+                handler.post {
+                    Toast.makeText(context, "Error loading apps : $it", Toast.LENGTH_LONG).show()
+                }
+                context.log(it)
+            })
         }.start()
     }
 }

@@ -13,9 +13,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.legendsayantan.adbtools.adapters.AudioStateAdapter
-import com.legendsayantan.adbtools.adapters.DebloatAdapter
-import com.legendsayantan.adbtools.data.AppData
 import com.legendsayantan.adbtools.data.AudioState
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.lib.Utils.Companion.loadApps
@@ -35,6 +34,7 @@ class MixedAudioActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_mixed_audio)
         initialiseStatusBar()
+        Toast.makeText(applicationContext, "Loading apps...", Toast.LENGTH_SHORT).show()
         Thread {
             reloadApps()
         }.start()
@@ -138,7 +138,10 @@ class MixedAudioActivity : AppCompatActivity() {
                                                                                                 )
                                                                                         }
 
-                                                                                    loadApps {
+                                                                                    loadApps ({
+                                                                                        runOnUiThread {
+                                                                                            Toast.makeText(applicationContext, "${it.size} apps found", Toast.LENGTH_LONG).show()
+                                                                                        }
                                                                                         it.forEach { pkg ->
                                                                                             focusMap.putIfAbsent(
                                                                                                 pkg,
@@ -171,19 +174,37 @@ class MixedAudioActivity : AppCompatActivity() {
                                                                                                     )
                                                                                                 }
                                                                                         }
-                                                                                    }
+                                                                                    },{
+                                                                                        onShizukuError(it)
+                                                                                    })
                                                                                 }
+                                                                            }
+                                                                            override fun onCommandError(error: String) {
+                                                                                onShizukuError(error)
                                                                             }
                                                                         })
                                                                 }
                                                             }
+                                                            override fun onCommandError(error: String) {
+                                                                onShizukuError(error)
+                                                            }
                                                         })
                                                 }
                                             }
+                                            override fun onCommandError(error: String) {
+                                                onShizukuError(error)
+                                            }
                                         })
+                                }
+                                override fun onCommandError(error: String) {
+                                    onShizukuError(error)
                                 }
                             })
                     }
+                }
+
+                override fun onCommandError(error: String) {
+                    onShizukuError(error)
                 }
             })
     }
@@ -194,6 +215,7 @@ class MixedAudioActivity : AppCompatActivity() {
             return appInfo.loadLabel(packageManager).toString()
         } catch (e: PackageManager.NameNotFoundException) {
             e.printStackTrace()
+            log(e.stackTraceToString())
         }
         return pkg
     }
@@ -325,10 +347,16 @@ class MixedAudioActivity : AppCompatActivity() {
             }
 
             override fun onCommandError(error: String) {
-                runOnUiThread {
-                    Toast.makeText(this@MixedAudioActivity, "Error: $error", Toast.LENGTH_SHORT).show()
-                }
+                onShizukuError(error)
             }
         })
+    }
+    private fun onShizukuError(err:String){
+        applicationContext.log(err)
+        runOnUiThread {
+            Toast.makeText(this@MixedAudioActivity,
+                "Error loading apps : $err", Toast.LENGTH_LONG
+            ).show()
+        }
     }
 }

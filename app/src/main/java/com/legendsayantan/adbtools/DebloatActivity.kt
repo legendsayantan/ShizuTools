@@ -28,6 +28,7 @@ import com.google.gson.reflect.TypeToken
 import com.legendsayantan.adbtools.adapters.DebloatAdapter
 import com.legendsayantan.adbtools.adapters.SimpleAdapter
 import com.legendsayantan.adbtools.data.AppData
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.extractUrls
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
@@ -78,6 +79,9 @@ class DebloatActivity : AppCompatActivity() {
         ShizukuRunner.command("pm grant $packageName android.permission.QUERY_ALL_PACKAGES",
             object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {}
+                override fun onCommandError(error: String) {
+                    applicationContext.log(error)
+                }
             })
         val setListListener = {
             list.setOnItemClickListener { _, _, position, _ ->
@@ -96,44 +100,66 @@ class DebloatActivity : AppCompatActivity() {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(listOfLinks[linkPosition])))
                 }
                 val disableBtn = MaterialButton(this)
-                ShizukuRunner.command("pm list packages -d",object : ShizukuRunner.CommandResultListener{
-                    override fun onCommandResult(output: String, done: Boolean) {
-                        if (done){
-                            val isDisabled = output.contains(id)
-                            disableBtn.text = if(isDisabled) getString(R.string.confirm_to_enable) else getString(R.string.confirm_to_disable)
-                            disableBtn.setOnClickListener {
-                                //disable app
-                                ShizukuRunner.command("cmd package ${if(isDisabled)"enable" else "disable"} -k --user 0 $id",
-                                    object : ShizukuRunner.CommandResultListener {
-                                        override fun onCommandResult(output: String, done: Boolean) {
-                                            if (done) {
-                                                runOnUiThread {
-                                                    if (output.contains("Success", true)) {
-                                                        list.adapter =
-                                                            DebloatAdapter(this@DebloatActivity, apps)
-                                                        Toast.makeText(
-                                                            applicationContext,
-                                                            "Success for ${app.name}",
-                                                            Toast.LENGTH_LONG
-                                                        ).show()
-                                                    } else {
-                                                        Toast.makeText(
-                                                            applicationContext,
-                                                            "Failed,\n$output",
-                                                            Toast.LENGTH_LONG
-                                                        ).show()
+                ShizukuRunner.command("pm list packages -d",
+                    object : ShizukuRunner.CommandResultListener {
+                        override fun onCommandResult(output: String, done: Boolean) {
+                            if (done) {
+                                val isDisabled = output.contains(id)
+                                disableBtn.text =
+                                    if (isDisabled) getString(R.string.confirm_to_enable) else getString(
+                                        R.string.confirm_to_disable
+                                    )
+                                disableBtn.setOnClickListener {
+                                    //disable app
+                                    ShizukuRunner.command("cmd package ${if (isDisabled) "enable" else "disable"} -k --user 0 $id",
+                                        object : ShizukuRunner.CommandResultListener {
+                                            override fun onCommandResult(
+                                                output: String,
+                                                done: Boolean
+                                            ) {
+                                                if (done) {
+                                                    runOnUiThread {
+                                                        if (output.contains("Success", true)) {
+                                                            list.adapter =
+                                                                DebloatAdapter(
+                                                                    this@DebloatActivity,
+                                                                    apps
+                                                                )
+                                                            Toast.makeText(
+                                                                applicationContext,
+                                                                "Success for ${app.name}",
+                                                                Toast.LENGTH_LONG
+                                                            ).show()
+                                                        } else {
+                                                            Toast.makeText(
+                                                                applicationContext,
+                                                                "Failed,\n$output",
+                                                                Toast.LENGTH_LONG
+                                                            ).show()
+                                                            applicationContext.log(output)
+                                                        }
+                                                        dialog?.dismiss()
                                                     }
-                                                    dialog?.dismiss()
                                                 }
                                             }
-                                        }
-                                    })
+
+                                            override fun onCommandError(error: String) {
+                                                applicationContext.log(error)
+                                            }
+                                        })
+                                }
                             }
                         }
-                    }
-                })
-                disableBtn.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                    setMargins(0,0,25,0)
+
+                        override fun onCommandError(error: String) {
+                            applicationContext.log(error)
+                        }
+                    })
+                disableBtn.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    setMargins(0, 0, 25, 0)
                 }
                 val uninstallBtn = MaterialButton(this)
                 uninstallBtn.text = getString(R.string.confirm_to_uninstall)
@@ -161,10 +187,15 @@ class DebloatActivity : AppCompatActivity() {
                                                 "Failed to uninstall ${app.name},\n$output",
                                                 Toast.LENGTH_LONG
                                             ).show()
+                                            applicationContext.log(output)
                                         }
                                         dialog?.dismiss()
                                     }
                                 }
+                            }
+
+                            override fun onCommandError(error: String) {
+                                applicationContext.log(error)
                             }
                         })
                 }
@@ -270,6 +301,8 @@ class DebloatActivity : AppCompatActivity() {
                 }
             }
         } catch (e: Exception) {
+            applicationContext.log(e.stackTraceToString(), true)
+
             if (database.isNullOrBlank()) {
                 onFailure()
             } else {
@@ -339,14 +372,14 @@ class DebloatActivity : AppCompatActivity() {
             .show()
     }
 
-    fun restoreMode() {
+    private fun restoreMode() {
         val activityContext = this
         ShizukuRunner.command("cmd package list packages -u",
             object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
                     if (done) {
                         val allApps = output.replace("package:", "").split("\n")
-                        loadApps { installed ->
+                        loadApps({ installed ->
                             val uninstalled = allApps.filter { !installed.contains(it) }
                             runOnUiThread {
                                 val appsView = RecyclerView(activityContext)
@@ -379,18 +412,32 @@ class DebloatActivity : AppCompatActivity() {
                                                         }
                                                     }
                                                 }
+                                                override fun onCommandError(error: String) {
+                                                    applicationContext.log(error)
+                                                }
                                             })
                                         dialog.dismiss()
                                     }
                             }
 
-                        }
+                        }, {
+                            runOnUiThread {
+                                Toast.makeText(
+                                    activityContext,
+                                    "Error loading apps : $it",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        })
                     }
+                }
+                override fun onCommandError(error: String) {
+                    applicationContext.log(error)
                 }
             })
     }
 
-    companion object{
+    companion object {
         const val FILENAME_DATABASE: String = "debloat-list.json"
     }
 }

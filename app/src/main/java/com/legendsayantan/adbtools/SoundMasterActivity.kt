@@ -23,6 +23,7 @@ import com.legendsayantan.adbtools.adapters.VolumeBarAdapter
 import com.legendsayantan.adbtools.data.AudioOutputBase
 import com.legendsayantan.adbtools.dialog.AppSelectionDialog
 import com.legendsayantan.adbtools.dialog.OutputSelectionDialog
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.services.SoundMasterService
@@ -56,6 +57,7 @@ class SoundMasterActivity : AppCompatActivity() {
                 }
             }
         } catch (e: Exception) {
+            log(e.stackTraceToString(), true)
             File(applicationContext.filesDir, FILENAME_SOUNDMASTER).delete()
             mutableListOf()
         }
@@ -180,6 +182,7 @@ class SoundMasterActivity : AppCompatActivity() {
                                                         getString(R.string.permission_error),
                                                         Toast.LENGTH_LONG
                                                     ).show()
+                                                    log(error)
                                                 }
                                             }
                                         })
@@ -193,6 +196,7 @@ class SoundMasterActivity : AppCompatActivity() {
                                         getString(R.string.permission_error),
                                         Toast.LENGTH_LONG
                                     ).show()
+                                    log(error)
                                 }
                             }
                         })
@@ -231,6 +235,7 @@ class SoundMasterActivity : AppCompatActivity() {
                     this, "Request to obtain MediaProjection failed.",
                     Toast.LENGTH_SHORT
                 ).show()
+                log("Request to obtain MediaProjection failed.")
             }
             interacted()
         }

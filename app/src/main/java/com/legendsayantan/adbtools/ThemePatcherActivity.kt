@@ -6,6 +6,7 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
@@ -108,17 +109,28 @@ class ThemePatcherActivity : AppCompatActivity() {
             tables.forEachIndexed { index, table ->
                 zeroByDefault.forEach {
                     ShizukuRunner.command("settings put $table $it 0",
-                        object : ShizukuRunner.CommandResultListener { })
+                        object : ShizukuRunner.CommandResultListener {
+                            override fun onCommandError(error: String) {
+                                log(error)
+                            }
+                        })
                 }
                 negativeOneByDefault.forEach {
                     ShizukuRunner.command("settings put $table $it -1",
-                        object : ShizukuRunner.CommandResultListener { })
+                        object : ShizukuRunner.CommandResultListener {
+                            override fun onCommandError(error: String) {
+                                log(error)
+                            }
+                        })
                 }
                 otherDefaults.forEach {
                     ShizukuRunner.command("settings put $table ${it.key} ${it.value}",
                         object : ShizukuRunner.CommandResultListener {
                             override fun onCommandResult(output: String, done: Boolean) {
                                 if (index == tables.size - 1) runOnUiThread { done(output) }
+                            }
+                            override fun onCommandError(error: String) {
+                                log(error)
                             }
                         })
                 }

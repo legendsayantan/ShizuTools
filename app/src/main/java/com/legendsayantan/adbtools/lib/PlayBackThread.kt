@@ -17,7 +17,9 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import com.legendsayantan.adbtools.data.AudioOutputKey
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.services.SoundMasterService.Companion.updateInterval
+import kotlin.math.log
 
 /**
  * @author legendsayantan
@@ -40,6 +42,7 @@ class PlayBackThread(
                     Handler(context.mainLooper).post {
                         Toast.makeText(context, "Error: $error", Toast.LENGTH_SHORT).show()
                     }
+                    context.log(error)
                 }
             })
         super.start()
@@ -98,6 +101,7 @@ class PlayBackThread(
             }
         } catch (e: Exception) {
             Log.e(LOG_TAG, "Error in PlayBackThread")
+            context.log(e.stackTraceToString(),true)
             e.printStackTrace()
         }
     }
@@ -156,6 +160,7 @@ class PlayBackThread(
                     Handler(context.mainLooper).post {
                         Toast.makeText(context, "Error: $error", Toast.LENGTH_SHORT).show()
                     }
+                    context.log(error)
                 }
             })
         try {

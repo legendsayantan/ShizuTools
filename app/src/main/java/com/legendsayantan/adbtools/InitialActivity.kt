@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.legendsayantan.adbtools.lib.GradleUpdate
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseNotiChannel
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import rikka.shizuku.Shizuku
@@ -33,7 +34,9 @@ class InitialActivity : AppCompatActivity() {
         Shizuku.addRequestPermissionResultListener(requestPermissionResultListener)
         try {
             if(!checkPermission()) Shizuku.requestPermission(REQUEST_CODE)
-        }catch (_:Exception){}
+        }catch (e:Exception){
+            log(e.stackTraceToString(),true)
+        }
 
         findViewById<TextView>(R.id.textView).setOnClickListener {
             val shizukuUrl = "https://shizuku.rikka.app/"
@@ -51,7 +54,9 @@ class InitialActivity : AppCompatActivity() {
         super.onResume()
         try {
             if(checkPermission()) onGranted()
-        }catch (_:Exception){}
+        }catch (e:Exception){
+            log(e.stackTraceToString(),true)
+        }
     }
     private fun onRequestPermissionsResult(requestCode: Int, grantResult: Int) {
         val granted = grantResult == PackageManager.PERMISSION_GRANTED
@@ -84,13 +89,6 @@ class InitialActivity : AppCompatActivity() {
         Intent(this, MainActivity::class.java).also {
             startActivity(it)
             finish()
-        }
-    }
-
-    private fun startOnPip(intent:Intent){
-        val pipFlag = intent.getBooleanExtra("pip", false)
-        if(pipFlag){
-            startActivity(Intent(this, PipStarterActivity::class.java))
         }
     }
 }

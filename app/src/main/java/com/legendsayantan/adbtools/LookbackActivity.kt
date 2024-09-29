@@ -8,6 +8,7 @@ import android.os.Handler
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import java.io.File
@@ -73,6 +74,7 @@ class LookbackActivity : AppCompatActivity() {
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     }
+                                    applicationContext.log(error)
                                 }
                             })
 
@@ -101,6 +103,7 @@ class LookbackActivity : AppCompatActivity() {
             }
             callback(true)
         } catch (e: IOException) {
+            applicationContext.log(e.stackTraceToString()?:"",true)
             callback(false)
         }
     }
