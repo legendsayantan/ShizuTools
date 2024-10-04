@@ -58,7 +58,10 @@ class SoundMasterActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             log(e.stackTraceToString(), true)
-            File(applicationContext.filesDir, FILENAME_SOUNDMASTER).delete()
+            val file = File(applicationContext.filesDir, FILENAME_SOUNDMASTER)
+            if (file.delete()) {
+                file.createNewFile()
+            }
             mutableListOf()
         }
         set(value) {
@@ -71,6 +74,7 @@ class SoundMasterActivity : AppCompatActivity() {
         }
 
     val volumeBarView by lazy { findViewById<RecyclerView>(R.id.volumeBars) }
+    lateinit var selectionDialog: AppSelectionDialog
 
     @SuppressLint("ApplySharedPref")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,7 +87,7 @@ class SoundMasterActivity : AppCompatActivity() {
         //new slider
         findViewById<MaterialCardView>(R.id.newSlider).setOnClickListener {
             lastInteractionAt = -1
-            AppSelectionDialog(this@SoundMasterActivity) { pkg ->
+            selectionDialog = AppSelectionDialog(this@SoundMasterActivity) { pkg ->
                 OutputSelectionDialog(
                     this@SoundMasterActivity,
                     SoundMasterService.getAudioDevices()
@@ -104,7 +108,8 @@ class SoundMasterActivity : AppCompatActivity() {
                     } else combinationExists()
                     interacted()
                 }.show()
-            }.show()
+            }
+            selectionDialog.show()
         }
 
         //adjustment
@@ -164,9 +169,11 @@ class SoundMasterActivity : AppCompatActivity() {
                                                 done: Boolean
                                             ) {
                                                 if (done) {
-                                                    if (output.isBlank()){
+                                                    if (output.isBlank()) {
                                                         mediaProjectionManager =
-                                                            applicationContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                                                            applicationContext.getSystemService(
+                                                                Context.MEDIA_PROJECTION_SERVICE
+                                                            ) as MediaProjectionManager
                                                         startActivityForResult(
                                                             mediaProjectionManager.createScreenCaptureIntent(),
                                                             MEDIA_PROJECTION_REQUEST_CODE
@@ -243,6 +250,9 @@ class SoundMasterActivity : AppCompatActivity() {
 
     override fun finish() {
         showing = false
+        if(::selectionDialog.isInitialized && selectionDialog.isShowing){
+            selectionDialog.dismiss()
+        }
         super.finish()
     }
 

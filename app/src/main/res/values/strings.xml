@@ -73,4 +73,5 @@
     <string name="clear_logs">clear logs</string>
     <string name="shizuku">Shizuku</string>
     <string name="logs">Logs</string>
+    <string name="search_for_app">Type to search for an app</string>
 </resources>

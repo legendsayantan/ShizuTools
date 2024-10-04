@@ -12,6 +12,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.legendsayantan.adbtools.R
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 
 /**
  * @author legendsayantan
@@ -108,7 +109,12 @@ class Utils {
         }
 
         fun getAppNameFromPackage(context: Context, packageName: String): String {
-            return context.packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA).loadLabel(context.packageManager).toString()
+            return try {
+                context.packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA).loadLabel(context.packageManager).toString()
+            }catch (e:Exception){
+                context.log(e.stackTraceToString(),true)
+                packageName
+            }
         }
 
 
