@@ -40,11 +40,11 @@ class AppSelectionDialog(context: Context, val onSelection: (String) -> Unit) : 
                         .show()
                 }
                 val reloadApps: (String) -> Unit = { filter ->
-                    val filtered = packageList.map { Utils.getAppNameFromPackage(context, it) }
-                        .filter { filter.isBlank() || it.contains(filter, true) }
-                    val adapter = SimpleAdapter(filtered) {
+                    val filteredMap = packageList.map { it to Utils.getAppNameFromPackage(context, it) }
+                        .filter { filter.isBlank() || it.second.contains(filter, true) }
+                    val adapter = SimpleAdapter(filteredMap.map { it.second }) { selectionIndex ->
                         dismiss()
-                        onSelection(filtered[it])
+                        onSelection(filteredMap[selectionIndex].first)
                     }
                     Handler(context.mainLooper).post {
                         list.adapter = adapter

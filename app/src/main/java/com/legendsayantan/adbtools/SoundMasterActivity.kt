@@ -58,10 +58,7 @@ class SoundMasterActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             log(e.stackTraceToString(), true)
-            val file = File(applicationContext.filesDir, FILENAME_SOUNDMASTER)
-            if (file.delete()) {
-                file.createNewFile()
-            }
+            File(applicationContext.filesDir, FILENAME_SOUNDMASTER).delete()
             mutableListOf()
         }
         set(value) {
@@ -275,7 +272,7 @@ class SoundMasterActivity : AppCompatActivity() {
                     newPackages.removeAt(it)
                     packageSliders = newPackages
                     updateSliders()
-                    SoundMasterService.onDynamicDetach(packageSliders[it])
+                    SoundMasterService.onDynamicDetach(packageSliders[it.coerceAtMost(packageSliders.size-1)])
                 }, { app, sliderIndex ->
                     interacted()
                     if (sliderIndex == 0) SoundMasterService.getBalanceOf(packageSliders[app])
