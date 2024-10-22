@@ -88,9 +88,9 @@ class Utils {
             }catch (_:Exception){}
         }
 
-        fun loadApps(callback: (List<String>) -> Unit,errorCallback:(String)->Unit={}) {
+        fun loadApps(specifyUser:Int=-1,callback: (List<String>) -> Unit,errorCallback:(String)->Unit={}) {
             ShizukuRunner.command(
-                "pm list packages",
+                "pm list packages"+(if(specifyUser>=0)" --user $specifyUser" else ""),
                 object : ShizukuRunner.CommandResultListener {
                     override fun onCommandResult(output: String, done: Boolean) {
                         if(done){
@@ -99,7 +99,14 @@ class Utils {
                         }
                     }
                     override fun onCommandError(error: String) {
-                        errorCallback(error)
+                        if(specifyUser>=0) {
+                            //error on fallback mode
+                            errorCallback(error)
+                        }
+                        else {
+                            //switch to fallback mode
+                            loadApps(0, callback, errorCallback)
+                        }
                     }
                 })
         }

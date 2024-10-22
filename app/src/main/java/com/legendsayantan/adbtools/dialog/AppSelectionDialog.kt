@@ -31,10 +31,10 @@ class AppSelectionDialog(context: Context, val onSelection: (String) -> Unit) : 
         super.show()
         val list = findViewById<RecyclerView>(R.id.appSelection)
         val search = findViewById<TextInputEditText>(R.id.search)
-        val handler = Handler(context.mainLooper);
+        val handler = Handler(context.mainLooper)
         Toast.makeText(context, "Loading apps...", Toast.LENGTH_SHORT).show()
         Thread {
-            loadApps({ packageList ->
+            loadApps(callback = { packageList ->
                 handler.post {
                     Toast.makeText(context, "${packageList.size} apps found", Toast.LENGTH_LONG)
                         .show()
@@ -53,7 +53,7 @@ class AppSelectionDialog(context: Context, val onSelection: (String) -> Unit) : 
                 }
                 reloadApps("")
                 search.doAfterTextChanged { reloadApps(it.toString()) }
-            }, {
+            }, errorCallback = {
                 handler.post {
                     Toast.makeText(context, "Error loading apps : $it", Toast.LENGTH_LONG).show()
                 }

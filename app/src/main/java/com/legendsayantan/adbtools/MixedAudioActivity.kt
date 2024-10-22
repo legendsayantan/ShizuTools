@@ -138,7 +138,7 @@ class MixedAudioActivity : AppCompatActivity() {
                                                                                                 )
                                                                                         }
 
-                                                                                    loadApps ({
+                                                                                    loadApps (callback = {
                                                                                         runOnUiThread {
                                                                                             Toast.makeText(applicationContext, "${it.size} apps found", Toast.LENGTH_LONG).show()
                                                                                         }
@@ -174,7 +174,7 @@ class MixedAudioActivity : AppCompatActivity() {
                                                                                                     )
                                                                                                 }
                                                                                         }
-                                                                                    },{
+                                                                                    }, errorCallback = {
                                                                                         onShizukuError(it)
                                                                                     })
                                                                                 }

@@ -379,7 +379,7 @@ class DebloatActivity : AppCompatActivity() {
                 override fun onCommandResult(output: String, done: Boolean) {
                     if (done) {
                         val allApps = output.replace("package:", "").split("\n")
-                        loadApps({ installed ->
+                        loadApps(callback={ installed ->
                             val uninstalled = allApps.filter { !installed.contains(it) }
                             runOnUiThread {
                                 val appsView = RecyclerView(activityContext)
@@ -420,7 +420,7 @@ class DebloatActivity : AppCompatActivity() {
                                     }
                             }
 
-                        }, {
+                        }, errorCallback = {
                             runOnUiThread {
                                 Toast.makeText(
                                     activityContext,
