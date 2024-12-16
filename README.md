@@ -13,7 +13,7 @@ Contains some easy-to-use tools to go beyond the level of control allowed by And
 
 Better Alternative to UniversalPip - [Extendroid](https://github.com/legendsayantan/Extendroid)
 
-#### This app is still being developed. Feel free to suggest new features, report bugs or contribute to the project.
+#### This app is still being developed. Feel free to suggest new features, report bugs or contribute to the project. But do not expect swift responses as I am usually quite busy.
 
 ### Installation
 Install the Latest Release Build from [here](https://github.com/legendsayantan/ShizuTools/releases/latest).
