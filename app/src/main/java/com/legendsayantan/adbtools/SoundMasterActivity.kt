@@ -38,9 +38,10 @@ import kotlin.concurrent.timerTask
 
 class SoundMasterActivity : AppCompatActivity() {
     private lateinit var mediaProjectionManager: MediaProjectionManager
+    private var accessLocked = arrayOf(false,false,false)
     private var packageSliders: MutableList<AudioOutputBase>
         get() = try {
-            File(applicationContext.filesDir, FILENAME_SOUNDMASTER).let { file ->
+            File(applicationContext.filesDir, FILENAME_SOUNDMASTER_PACKAGE_SLIDERS).let { file ->
                 file.readText().split("\n").let { text ->
                     if (!text.any { it.isBlank() }) text.map { line ->
                         val splits = line.split("/")
@@ -58,17 +59,99 @@ class SoundMasterActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             log(e.stackTraceToString(), true)
-            File(applicationContext.filesDir, FILENAME_SOUNDMASTER).delete()
+            File(applicationContext.filesDir, FILENAME_SOUNDMASTER_PACKAGE_SLIDERS).delete()
             mutableListOf()
         }
         set(value) {
-            val file = File(applicationContext.filesDir, FILENAME_SOUNDMASTER)
-            if (!file.exists()) {
-                file.parentFile?.mkdirs()
-                file.createNewFile()
-            }
-            file.writeText(value.joinToString("\n") { it.pkg + "/" + it.output + "/" + it.volume })
+            Thread{
+                if(accessLocked[0]) return@Thread
+                accessLocked[0] = true
+                val file = File(applicationContext.filesDir, FILENAME_SOUNDMASTER_PACKAGE_SLIDERS)
+                if (!file.exists()) {
+                    file.parentFile?.mkdirs()
+                    file.createNewFile()
+                }
+                file.writeText(value.joinToString("\n") { it.pkg + "/" + it.output + "/" + it.volume })
+                accessLocked[0] = false
+            }.start()
         }
+
+    private var balanceSlider: MutableMap<Pair<String,Int>, Float>
+        get() = try {
+            File(applicationContext.filesDir, FILENAME_SOUNDMASTER_BALANCE_SLIDERS).let { file ->
+                file.readText().split("\n").let { text ->
+                    if (!text.any { it.isBlank() }) text.associate { line ->
+                        val splits = line.split("/")
+                        Pair(
+                            splits[0],
+                            splits[1].toInt()
+                        ) to splits[2].toFloat()
+                    }.toMutableMap()
+                    else {
+                        file.delete()
+                        mutableMapOf()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            log(e.stackTraceToString(), true)
+            File(applicationContext.filesDir, FILENAME_SOUNDMASTER_BALANCE_SLIDERS).delete()
+            mutableMapOf()
+        }
+        set(value) {
+            Thread{
+                if (accessLocked[1]) return@Thread
+                accessLocked[1] = true
+                val file = File(applicationContext.filesDir, FILENAME_SOUNDMASTER_BALANCE_SLIDERS)
+                if (!file.exists()) {
+                    file.parentFile?.mkdirs()
+                    file.createNewFile()
+                }
+                file.writeText(value.map { it.key.first + "/" + it.key.second + "/" + it.value }
+                    .joinToString("\n"))
+                accessLocked[1] = false
+            }.start()
+        }
+
+    private var bandSliders: MutableMap<Pair<Pair<String,Int>,Int>,Float>
+        get() = try {
+            File(applicationContext.filesDir, FILENAME_SOUNDMASTER_BAND_SLIDERS).let { file ->
+                file.readText().split("\n").let { text ->
+                    if (!text.any { it.isBlank() }) text.associate { line ->
+                        val splits = line.split("/")
+                        Pair(
+                            Pair(
+                                splits[0],
+                                splits[1].toInt()
+                            ) to splits[2].toInt(),
+                            splits[3].toFloat()
+                        )
+                    }.toMutableMap()
+                    else {
+                        file.delete()
+                        mutableMapOf()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            log(e.stackTraceToString(), true)
+            File(applicationContext.filesDir, FILENAME_SOUNDMASTER_BAND_SLIDERS).delete()
+            mutableMapOf()
+        }
+        set(value) {
+            Thread{
+                if (accessLocked[2]) return@Thread
+                val file = File(applicationContext.filesDir, FILENAME_SOUNDMASTER_BAND_SLIDERS)
+                if (!file.exists()) {
+                    file.parentFile?.mkdirs()
+                    file.createNewFile()
+                }
+                file.writeText(value.map { it.key.first.first + "/" + it.key.first.second + "/" + it.key.second + "/" + it.value }
+                    .joinToString("\n"))
+                accessLocked[2] = false
+            }.start()
+        }
+
 
     val volumeBarView by lazy { findViewById<RecyclerView>(R.id.volumeBars) }
     lateinit var selectionDialog: AppSelectionDialog
@@ -120,7 +203,10 @@ class SoundMasterActivity : AppCompatActivity() {
             finish()
         }
 
-        setupAutoHide()
+        val prefs = getSharedPreferences("soundmaster", Context.MODE_PRIVATE)
+        if(prefs.getBoolean("auto_hide", true)){
+            setupAutoHide()
+        }
     }
 
     private fun setupAutoHide() {
@@ -247,7 +333,7 @@ class SoundMasterActivity : AppCompatActivity() {
 
     override fun finish() {
         showing = false
-        if(::selectionDialog.isInitialized && selectionDialog.isShowing){
+        if (::selectionDialog.isInitialized && selectionDialog.isShowing) {
             selectionDialog.dismiss()
         }
         super.finish()
@@ -259,32 +345,60 @@ class SoundMasterActivity : AppCompatActivity() {
             if (packageSliders.size > 0) View.GONE else View.VISIBLE
         Thread {
             val adapter =
-                VolumeBarAdapter(this@SoundMasterActivity, packageSliders, { app, vol ->
+                VolumeBarAdapter(this@SoundMasterActivity, packageSliders, onVolumeChanged = { app, vol ->
                     interacted()
                     val newPackages = packageSliders
                     newPackages[app] =
                         AudioOutputBase(packageSliders[app].pkg, packageSliders[app].output, vol)
                     packageSliders = newPackages
                     SoundMasterService.setVolumeOf(packageSliders[app], vol)
-                }, {
+                }, onItemDetached = {
                     interacted()
                     val newPackages = packageSliders
                     newPackages.removeAt(it)
                     packageSliders = newPackages
                     updateSliders()
-                    SoundMasterService.onDynamicDetach(packageSliders[it.coerceAtMost(packageSliders.size-1)])
-                }, { app, sliderIndex ->
+                    SoundMasterService.onDynamicDetach(packageSliders[it.coerceAtMost(packageSliders.size - 1)])
+                }, onSliderGet = { app, sliderIndex ->
                     interacted()
-                    if (sliderIndex == 0) SoundMasterService.getBalanceOf(packageSliders[app])
-                    else SoundMasterService.getBandValueOf(packageSliders[app], sliderIndex - 1)
-                }, { app, slider, value ->
+                    val current = packageSliders[app]
+                    if (sliderIndex == 0) {
+                        SoundMasterService.getBalanceOf(current)
+                            ?: balanceSlider[Pair(
+                                current.pkg,
+                                current.output
+                            )] ?: 0f
+                    } else {
+                        SoundMasterService.getBandValueOf(current, sliderIndex - 1)
+                            ?: bandSliders[Pair(
+                                current.pkg,
+                                current.output
+                            ) to sliderIndex - 1] ?: 50f
+                    }
+                }, onSliderSet = { app, slider, value ->
                     interacted()
-                    if (slider == 0) SoundMasterService.setBalanceOf(packageSliders[app], value)
-                    else SoundMasterService.setBandValueOf(packageSliders[app], slider - 1, value)
-                }, {
+                    val current = packageSliders[app]
+                    if (slider == 0) {
+                        SoundMasterService.setBalanceOf(current, value)
+                        val updatedSliderData = balanceSlider
+                        updatedSliderData[Pair(
+                            current.pkg,
+                            current.output
+                        )] = value
+                        balanceSlider = updatedSliderData
+                    } else {
+                        SoundMasterService.setBandValueOf(current, slider - 1, value)
+                        val updatedSliderData = bandSliders
+                        updatedSliderData[Pair(
+                            current.pkg,
+                            current.output
+                        ) to slider - 1] = value
+                        bandSliders = updatedSliderData
+                    }
+                }, getDevices = {
                     interacted()
                     SoundMasterService.getAudioDevices()
-                }, { pkg, device ->
+                }, setDeviceFor = { pkg, device ->
                     interacted()
                     if (SoundMasterService.switchDeviceFor(packageSliders[pkg], device)) {
                         val newPackages = packageSliders
@@ -320,7 +434,9 @@ class SoundMasterActivity : AppCompatActivity() {
         var interacted = {
             lastInteractionAt = System.currentTimeMillis()
         }
-        private const val FILENAME_SOUNDMASTER = "soundmaster.txt"
+        private const val FILENAME_SOUNDMASTER_PACKAGE_SLIDERS = "soundmaster.txt"
+        private const val FILENAME_SOUNDMASTER_BALANCE_SLIDERS = "soundmaster_balance.txt"
+        private const val FILENAME_SOUNDMASTER_BAND_SLIDERS = "soundmaster_band.txt"
         private const val MEDIA_PROJECTION_REQUEST_CODE = 13
     }
 }

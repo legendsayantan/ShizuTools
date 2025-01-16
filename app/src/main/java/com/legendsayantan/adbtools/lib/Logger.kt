@@ -8,8 +8,8 @@ import java.io.FileWriter
  * @author legendsayantan
  */class Logger {
     companion object {
-        val APP_LOG_FILE = "app.log"
-        val SHIZUKU_LOG_FILE = "shizuku.log"
+        private const val APP_LOG_FILE = "app.log"
+        private const val SHIZUKU_LOG_FILE = "shizuku.log"
 
         fun Context.log(message: String, appError:Boolean=false) {
             val logFile = if(appError) APP_LOG_FILE else SHIZUKU_LOG_FILE
@@ -20,6 +20,7 @@ import java.io.FileWriter
                         file.createNewFile()
                     }
                     val writer = FileWriter(file, true)
+                    writer.append(System.currentTimeMillis().toString()+"\n")
                     writer.append(message)
                     writer.append("\n\n")
                     writer.flush()

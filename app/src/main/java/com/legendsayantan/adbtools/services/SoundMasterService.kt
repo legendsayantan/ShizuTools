@@ -24,6 +24,7 @@ import com.legendsayantan.adbtools.R
 import com.legendsayantan.adbtools.SoundMasterActivity
 import com.legendsayantan.adbtools.data.AudioOutputBase
 import com.legendsayantan.adbtools.data.AudioOutputKey
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.PlayBackThread
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import java.util.Timer
@@ -47,6 +48,7 @@ class SoundMasterService : Service() {
     var apps = mutableListOf<AudioOutputBase>()
     var latency = mutableListOf(0)
     var latencyUpdateTimer = Timer()
+
     override fun onBind(intent: Intent): IBinder {
         return null!!
     }
@@ -64,7 +66,8 @@ class SoundMasterService : Service() {
                 getString(
                     R.string.soundmaster_initial_noti,
                     applicationContext.getString(R.string.soundmaster)
-                ))
+                )
+            )
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOnlyAlertOnce(true)
@@ -102,7 +105,8 @@ class SoundMasterService : Service() {
         }
 
         getVolumeOf = { key ->
-            (packageThreads[key.pkg]?.getVolume(key) ?: apps.find { it.pkg==key.pkg && it.output==key.output }?.volume ?: 100f)
+            (packageThreads[key.pkg]?.getVolume(key)
+                ?: apps.find { it.pkg == key.pkg && it.output == key.output }?.volume ?: 100f)
         }
 
         setVolumeOf = { key, vol ->
@@ -110,7 +114,7 @@ class SoundMasterService : Service() {
         }
 
         getBalanceOf = {
-            packageThreads[it.pkg]?.getBalance(it.output) ?: 0f
+            packageThreads[it.pkg]?.getBalance(it.output)
         }
 
         setBalanceOf = { it, value ->
@@ -118,7 +122,7 @@ class SoundMasterService : Service() {
         }
 
         getBandValueOf = { it, band ->
-            packageThreads[it.pkg]?.getBand(it.output, band) ?: 50f
+            packageThreads[it.pkg]?.getBand(it.output, band)
         }
 
         setBandValueOf = { it, band, value ->
@@ -130,7 +134,7 @@ class SoundMasterService : Service() {
         }
 
         onDynamicAttach = { key, device ->
-            if (!apps.contains(key)) apps.add(AudioOutputBase(key.pkg,key.output,key.volume))
+            if (!apps.contains(key)) apps.add(AudioOutputBase(key.pkg, key.output, key.volume))
             if (!packageThreads.contains(key.pkg)) {
                 val mThread = PlayBackThread(
                     applicationContext,
@@ -140,7 +144,11 @@ class SoundMasterService : Service() {
                 packageThreads[key.pkg] = mThread
                 mThread.start()
             }
-            packageThreads[key.pkg]?.createOutput(device, outputKey = key.output, startVolume = key.volume)
+            packageThreads[key.pkg]?.createOutput(
+                device,
+                outputKey = key.output,
+                startVolume = key.volume
+            )
         }
 
         onDynamicDetach = { key ->
@@ -178,18 +186,25 @@ class SoundMasterService : Service() {
     }
 
     private fun initVolumeBtnControl() {
+        val prefs by lazy { getSharedPreferences("soundmaster", Context.MODE_PRIVATE) }
         mVolumeObserver = object : ContentObserver(Handler(mainLooper)) {
             var prevVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
             override fun onChange(selfChange: Boolean) {
                 super.onChange(selfChange)
-                val newVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-                if (newVolume != prevVolume) {
-                    prevVolume = newVolume
+                if(prefs.getBoolean("show_on_volume_change", true)) {
+                    val newVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    if (newVolume != prevVolume) {
+                        prevVolume = newVolume
 
-                    Handler(mainLooper).post {
-                        if (SoundMasterActivity.showing) SoundMasterActivity.interacted()
-                        else ShizukuRunner.command("am start -n $packageName/${SoundMasterActivity::class.java.canonicalName}",
-                            object : ShizukuRunner.CommandResultListener { })
+                        Handler(mainLooper).post {
+                            if (SoundMasterActivity.showing) SoundMasterActivity.interacted()
+                            else ShizukuRunner.command("am start -n $packageName/${SoundMasterActivity::class.java.canonicalName}",
+                                object : ShizukuRunner.CommandResultListener {
+                                    override fun onCommandError(error: String) {
+                                        log(error)
+                                    }
+                                })
+                        }
                     }
                 }
             }
@@ -217,12 +232,12 @@ class SoundMasterService : Service() {
         var onDynamicDetach: (AudioOutputKey) -> Unit = { _ -> }
         var getAudioDevices: () -> List<AudioDeviceInfo?> = { listOf() }
         var switchDeviceFor: (AudioOutputKey, AudioDeviceInfo?) -> Boolean = { _, _ -> false }
-        var setVolumeOf: (AudioOutputKey, Float) -> Unit = { _, _ ->  }
+        var setVolumeOf: (AudioOutputKey, Float) -> Unit = { _, _ -> }
         var getVolumeOf: (AudioOutputKey) -> Float = { 100f }
         var setBalanceOf: (AudioOutputKey, Float) -> Unit = { _, _ -> }
-        var getBalanceOf: (AudioOutputKey) -> Float = { 0f }
+        var getBalanceOf: (AudioOutputKey) -> Float? = { null }
         var setBandValueOf: (AudioOutputKey, Int, Float) -> Unit = { _, _, _ -> }
-        var getBandValueOf: (AudioOutputKey, Int) -> Float = { _, _ -> 50f }
+        var getBandValueOf: (AudioOutputKey, Int) -> Float? = { _, _ -> null }
 
         const val NOTI_ID = 1
         const val updateInterval = 30000L

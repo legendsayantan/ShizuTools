@@ -28,6 +28,7 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.legendsayantan.adbtools.dialog.LogBottomSheetDialog
+import com.legendsayantan.adbtools.dialog.SoundMasterDialog
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.getNotiPerms
@@ -106,35 +107,8 @@ class MainActivity : AppCompatActivity() {
         }
         cardSoundMaster.setOnClickListener {
             if(Build.VERSION.SDK_INT<Build.VERSION_CODES.Q) return@setOnClickListener
-            //create notification
-            val intent = Intent(this, SoundMasterActivity::class.java)
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            SoundMasterService.uiIntent = intent
-            val channelId = "notifications"
-            val notificationBuilder = NotificationCompat.Builder(applicationContext, channelId)
-                .setSmallIcon(R.drawable.outline_info_24)
-                .setContentTitle("Tap to configure "+applicationContext.getString(R.string.soundmaster))
-                .setOngoing(true)
-                .setContentIntent(
-                    PendingIntent.getActivity(
-                        this,
-                        0,
-                        intent,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                    )
-                )
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-
-            // Show the notification.
-            with(NotificationManagerCompat.from(applicationContext)) {
-                if (ActivityCompat.checkSelfPermission(
-                        applicationContext,
-                        android.Manifest.permission.POST_NOTIFICATIONS
-                    ) == PackageManager.PERMISSION_GRANTED
-                ) {
-                    notify(3, notificationBuilder.build())
-                }
-            }
+            //create soundmasterdialog
+            SoundMasterDialog(this).show()
         }
         cardForcePip.setOnClickListener {
             val intent = Intent(this, PipReceiver::class.java)

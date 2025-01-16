@@ -120,11 +120,7 @@ class DebloatActivity : AppCompatActivity() {
                                                 if (done) {
                                                     runOnUiThread {
                                                         if (output.contains("Success", true)) {
-                                                            list.adapter =
-                                                                DebloatAdapter(
-                                                                    this@DebloatActivity,
-                                                                    apps
-                                                                )
+                                                            dialog?.dismiss()
                                                             Toast.makeText(
                                                                 applicationContext,
                                                                 "Success for ${app.name}",
@@ -172,10 +168,8 @@ class DebloatActivity : AppCompatActivity() {
                                 if (done) {
                                     runOnUiThread {
                                         if (output.contains("Success", true)) {
-                                            apps =
-                                                apps.filterKeys { it != id } as HashMap<String, AppData>
-                                            list.adapter =
-                                                DebloatAdapter(this@DebloatActivity, apps)
+                                            //save current location
+                                            removeFromList(id)
                                             Toast.makeText(
                                                 applicationContext,
                                                 "Uninstalled ${app.name}",
@@ -277,6 +271,16 @@ class DebloatActivity : AppCompatActivity() {
         findViewById<ImageView>(R.id.imageRestore).setOnClickListener { restoreMode() }
     }
 
+    private fun removeFromList(id:String){
+        //save current list position
+        val currentItem = list.firstVisiblePosition
+        apps =
+            apps.filterKeys { it != id } as HashMap<String, AppData>
+        list.adapter =
+            DebloatAdapter(this@DebloatActivity, apps)
+        list.setSelection(currentItem)
+    }
+
     private fun loadDatabase(
         onComplete: (HashMap<String, AppData>) -> Unit,
         onFailure: () -> Unit
@@ -347,7 +351,7 @@ class DebloatActivity : AppCompatActivity() {
         val editText = TextInputEditText(this)
         editText.hint = "Enter app name/package/severity/type"
         layout.addView(editText)
-        layout.setPadding(50, 0, 50, 0)
+        layout.setPadding(50, 25, 50, 0)
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(layout)
             .setCancelable(true)
@@ -386,7 +390,7 @@ class DebloatActivity : AppCompatActivity() {
                                 val dialog = MaterialAlertDialogBuilder(activityContext)
                                     .setView(appsView)
                                     .setCancelable(true)
-                                    .setTitle("Restore uninstalled apps")
+                                    .setTitle("Restore uninstalled system apps")
                                     .setMessage(
                                         "Select the app to start restoration."
                                     )

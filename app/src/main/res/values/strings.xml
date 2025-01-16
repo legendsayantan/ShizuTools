@@ -74,4 +74,8 @@
     <string name="shizuku">Shizuku</string>
     <string name="logs">Logs</string>
     <string name="search_for_app">Type to search for an app</string>
+    <string name="show_on_volume_change">Visible on volume change</string>
+    <string name="show_soundmaster_notification">Show Control Notification</string>
+    <string name="open_controls">Open Controls</string>
+    <string name="auto_hide_soundmaster">Hide after Timeout</string>
 </resources>
