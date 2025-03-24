@@ -305,6 +305,7 @@ class SoundMasterActivity : AppCompatActivity() {
         }
     }
 
+    @Deprecated("This method has been deprecated in favor of using the Activity Result API\n      which brings increased type safety via an {@link ActivityResultContract} and the prebuilt\n      contracts for common intents available in\n      {@link androidx.activity.result.contract.ActivityResultContracts}, provides hooks for\n      testing, and allow receiving results in separate, testable classes independent from your\n      activity. Use\n      {@link #registerForActivityResult(ActivityResultContract, ActivityResultCallback)}\n      with the appropriate {@link ActivityResultContract} and handling the result in the\n      {@link ActivityResultCallback#onActivityResult(Object) callback}.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == MEDIA_PROJECTION_REQUEST_CODE) {
@@ -320,12 +321,14 @@ class SoundMasterActivity : AppCompatActivity() {
                     putExtra("devices", packageSliders.map { it.output }.toIntArray())
                     putExtra("volumes", packageSliders.map { it.volume }.toFloatArray())
                 })
+                isMediaProjectionActive = true
             } else {
                 Toast.makeText(
                     this, "Request to obtain MediaProjection failed.",
                     Toast.LENGTH_SHORT
                 ).show()
                 log("Request to obtain MediaProjection failed.")
+                isMediaProjectionActive = false
             }
             interacted()
         }
@@ -431,12 +434,16 @@ class SoundMasterActivity : AppCompatActivity() {
         var showing = false
         private const val hideTimerInterval = 3000L
         var lastInteractionAt = 0L
-        var interacted = {
+        var interacted : ()->Unit = {
             lastInteractionAt = System.currentTimeMillis()
         }
-        private const val FILENAME_SOUNDMASTER_PACKAGE_SLIDERS = "soundmaster.txt"
-        private const val FILENAME_SOUNDMASTER_BALANCE_SLIDERS = "soundmaster_balance.txt"
-        private const val FILENAME_SOUNDMASTER_BAND_SLIDERS = "soundmaster_band.txt"
+        const val FILENAME_SOUNDMASTER_PACKAGE_SLIDERS = "soundmaster.txt"
+        const val FILENAME_SOUNDMASTER_BALANCE_SLIDERS = "soundmaster_balance.txt"
+        const val FILENAME_SOUNDMASTER_BAND_SLIDERS = "soundmaster_band.txt"
         private const val MEDIA_PROJECTION_REQUEST_CODE = 13
+
+        //debug
+        var isMediaProjectionActive = false
+        var loadedAppsCount = 0
     }
 }

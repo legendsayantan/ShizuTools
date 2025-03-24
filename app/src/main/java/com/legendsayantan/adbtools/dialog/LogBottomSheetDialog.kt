@@ -5,11 +5,13 @@ import android.os.Bundle
 import android.os.Handler
 import android.widget.TextView
 import android.widget.Toast
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.tabs.TabItem
 import com.google.android.material.tabs.TabLayout
 import com.legendsayantan.adbtools.R
+import com.legendsayantan.adbtools.adapters.SimpleAdapter
 import com.legendsayantan.adbtools.lib.Logger.Companion.clearLogs
 import com.legendsayantan.adbtools.lib.Logger.Companion.readLog
 
@@ -45,17 +47,16 @@ class LogBottomSheetDialog(context: Context) : BottomSheetDialog(context) {
             }
         }
         findViewById<MaterialCardView>(R.id.clear_logs)?.setOnClickListener {
-            context.clearLogs(tablayout?.selectedTabPosition==0);
+            context.clearLogs(tablayout?.selectedTabPosition==0)
         }
         setupLog(true)
     }
     fun setupLog(app:Boolean){
-        val txt = findViewById<TextView>(R.id.log_text)!!
-        txt.post { txt.text = "Loading logs..." }
+        val txt = findViewById<RecyclerView>(R.id.log_text)!!
+        //adapter for simple string data
+        txt.adapter = SimpleAdapter(listOf("Loading...")) { }
         context.readLog(app){
-            txt.post{
-                txt.text = it
-            }
+            txt.post{ txt.adapter = SimpleAdapter(it.split("\n\n")) { } }
         }
     }
 }

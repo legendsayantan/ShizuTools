@@ -35,7 +35,10 @@ import com.legendsayantan.adbtools.lib.Utils.Companion.getNotiPerms
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.receivers.PipReceiver
 import com.legendsayantan.adbtools.services.SoundMasterService
+import java.util.Timer
+import java.util.TimerTask
 import java.util.UUID
+import kotlin.concurrent.timerTask
 import kotlin.system.exitProcess
 
 /**
@@ -141,6 +144,8 @@ class MainActivity : AppCompatActivity() {
         }
         cardShell.setOnClickListener { localShell() }
         cardIntentShell.setOnClickListener { intentShell() }
+
+        setupDebug()
     }
 
     private fun localShell() {
@@ -240,6 +245,30 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
             applicationContext.log(e.stackTraceToString(),true)
             exitProcess(0)
+        }
+    }
+
+    fun setupDebug(){
+        //debug
+        val debug = findViewById<TextView>(R.id.app_title)
+        var counter = 0
+        val timer = Timer()
+        val counterReset = {
+            timerTask {
+                counter = 0
+            }
+        }
+        var lastTask : TimerTask = timerTask {  }
+        debug.setOnClickListener {
+            counter++
+            if(counter>5){
+                counter = 0
+                startActivity(Intent(this,DebugSettingsActivity::class.java))
+                lastTask.cancel()
+            }else{
+                lastTask = counterReset()
+                timer.schedule(lastTask,5000)
+            }
         }
     }
 }

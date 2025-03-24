@@ -159,6 +159,16 @@ class SoundMasterService : Service() {
                 apps.remove(key)
             }
         }
+        getDisconnectedAppsFromSystem = { callback ->
+            packageThreads.forEach { app ->
+                app.value.isDisconnectedFromSystem {
+                    callback(app.key)
+                }
+            }
+        }
+        getAudioRmsData = {
+            packageThreads.map { it.key+" -> "+it.value.calculateRMS() }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -257,6 +267,9 @@ class SoundMasterService : Service() {
                     listOf(null) + dev
                 }
         }
-    }
 
+        //debug
+        var getDisconnectedAppsFromSystem = { callback : (String)->Unit ->  }
+        var getAudioRmsData = { listOf<String>() }
+    }
 }
