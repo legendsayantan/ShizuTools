@@ -30,7 +30,7 @@ class AppParameters(val debugPrefs:SharedPreferences) {
     }
 
     fun getSoundMasterBufferSize(): Int {
-        return debugPrefs.getInt("soundmaster_buffer_size", AudioRecord.getMinBufferSize(getSoundMasterSampleRate(), getSoundMasterChannel(), getSoundMasterEncoding())).coerceAtLeast(1)
+        return debugPrefs.getInt("soundmaster_buffer_size", AudioRecord.getMinBufferSize(getSoundMasterSampleRate(), getSoundMasterChannel(), getSoundMasterEncoding())).coerceAtLeast(512)
     }
 
     companion object{
