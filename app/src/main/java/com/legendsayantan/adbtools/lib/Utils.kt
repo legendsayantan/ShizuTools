@@ -124,6 +124,6 @@ class Utils {
             }
         }
 
-
+        fun Float.toFixed(digits: Int) = "%.${digits}f".format(this)
     }
 }

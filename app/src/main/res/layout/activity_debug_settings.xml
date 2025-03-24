@@ -8,160 +8,169 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     tools:context=".DebugSettingsActivity">
-    <TextView
-        android:text="Debug Settings"
-        android:layout_marginTop="15dp"
-        android:textColor="@color/white"
-        android:layout_marginHorizontal="15dp"
-        android:textSize="22sp"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
-    <TextView
-        android:text="Restart the features for changes to take effect."
-        android:layout_marginHorizontal="15dp"
-        android:layout_marginBottom="10dp"
-        android:textColor="@color/white"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/card_soundmaster"
-        app:cardCornerRadius="20dp"
-        android:layout_margin="10dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="match_parent">
         <LinearLayout
             android:orientation="vertical"
-            android:layout_margin="10dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
             <TextView
-                android:text="@string/soundmaster"
-                android:textSize="20sp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
-
-
-            <LinearLayout
-                android:orientation="horizontal"
-                android:layout_marginVertical="5dp"
-                android:gravity="center"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <TextView
-                    android:text="Control Scope"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
-                <EditText
-                    android:gravity="end"
-                    android:id="@+id/soundmaster_control_scope"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:inputType="number"
-                    android:min="0"
-                    android:max="6"
-                    android:layout_height="wrap_content"/>
-            </LinearLayout>
-
-            <LinearLayout
-                android:orientation="horizontal"
-                android:layout_marginVertical="5dp"
-                android:gravity="center"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <TextView
-                    android:text="Audio Sample Rate"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
-                <EditText
-                    android:gravity="end"
-                    android:id="@+id/soundmaster_sample_rate"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:inputType="number"
-                    android:min="8000"
-                    android:max="44100"
-                    android:layout_height="wrap_content"/>
-            </LinearLayout>
-
-            <LinearLayout
-                android:orientation="horizontal"
-                android:layout_marginVertical="5dp"
-                android:gravity="center"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <TextView
-                    android:text="Audio channel flag"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
-                <EditText
-                    android:gravity="end"
-                    android:id="@+id/soundmaster_channel"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:inputType="number"
-                    android:layout_height="wrap_content"/>
-            </LinearLayout>
-
-            <LinearLayout
-                android:orientation="horizontal"
-                android:layout_marginVertical="5dp"
-                android:gravity="center"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <TextView
-                    android:text="Audio encoding flag"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
-                <EditText
-                    android:gravity="end"
-                    android:id="@+id/soundmaster_encoding"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:inputType="number"
-                    android:layout_height="wrap_content"/>
-            </LinearLayout>
-
-
-            <LinearLayout
-                android:orientation="horizontal"
-                android:layout_marginVertical="5dp"
-                android:gravity="center"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <TextView
-                    android:text="Audio buffer size"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
-                <EditText
-                    android:gravity="end"
-                    android:id="@+id/soundmaster_buffer_size"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:inputType="number"
-                    android:layout_height="wrap_content"/>
-            </LinearLayout>
-
-            <TextView
-                android:text="[According to android.media.AudioFormat]"
-                android:layout_width="match_parent"
-                android:gravity="center"
-                android:layout_height="wrap_content"/>
-
-            <Button
-                android:id="@+id/soundmaster_run_diagnosis"
-                android:text="Run Diagnosis"
-                android:textSize="18sp"
-                android:layout_marginTop="10dp"
+                android:text="Debug Settings"
+                android:layout_marginTop="15dp"
+                android:textColor="@color/white"
+                android:layout_marginHorizontal="15dp"
+                android:textSize="22sp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
             <TextView
-                android:id="@+id/soundmaster_diagnosis"
-                android:text=""
-                android:layout_marginTop="5dp"
+                android:text="Restart the features for changes to take effect."
+                android:layout_marginHorizontal="15dp"
+                android:layout_marginBottom="10dp"
+                android:textColor="@color/white"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_soundmaster"
+                app:cardCornerRadius="20dp"
+                android:layout_margin="10dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <LinearLayout
+                    android:orientation="vertical"
+                    android:layout_margin="15dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <TextView
+                        android:text="@string/soundmaster"
+                        android:textSize="20sp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"/>
+
+
+                    <LinearLayout
+                        android:orientation="horizontal"
+                        android:layout_marginVertical="5dp"
+                        android:gravity="center"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+                        <TextView
+                            android:text="Control Scope"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"/>
+                        <EditText
+                            android:gravity="end"
+                            android:id="@+id/soundmaster_control_scope"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:inputType="number"
+                            android:min="0"
+                            android:max="6"
+                            android:layout_height="wrap_content"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:orientation="horizontal"
+                        android:layout_marginVertical="5dp"
+                        android:gravity="center"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+                        <TextView
+                            android:text="Audio Sample Rate"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"/>
+                        <EditText
+                            android:gravity="end"
+                            android:id="@+id/soundmaster_sample_rate"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:inputType="number"
+                            android:min="8000"
+                            android:max="44100"
+                            android:layout_height="wrap_content"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:orientation="horizontal"
+                        android:layout_marginVertical="5dp"
+                        android:gravity="center"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+                        <TextView
+                            android:text="Audio channel flag"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"/>
+                        <EditText
+                            android:gravity="end"
+                            android:id="@+id/soundmaster_channel"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:inputType="number"
+                            android:layout_height="wrap_content"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:orientation="horizontal"
+                        android:layout_marginVertical="5dp"
+                        android:gravity="center"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+                        <TextView
+                            android:text="Audio encoding flag"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"/>
+                        <EditText
+                            android:gravity="end"
+                            android:id="@+id/soundmaster_encoding"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:inputType="number"
+                            android:layout_height="wrap_content"/>
+                    </LinearLayout>
+
+
+                    <LinearLayout
+                        android:orientation="horizontal"
+                        android:layout_marginVertical="5dp"
+                        android:gravity="center"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+                        <TextView
+                            android:text="Audio buffer size"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"/>
+                        <EditText
+                            android:gravity="end"
+                            android:id="@+id/soundmaster_buffer_size"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:inputType="number"
+                            android:layout_height="wrap_content"/>
+                    </LinearLayout>
+
+                    <TextView
+                        android:text="android.media.AudioFormat docs should be followed."
+                        android:layout_width="match_parent"
+                        android:gravity="center"
+                        android:layout_height="wrap_content"/>
+
+                    <Button
+                        android:id="@+id/soundmaster_run_diagnosis"
+                        android:text="Run Diagnosis"
+                        android:textSize="18sp"
+                        android:layout_marginTop="10dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"/>
+                    <TextView
+                        android:id="@+id/soundmaster_diagnosis"
+                        android:text=""
+                        android:layout_marginTop="5dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"/>
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
-
-    </com.google.android.material.card.MaterialCardView>
+    </ScrollView>
 
 </LinearLayout>

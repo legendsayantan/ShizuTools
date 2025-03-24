@@ -230,14 +230,14 @@ class PlayBackThread(
         return mPlayers[it.output]?.volume?.times(100f)
     }
 
-    fun calculateRMS(): Double {
+    fun calculateRMS(): Float {
         val shortBuffer = ShortArray(dataBuffer.size / 2)
         ByteBuffer.wrap(dataBuffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(shortBuffer)
         var sum = 0.0
         for (sample in shortBuffer) {
-            sum += (sample * sample).toDouble()
+            sum += (sample * sample).toFloat()
         }
-        return sqrt(sum / shortBuffer.size)
+        return sqrt(sum / shortBuffer.size).toFloat()
     }
 
 

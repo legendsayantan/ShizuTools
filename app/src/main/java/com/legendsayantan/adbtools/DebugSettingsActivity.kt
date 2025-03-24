@@ -89,13 +89,8 @@ class DebugSettingsActivity : AppCompatActivity() {
         val tView = findViewById<TextView>(R.id.soundmaster_diagnosis)
         tView.text = "Running diagnosis, please wait."
         Thread {
-            var loadedData = "Error loading apps"
-            Thread {
-                loadApps(callback = {
-                    loadedData = "${it.size} apps found"
-                })
-            }.start()
             val disconnectedApps = mutableListOf<String>()
+            var loaded = false
             Thread {
                 try {
                     SoundMasterService.getDisconnectedAppsFromSystem({
@@ -105,37 +100,65 @@ class DebugSettingsActivity : AppCompatActivity() {
                     e.printStackTrace()
                 }
             }.start()
-            Thread.sleep(30000)
+            var loadedData = "Error loading apps"
+            Thread {
+                loadApps(callback = {
+                    loadedData = "${it.size} apps found"
+                    loaded = true
+                })
+            }.start()
+            var count = 0
+            while (count < 30) {
+                if (loaded && count > 10) break
+                Thread.sleep(1000)
+                count++
+            }
             val data =
                 """
-                    Soundmaster active : ${SoundMasterService.running}
-                    MediaProjection active : ${SoundMasterActivity.isMediaProjectionActive}
-                    Loaded apps : $loadedData
-                    Audio output devices : ${
+                Soundmaster active : ${SoundMasterService.running}
+                MediaProjection active : ${SoundMasterActivity.isMediaProjectionActive}
+                Loaded apps : $loadedData
+                
+                Audio output devices : 
+                ${
                     SoundMasterService.getAudioDevices()
-                        .joinToString { it?.productName.toString() + " " + AudioOutputMap.getName(it?.type ?: 0) }
+                        .joinToString("\n") {
+                            it?.productName.toString() + " " + AudioOutputMap.getName(
+                                it?.type ?: 0
+                            )
+                        }
                 }
-                    Apps not under system control : ${disconnectedApps.joinToString()}
-                    Audio input RMS : ${SoundMasterService.getAudioRmsData().joinToString()}
-                    Saved Sliders info : ${
+                
+                Apps not under system control : 
+                ${disconnectedApps.joinToString("\n")}
+                
+                Audio input RMS : 
+                ${SoundMasterService.getAudioRmsData().joinToString("\n")}
+                
+                Saved Sliders info : 
+                ${
                     File(
                         applicationContext.filesDir,
                         FILENAME_SOUNDMASTER_PACKAGE_SLIDERS
                     ).let { if (it.exists()) it.readText() else "No data" }
                 }
-                    Saved Balance info : ${
+                
+                Saved Balance info : 
+                ${
                     File(
                         applicationContext.filesDir,
                         FILENAME_SOUNDMASTER_BALANCE_SLIDERS
                     ).let { if (it.exists()) it.readText() else "No data" }
                 }
-                    Saved Band info : ${
+                
+                Saved Band info : 
+                ${
                     File(
                         applicationContext.filesDir,
                         FILENAME_SOUNDMASTER_BAND_SLIDERS
                     ).let { if (it.exists()) it.readText() else "No data" }
                 }
-                    """.trimIndent()
+                    """.trimIndent().replace(Regex("(?m)^\\s+"), "")
             tView.post {
                 tView.text = data
             }

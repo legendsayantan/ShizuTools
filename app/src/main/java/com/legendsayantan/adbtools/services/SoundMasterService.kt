@@ -27,6 +27,7 @@ import com.legendsayantan.adbtools.data.AudioOutputKey
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.PlayBackThread
 import com.legendsayantan.adbtools.lib.ShizukuRunner
+import com.legendsayantan.adbtools.lib.Utils.Companion.toFixed
 import java.util.Timer
 import kotlin.Boolean
 import kotlin.Float
@@ -167,7 +168,7 @@ class SoundMasterService : Service() {
             }
         }
         getAudioRmsData = {
-            packageThreads.map { it.key+" -> "+it.value.calculateRMS() }
+            packageThreads.map { it.key+" -> "+it.value.calculateRMS().toFixed(2) }
         }
     }
 
