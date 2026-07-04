@@ -5,7 +5,7 @@
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="8dp"
     android:layout_marginVertical="6dp"
-    app:cardBackgroundColor="@color/transparent"
+    app:cardBackgroundColor="?attr/colorSurface"
     app:cardCornerRadius="16dp"
     app:cardElevation="0dp"
     app:strokeWidth="@dimen/stroke_gold"
@@ -14,7 +14,6 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_paper"
         android:orientation="vertical"
         android:padding="6dp"
         android:animateLayoutChanges="true">
@@ -42,7 +41,7 @@
                     android:valueTo="120"
                     app:trackHeight="35dp"
                     app:thumbRadius="0dp"
-                    app:trackColorActive="?attr/colorSecondary"
+                    app:trackColorActive="#444444"
                     app:trackColorInactive="?attr/colorSurfaceVariant"/>
 
                 <com.google.android.material.card.MaterialCardView
@@ -102,6 +101,7 @@
 
         <LinearLayout
             android:id="@+id/expanded"
+            android:visibility="gone"
             android:animateLayoutChanges="true"
             android:paddingVertical="6dp"
             android:paddingHorizontal="12dp"
@@ -135,7 +135,7 @@
                     android:valueTo="100"
                     android:value="0"
                     app:trackColorInactive="?attr/colorSurfaceVariant"
-                    app:trackColorActive="?attr/colorSecondary"
+                    app:trackColorActive="#444444"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"/>
                 
@@ -203,7 +203,7 @@
                             android:valueTo="100"
                             android:value="50"
                             app:trackColorInactive="?attr/colorSurfaceVariant"
-                            app:trackColorActive="?attr/colorSecondary"
+                            app:trackColorActive="#444444"
                             android:layout_height="wrap_content"/>
                         
                         <ImageView
@@ -238,7 +238,7 @@
                             android:valueTo="100"
                             android:value="50"
                             app:trackColorInactive="?attr/colorSurfaceVariant"
-                            app:trackColorActive="?attr/colorSecondary"
+                            app:trackColorActive="#444444"
                             android:layout_height="wrap_content"/>
                         
                         <ImageView
@@ -272,7 +272,7 @@
                             android:valueTo="100"
                             android:value="50"
                             app:trackColorInactive="?attr/colorSurfaceVariant"
-                            app:trackColorActive="?attr/colorSecondary"
+                            app:trackColorActive="#444444"
                             android:layout_height="wrap_content"/>
                         
                         <ImageView
@@ -290,6 +290,7 @@
         
         <LinearLayout
             android:id="@+id/audioOutput"
+            android:visibility="gone"
             android:animateLayoutChanges="true"
             android:paddingVertical="6dp"
             android:paddingHorizontal="12dp"

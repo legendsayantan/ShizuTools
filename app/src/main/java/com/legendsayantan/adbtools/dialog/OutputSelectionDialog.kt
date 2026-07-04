@@ -4,6 +4,7 @@ import android.app.Dialog
 import android.content.Context
 import android.media.AudioDeviceInfo
 import android.view.Gravity
+import android.view.WindowManager
 import androidx.recyclerview.widget.RecyclerView
 import com.legendsayantan.adbtools.R
 import com.legendsayantan.adbtools.adapters.SimpleAdapter
@@ -15,9 +16,13 @@ import com.legendsayantan.adbtools.adapters.VolumeBarAdapter
 class OutputSelectionDialog(
     c: Context,
     private val devices: List<AudioDeviceInfo?>,
+    val useOverlay: Boolean = false,
     val onDeviceSelected: (AudioDeviceInfo?) -> Unit
-) : Dialog(c) {
+) : Dialog(if (useOverlay) android.view.ContextThemeWrapper(c, R.style.Theme_AdbTools) else c) {
     init {
+        if (useOverlay) {
+            window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+        }
         setContentView(R.layout.dialog_outputs)
         window?.setBackgroundDrawableResource(android.R.color.transparent)
         window?.setGravity(Gravity.CENTER)

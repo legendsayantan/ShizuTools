@@ -207,9 +207,8 @@ class VolumeBarAdapter(
             slider.trackActiveTintList = android.content.res.ColorStateList.valueOf(0xFFB71C1C.toInt())
             slider.thumbTintList = android.content.res.ColorStateList.valueOf(0xFFB71C1C.toInt())
         } else {
-            context.theme.resolveAttribute(com.google.android.material.R.attr.colorSecondary, typedValue, true)
-            slider.trackActiveTintList = android.content.res.ColorStateList.valueOf(typedValue.data)
-            slider.thumbTintList = android.content.res.ColorStateList.valueOf(typedValue.data)
+            slider.trackActiveTintList = android.content.res.ColorStateList.valueOf(0xFF444444.toInt())
+            slider.thumbTintList = android.content.res.ColorStateList.valueOf(0xFF444444.toInt())
         }
     }
 

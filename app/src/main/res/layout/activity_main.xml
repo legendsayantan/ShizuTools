@@ -59,6 +59,7 @@
                         android:text="v1.0"
                         android:textColor="?attr/colorSecondary"
                         android:textSize="11sp"
+                        android:translationY="-3dp"
                         android:fontFamily="@font/inter"/>
 
                     <!-- Spacer to push icons to the right -->
@@ -113,7 +114,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        android:padding="8dp"
+        android:paddingTop="8dp"
+        android:paddingHorizontal="8dp"
+        android:paddingBottom="80dp"
         android:clipToPadding="false"/>
 
     <com.google.android.material.card.MaterialCardView

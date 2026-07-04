@@ -121,7 +121,7 @@ class LocalShellBottomSheet(context: Context) : BottomSheetDialog(context, R.sty
         btnClear.setOnClickListener {
             historyBuffer.setLength(0)
             prefs.edit().putString("terminal_output", "").apply()
-            updateOutputView(commandOut, "")
+            updateOutputView(commandOut, "", true)
         }
         
         btnRun.setOnClickListener {
@@ -139,7 +139,7 @@ class LocalShellBottomSheet(context: Context) : BottomSheetDialog(context, R.sty
             val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
             val currentHeader = "\n[$time] $ $cmd\n"
             
-            updateOutputView(commandOut, currentHeader)
+            updateOutputView(commandOut, currentHeader, true)
             btnRun.isEnabled = false
             
             ShizukuRunner.command(cmd, object : ShizukuRunner.CommandResultListener {
@@ -154,7 +154,7 @@ class LocalShellBottomSheet(context: Context) : BottomSheetDialog(context, R.sty
                             btnRun.isEnabled = true
                             editText.requestFocus() // UX 9.7
                         } else {
-                            updateOutputView(commandOut, currentHeader + output)
+                            updateOutputView(commandOut, currentHeader + output, true)
                         }
                     }
                 }
@@ -185,49 +185,61 @@ class LocalShellBottomSheet(context: Context) : BottomSheetDialog(context, R.sty
     }
     
     // UX 9.3: Syntax Highlighting
-    private fun updateOutputView(textView: TextView, currentExecution: String) {
+    private fun updateOutputView(textView: TextView, currentExecution: String, isLive: Boolean = false) {
         val text = historyBuffer.toString() + currentExecution
-        val spannable = SpannableString(text)
         
-        // Red for Error / Exception / ✗
-        val errPattern = "(?i)(error|exception|✗).*".toRegex()
-        errPattern.findAll(text).forEach { match ->
-            spannable.setSpan(
-                ForegroundColorSpan(Color.parseColor("#EF5350")),
-                match.range.first,
-                match.range.last + 1,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
+        if (isLive) {
+            textView.text = text
+            val parentScrollView = textView.parent as? androidx.core.widget.NestedScrollView
+            parentScrollView?.post {
+                parentScrollView.fullScroll(android.view.View.FOCUS_DOWN)
+            }
+            return
         }
-        
-        // Green for Success / ✓
-        val succPattern = "(?i)(success|✓)".toRegex()
-        succPattern.findAll(text).forEach { match ->
-            spannable.setSpan(
-                ForegroundColorSpan(Color.parseColor("#66BB6A")),
-                match.range.first,
-                match.range.last + 1,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-        }
-        
-        // Underline packages
-        val pkgPattern = "([a-zA-Z_][a-zA-Z0-9_]*\\.)+[a-zA-Z_][a-zA-Z0-9_]*".toRegex()
-        pkgPattern.findAll(text).forEach { match ->
-            spannable.setSpan(
-                UnderlineSpan(),
-                match.range.first,
-                match.range.last + 1,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-        }
-        
-        textView.text = spannable
-        
-        // Auto-scroll to bottom
-        val parentScrollView = textView.parent as? androidx.core.widget.NestedScrollView
-        parentScrollView?.post {
-            parentScrollView.fullScroll(android.view.View.FOCUS_DOWN)
-        }
+
+        Thread {
+            val spannable = SpannableString(text)
+            
+            // Red for Error / Exception / ✗
+            val errPattern = "(?i)(error|exception|✗).*".toRegex()
+            errPattern.findAll(text).forEach { match ->
+                spannable.setSpan(
+                    ForegroundColorSpan(Color.parseColor("#EF5350")),
+                    match.range.first,
+                    match.range.last + 1,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+            
+            // Green for Success / ✓
+            val succPattern = "(?i)(success|✓)".toRegex()
+            succPattern.findAll(text).forEach { match ->
+                spannable.setSpan(
+                    ForegroundColorSpan(Color.parseColor("#66BB6A")),
+                    match.range.first,
+                    match.range.last + 1,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+            
+            // Underline packages
+            val pkgPattern = "([a-zA-Z_][a-zA-Z0-9_]*\\.)+[a-zA-Z_][a-zA-Z0-9_]*".toRegex()
+            pkgPattern.findAll(text).forEach { match ->
+                spannable.setSpan(
+                    UnderlineSpan(),
+                    match.range.first,
+                    match.range.last + 1,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+            
+            textView.post {
+                textView.text = spannable
+                val parentScrollView = textView.parent as? androidx.core.widget.NestedScrollView
+                parentScrollView?.post {
+                    parentScrollView.fullScroll(android.view.View.FOCUS_DOWN)
+                }
+            }
+        }.start()
     }
 }

@@ -17,8 +17,17 @@ import com.legendsayantan.adbtools.lib.Utils.Companion.loadApps
 /**
  * @author legendsayantan
  */
-class AppSelectionDialog(context: Context, val onSelection: (String) -> Unit) : Dialog(context) {
+class AppSelectionDialog(
+    context: Context,
+    val useOverlay: Boolean = false,
+    val onSelection: (String) -> Unit
+) : Dialog(
+    if (useOverlay) android.view.ContextThemeWrapper(context, R.style.Theme_AdbTools) else context
+) {
     init {
+        if (useOverlay) {
+            window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+        }
         setContentView(R.layout.dialog_new_slider)
         window?.setBackgroundDrawableResource(android.R.color.transparent)
         window?.setLayout(
