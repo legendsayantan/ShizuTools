@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="12dp"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardBackgroundColor="@android:color/transparent"
+    app:cardCornerRadius="@dimen/corner_card"
+    app:cardElevation="@dimen/elevation_card"
+    app:strokeColor="?attr/colorSecondary"
+    app:strokeWidth="@dimen/stroke_gold">
+
+    <LinearLayout
+        android:id="@+id/card_inner"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:background="@drawable/bg_paper_card"
+        android:minHeight="130dp"
+        android:foreground="?attr/selectableItemBackground">
+
+        <!-- Accent Stripe -->
+        <View
+            android:id="@+id/accent_stripe"
+            android:layout_width="@dimen/tool_accent_stripe"
+            android:layout_height="match_parent"
+            android:background="?attr/colorPrimary" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="16dp">
+
+            <ImageView
+                android:id="@+id/tool_icon"
+                android:layout_width="@dimen/tool_icon_size"
+                android:layout_height="@dimen/tool_icon_size"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+            <TextView
+                android:id="@+id/tool_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:fontFamily="serif"
+                android:textColor="?attr/colorOnBackground"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toStartOf="@+id/active_dot"
+                app:layout_constraintStart_toEndOf="@+id/tool_icon"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/tool_desc"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="sans-serif"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="14sp"
+                android:maxLines="3"
+                android:ellipsize="end"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="@+id/tool_name"
+                app:layout_constraintTop_toBottomOf="@+id/tool_name" />
+
+            <ImageView
+                android:id="@+id/active_dot"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:src="@drawable/ic_active_dot"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/tool_name"
+                app:layout_constraintBottom_toBottomOf="@+id/tool_name"/>
+
+            <TextView
+                android:id="@+id/beta_chip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_gold_border"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="2dp"
+                android:text="BETA"
+                android:textColor="?attr/colorSecondary"
+                android:textSize="10sp"
+                android:fontFamily="serif"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="@+id/tool_name"
+                app:layout_constraintEnd_toStartOf="@+id/active_dot"
+                app:layout_constraintTop_toTopOf="@+id/tool_name" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

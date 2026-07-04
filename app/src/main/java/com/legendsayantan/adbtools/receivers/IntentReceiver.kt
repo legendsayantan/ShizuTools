@@ -40,6 +40,14 @@ class IntentReceiver : BroadcastReceiver() {
                 context.log(error)
             }
         }
+        val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+        val logEntry = "[$time] $command"
+        val history = prefs.getString("intent_history", "") ?: ""
+        val historyList = history.split("|||").filter { it.isNotEmpty() }.toMutableList()
+        historyList.add(logEntry)
+        if (historyList.size > 5) historyList.removeAt(0)
+        prefs.edit().putString("intent_history", historyList.joinToString("|||")).apply()
+
         ShizukuRunner.command(command.toString(), listener)
     }
 }

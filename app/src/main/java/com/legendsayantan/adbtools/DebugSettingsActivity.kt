@@ -33,7 +33,11 @@ class DebugSettingsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_debug_settings)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            // Only apply side + bottom padding to root; let AppBarLayout handle the top
+            v.setPadding(systemBars.left, 0, systemBars.right, 0)
+            // Push the header content below the status bar
+            val header = findViewById<android.widget.LinearLayout>(R.id.header_content)
+            header?.setPadding(header.paddingLeft, systemBars.top + resources.getDimensionPixelSize(R.dimen.header_padding_top_extra), header.paddingRight, header.paddingBottom)
             insets
         }
         //soundmaster
@@ -47,6 +51,12 @@ class DebugSettingsActivity : AppCompatActivity() {
             appParameters.getSoundMasterBufferSize()
         )
         doOnClick(R.id.soundmaster_run_diagnosis) { soundmasterDiagnosis() }
+
+        findViewById<Button>(R.id.btn_reset_defaults).setOnClickListener {
+            prefs.edit().clear().apply()
+            Toast.makeText(this, "Debug settings reset to defaults", Toast.LENGTH_SHORT).show()
+            recreate()
+        }
     }
 
     private fun bind(id: String, seekBar: SeekBar) {

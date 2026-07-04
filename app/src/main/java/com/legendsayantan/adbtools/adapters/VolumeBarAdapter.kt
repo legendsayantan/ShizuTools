@@ -23,15 +23,30 @@ import com.legendsayantan.adbtools.services.SoundMasterService
  */
 class VolumeBarAdapter(
     val context: Context,
-    val data: List<AudioOutputBase>,
+    var data: List<AudioOutputBase>,
     val onVolumeChanged: (Int, Float) -> Unit,
     val onItemDetached: (Int) -> Unit,
     val onSliderGet: (Int, Int) -> Float,
     val onSliderSet: (Int, Int, Float) -> Unit,
     val getDevices: () -> List<AudioDeviceInfo?>,
-    val setDeviceFor: (Int, AudioDeviceInfo?) -> Boolean
+    val setDeviceFor: (Int, AudioDeviceInfo?) -> Boolean,
+    val onInteraction: () -> Unit
 ) : RecyclerView.Adapter<VolumeBarAdapter.VolumeBarHolder>() {
     val devices = getDevices()
+    
+    fun updateData(newData: List<AudioOutputBase>) {
+        val diffCallback = object : androidx.recyclerview.widget.DiffUtil.Callback() {
+            override fun getOldListSize() = data.size
+            override fun getNewListSize() = newData.size
+            override fun areItemsTheSame(oldPos: Int, newPos: Int) = 
+                data[oldPos].pkg == newData[newPos].pkg && data[oldPos].output == newData[newPos].output
+            override fun areContentsTheSame(oldPos: Int, newPos: Int) = 
+                data[oldPos].volume == newData[newPos].volume
+        }
+        val diffResult = androidx.recyclerview.widget.DiffUtil.calculateDiff(diffCallback)
+        data = newData.toList()
+        diffResult.dispatchUpdatesTo(this)
+    }
 
     inner class VolumeBarHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val image = itemView.findViewById<ImageView>(R.id.image)
@@ -75,7 +90,23 @@ class VolumeBarAdapter(
         } catch (_: Exception) {
         }
         holder.volumeBar.value = currentItem.volume
+        updateSliderColor(holder.volumeBar, currentItem.volume)
+        
+        val touchListener = object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                onInteraction()
+            }
+            override fun onStopTrackingTouch(slider: Slider) {
+                onInteraction()
+            }
+        }
+        
+        holder.volumeBar.clearOnChangeListeners()
+        holder.volumeBar.clearOnSliderTouchListeners()
+        holder.volumeBar.addOnSliderTouchListener(touchListener)
         holder.volumeBar.addOnChangeListener { _, value, _ ->
+            onInteraction()
+            updateSliderColor(holder.volumeBar, value)
             onVolumeChanged(position, value)
         }
         devices.find { it?.id == currentItem.output }?.let {
@@ -122,7 +153,11 @@ class VolumeBarAdapter(
                 holder.expand.animate().rotationX(180f)
                 holder.otherSliders.forEachIndexed { index, slider ->
                     slider.value = onSliderGet(position, index)
+                    slider.clearOnChangeListeners()
+                    slider.clearOnSliderTouchListeners()
+                    slider.addOnSliderTouchListener(touchListener)
                     slider.addOnChangeListener { _, value, _ ->
+                        onInteraction()
                         onSliderSet(position, index, value)
                     }
                 }
@@ -143,7 +178,41 @@ class VolumeBarAdapter(
 
     private fun showDevice(v: TextView, d: AudioDeviceInfo?) {
         v.text = formatDevice(d)
+        val iconRes = when (d?.type) {
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+            AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> R.drawable.baseline_audiotrack_24 // can change if there is bt icon
+            AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+            AudioDeviceInfo.TYPE_WIRED_HEADSET -> R.drawable.baseline_audiotrack_24
+            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> R.drawable.baseline_audiotrack_24 // keeping generic for now or we can map them
+            else -> R.drawable.baseline_audiotrack_24
+        }
+        
+        val typeIcon = when (d?.type) {
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> R.drawable.baseline_audiotrack_24
+            AudioDeviceInfo.TYPE_WIRED_HEADPHONES, AudioDeviceInfo.TYPE_WIRED_HEADSET -> R.drawable.baseline_audiotrack_24
+            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> R.drawable.baseline_audiotrack_24 
+            else -> if (d == null) R.drawable.baseline_audiotrack_24 else R.drawable.baseline_audiotrack_24
+        }
+        // Actually wait, let's just use generic baseline_audiotrack_24 since we didn't add new drawables, but wait...
+        // Let's set the compound drawable.
+        val drawable = androidx.core.content.ContextCompat.getDrawable(context, typeIcon)
+        drawable?.setTint(androidx.core.content.ContextCompat.getColor(context, R.color.tool_mixed_audio)) // Or use generic tint
+        v.setCompoundDrawablesWithIntrinsicBounds(drawable, null, null, null)
     }
+
+    private fun updateSliderColor(slider: Slider, value: Float) {
+        val typedValue = android.util.TypedValue()
+        if (value > 100f) {
+            // Dark red tint for boost so text is readable
+            slider.trackActiveTintList = android.content.res.ColorStateList.valueOf(0xFFB71C1C.toInt())
+            slider.thumbTintList = android.content.res.ColorStateList.valueOf(0xFFB71C1C.toInt())
+        } else {
+            context.theme.resolveAttribute(com.google.android.material.R.attr.colorSecondary, typedValue, true)
+            slider.trackActiveTintList = android.content.res.ColorStateList.valueOf(typedValue.data)
+            slider.thumbTintList = android.content.res.ColorStateList.valueOf(typedValue.data)
+        }
+    }
+
     companion object{
         fun formatDevice(d:AudioDeviceInfo?):String{
             return if(d==null) "Default" else "${d.productName} (${AudioOutputMap.getName(d.type)})"

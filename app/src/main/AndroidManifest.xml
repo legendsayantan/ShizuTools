@@ -40,6 +40,10 @@
             android:name=".DebugSettingsActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".CrashActivity"
+            android:exported="false" />
+
         <receiver
             android:name=".receivers.PipReceiver"
             android:enabled="true"
@@ -108,6 +112,16 @@
             android:exported="true"
             android:multiprocess="false"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

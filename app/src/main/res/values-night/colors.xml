@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme Colors: Dark (Premium Sap Green & Sparse Gold) -->
+    <color name="colorPrimary">#1A3D2A</color> <!-- Deep Sap Green -->
+    <color name="colorPrimaryVariant">#24523A</color> <!-- Lighter Sap Green -->
+    <color name="colorSecondary">#C5A059</color> <!-- Premium Gold (Use Sparingly) -->
+    <color name="colorSecondaryVariant">#D4B779</color>
+    
+    <color name="colorBackground">#09120C</color> <!-- Almost Black Green -->
+    <color name="colorSurface">#0F1F15</color> <!-- Very Dark Green Surface -->
+    <color name="colorSurfaceVariant">#173021</color>
+    
+    <color name="colorOnPrimary">#E3EBE6</color>
+    <color name="colorOnSecondary">#1F1608</color>
+    <color name="colorOnBackground">#E3EBE6</color>
+    <color name="colorOnSurface">#C0CFC4</color>
+    
+    <color name="colorOutline">#2D4C3A</color>
+    <color name="colorError">#CF6679</color>
+    <color name="colorSuccess">#388E3C</color>
+    <color name="colorWarning">#F57C00</color>
+</resources>

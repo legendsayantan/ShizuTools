@@ -20,7 +20,8 @@ import java.io.FileWriter
                         file.createNewFile()
                     }
                     val writer = FileWriter(file, true)
-                    writer.append(System.currentTimeMillis().toString()+"\n")
+                    val time = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                    writer.append(time + "\n")
                     writer.append(message)
                     writer.append("\n\n")
                     writer.flush()

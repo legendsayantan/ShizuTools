@@ -3,4 +3,13 @@ package com.legendsayantan.adbtools.data
 /**
  * @author legendsayantan
  */
-data class AppData(var name:String="",val list:String="",val description:String="",val dependencies:ArrayList<String>,val neededBy:ArrayList<String>,val labels:ArrayList<String>,val removal:String="")
+data class AppData(
+    var name: String = "",
+    val list: String = "",
+    val description: String = "",
+    val dependencies: ArrayList<String> = arrayListOf(),
+    val neededBy: ArrayList<String> = arrayListOf(),
+    val labels: ArrayList<String> = arrayListOf(),
+    val removal: String = "",
+    var isDisabled: Boolean = false
+)

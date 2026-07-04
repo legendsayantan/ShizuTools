@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_paper">
+
+    <!-- Fixed Sidebar -->
+    <LinearLayout
+        android:id="@+id/sidebar"
+        android:layout_width="200dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingTop="32dp"
+        android:paddingBottom="16dp"
+        android:paddingHorizontal="16dp"
+        android:background="@drawable/gradient_header_green"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_gravity="center_horizontal"
+            app:cardCornerRadius="32dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp"
+            app:cardBackgroundColor="@color/transparent">
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@mipmap/ic_launcher_round" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/app_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_gravity="center_horizontal"
+            android:text="ShizuTools"
+            android:textSize="24sp"
+            android:textColor="?attr/colorOnBackground"
+            android:fontFamily="serif"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/version_chip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_gravity="center_horizontal"
+            android:background="@drawable/bg_gold_border"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
+            android:text="v1.0"
+            android:textColor="?attr/colorSecondary"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <ImageView
+                android:id="@+id/logs"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/sharp_short_text_24"
+                android:padding="12dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="?attr/colorOnSurface"/>
+
+            <ImageView
+                android:id="@+id/github"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="16dp"
+                android:src="@drawable/github"
+                android:padding="12dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="?attr/colorOnSurface"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <View
+        android:id="@+id/sidebar_divider"
+        android:layout_width="@dimen/stroke_gold"
+        android:layout_height="match_parent"
+        android:background="?attr/colorSecondary"
+        app:layout_constraintStart_toEndOf="@+id/sidebar"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_tools"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        app:layout_constraintStart_toEndOf="@+id/sidebar_divider"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:padding="8dp"
+        android:clipToPadding="false"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

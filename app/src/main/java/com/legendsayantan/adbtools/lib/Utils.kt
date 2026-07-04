@@ -42,7 +42,30 @@ class Utils {
         }
 
         fun Activity.initialiseStatusBar(){
-            window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+            androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        }
+
+        fun Activity.setupEdgeToEdgeInsets(rootId: Int, headerId: Int) {
+            val root = findViewById<android.view.View>(rootId) ?: return
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { view, windowInsets ->
+                val insets = windowInsets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                view.setPadding(insets.left, 0, insets.right, 0)
+                val header = findViewById<android.view.View>(headerId)
+                header?.setPadding(header.paddingLeft, insets.top + resources.getDimensionPixelSize(R.dimen.header_padding_top_extra), header.paddingRight, header.paddingBottom)
+                androidx.core.view.WindowInsetsCompat.CONSUMED
+            }
+        }
+
+        fun Activity.showSnackbar(msg: String, length: Int = com.google.android.material.snackbar.Snackbar.LENGTH_SHORT) {
+            com.google.android.material.snackbar.Snackbar.make(findViewById(android.R.id.content), msg, length).show()
+        }
+
+        fun android.view.View.hapticConfirm() {
+            performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+        }
+
+        fun Activity.hapticConfirm() {
+            findViewById<android.view.View>(android.R.id.content)?.hapticConfirm()
         }
 
         fun PackageManager.getAllInstalledApps(): List<ApplicationInfo> {

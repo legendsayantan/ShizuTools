@@ -1,19 +1,92 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
     <!-- Base application theme. -->
-    <style name="Base.Theme.AdbTools" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <item name="colorAccent">@color/theme_light</item>
-        <item name="colorContainer">@color/white</item>
-        <item name="strokeColor">@color/theme</item>
-        <item name="colorPrimary">@color/theme</item>
+    <style name="Theme.AdbTools" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryVariant">@color/colorPrimaryVariant</item>
+        <item name="colorSecondary">@color/colorSecondary</item>
+        <item name="colorSecondaryVariant">@color/colorSecondaryVariant</item>
+        <item name="colorOnPrimary">@color/colorOnPrimary</item>
+        <item name="colorOnSecondary">@color/colorOnSecondary</item>
+        <item name="android:colorBackground">@color/colorBackground</item>
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorOnBackground">@color/colorOnBackground</item>
+        <item name="colorOnSurface">@color/colorOnSurface</item>
+        <item name="android:textColorPrimary">@color/colorOnSurface</item>
+        <item name="colorError">@color/colorError</item>
+        <item name="android:fontFamily">@font/inter</item>
+        <!-- Status bar: transparent bg, dark icons in light mode -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="materialAlertDialogTheme">@style/AppAlertDialogTheme</item>
     </style>
 
-    <style name="Theme.AdbTools" parent="Base.Theme.AdbTools" />
+    <style name="SheetDialogTheme" parent="Theme.Material3.DayNight.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/SheetStyle</item>
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorOnPrimary">@color/colorOnPrimary</item>
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorOnSurface">@color/colorOnSurface</item>
+        <item name="colorOnSurfaceVariant">@color/colorOnSurface</item>
+        <item name="colorOnBackground">@color/colorOnBackground</item>
+        <item name="android:colorBackground">@color/colorBackground</item>
+        <item name="colorError">@color/colorError</item>
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:textColorPrimary">@color/colorOnSurface</item>
+    </style>
+    
+    <style name="SheetStyle" parent="Widget.Material3.BottomSheet.Modal">
+        <item name="backgroundTint">@android:color/transparent</item>
+    </style>
 
-    <style name="DialogActivityTheme" parent="Base.Theme.AdbTools">
+    <style name="DialogActivityTheme" parent="Theme.AdbTools">
         <item name="android:windowIsTranslucent">true</item>
-        <item name="android:background">@android:color/transparent</item>
+        <item name="android:background">@color/transparent</item>
         <item name="android:statusBarColor">@color/transparent</item>
         <item name="android:windowBackground">@color/transparent</item>
+    </style>
+
+    <!-- Dialog Themes -->
+    <style name="AppAlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorOnSurface">@color/colorOnSurface</item>
+        <item name="android:textColorPrimary">@color/colorOnSurface</item>
+        <item name="colorOnSurfaceVariant">@color/colorOnSurface</item>
+        <item name="colorPrimary">@color/colorSecondary</item>
+        <item name="buttonBarPositiveButtonStyle">@style/AppDialogButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/AppDialogButton</item>
+        <item name="buttonBarNeutralButtonStyle">@style/AppDialogButton</item>
+    </style>
+
+    <style name="AppDialogButton" parent="Widget.Material3.Button.TonalButton">
+        <item name="android:textColor">@color/colorSecondary</item>
+        <item name="fontFamily">@font/inter</item>
+    </style>
+
+    <!-- Tool Themes -->
+    <style name="ToolTheme.Debloater" parent="Theme.AdbTools">
+        <item name="colorPrimary">@color/tool_debloater</item>
+    </style>
+    <style name="ToolTheme.ThemePatcher" parent="Theme.AdbTools">
+        <item name="colorPrimary">@color/tool_theme_patcher</item>
+    </style>
+    <style name="ToolTheme.MixedAudio" parent="Theme.AdbTools">
+        <item name="colorPrimary">@color/tool_mixed_audio</item>
+    </style>
+    <style name="ToolTheme.SoundMaster" parent="Theme.AdbTools">
+        <item name="colorPrimary">@color/tool_sound_master</item>
+    </style>
+    <style name="ToolTheme.LookBack" parent="Theme.AdbTools">
+        <item name="colorPrimary">@color/tool_lookback</item>
+    </style>
+    <style name="ToolTheme.UniversalPip" parent="Theme.AdbTools">
+        <item name="colorPrimary">@color/tool_universal_pip</item>
+    </style>
+    <style name="ToolTheme.LocalShell" parent="Theme.AdbTools">
+        <item name="colorPrimary">@color/tool_local_shell</item>
+    </style>
+    <style name="ToolTheme.IntentShell" parent="Theme.AdbTools">
+        <item name="colorPrimary">@color/tool_intent_shell</item>
     </style>
 </resources>

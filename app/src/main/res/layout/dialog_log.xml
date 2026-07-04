@@ -1,76 +1,163 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bg_bottomsheet"
+    android:paddingBottom="16dp">
+
     <LinearLayout
-        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="16dp">
+
         <TextView
             android:text="@string/logs"
-            android:textSize="20sp"
+            android:textSize="24sp"
             android:textStyle="bold"
-            android:layout_margin="15dp"
-            android:layout_width="match_parent"
+            android:textColor="?attr/colorOnBackground"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"/>
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tab_layout"
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/check_autoscroll"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Auto-scroll"
+            android:checked="true"
+            android:textColor="?attr/colorOnSurfaceVariant"/>
+    </LinearLayout>
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tab_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/transparent"
+        app:tabIndicatorColor="?attr/colorSecondary"
+        app:tabSelectedTextColor="?attr/colorSecondary"
+        app:tabTextColor="?attr/colorOnSurfaceVariant">
+        <com.google.android.material.tabs.TabItem
+            android:text="@string/app" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        <com.google.android.material.tabs.TabItem
+            android:text="@string/shizuku" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    </com.google.android.material.tabs.TabLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        app:startIconDrawable="@drawable/baseline_search_24"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/edit_search"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-            <com.google.android.material.tabs.TabItem
-                android:text="@string/app" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-            <com.google.android.material.tabs.TabItem
-                android:text="@string/shizuku" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        </com.google.android.material.tabs.TabLayout>
+            android:layout_height="wrap_content"
+            android:hint="Search logs..."
+            android:inputType="text"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:layout_marginTop="8dp">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chip_group_severity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            app:singleSelection="true"
+            app:selectionRequired="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_all"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:checked="true"
+                android:text="All" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_error"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:text="Error" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_warning"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:text="Warning" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_info"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:text="Info" />
+        </com.google.android.material.chip.ChipGroup>
+    </HorizontalScrollView>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp">
+
         <androidx.recyclerview.widget.RecyclerView
-            android:layout_marginHorizontal="10dp"
+            android:layout_marginHorizontal="16dp"
             android:id="@+id/log_text"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
-    </LinearLayout>
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_marginTop="150dp"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
+            android:layout_height="match_parent"/>
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/copy_logs"
-            app:cardBackgroundColor="?attr/colorAccent"
-            app:cardCornerRadius="35dp"
-            android:layout_marginEnd="30dp"
-            android:layout_marginBottom="25dp"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:layout_constraintBottom_toTopOf="@id/clear_logs"
-            app:layout_constraintEnd_toEndOf="parent">
+            android:orientation="vertical"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="24dp"
+            android:layout_marginBottom="24dp">
 
-            <ImageView
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/share_logs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:contentDescription="Share logs"
+                app:backgroundTint="?attr/colorPrimary"
+                app:tint="?attr/colorOnPrimary"
+                app:srcCompat="@drawable/outline_share_24"/>
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/copy_logs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
                 android:contentDescription="@string/copy_logs"
-                android:src="@drawable/baseline_content_copy_24"
-                android:layout_margin="15dp"
-                android:layout_width="30dp"
-                android:layout_height="30dp" />
-        </com.google.android.material.card.MaterialCardView>
+                app:backgroundTint="?attr/colorPrimaryContainer"
+                app:tint="?attr/colorOnPrimaryContainer"
+                app:srcCompat="@drawable/baseline_content_copy_24"/>
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/clear_logs"
-            app:cardBackgroundColor="?attr/colorAccent"
-            app:cardCornerRadius="35dp"
-            android:layout_marginEnd="30dp"
-            android:layout_marginBottom="25dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-            <ImageView
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/clear_logs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:contentDescription="@string/clear_logs"
-                android:src="@drawable/outline_delete_sweep_24"
-                android:layout_margin="15dp"
-                android:layout_width="30dp"
-                android:layout_height="30dp" />
-        </com.google.android.material.card.MaterialCardView>
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</com.google.android.material.card.MaterialCardView>
+                app:backgroundTint="?attr/colorError"
+                app:tint="?attr/colorOnError"
+                app:srcCompat="@drawable/outline_delete_sweep_24"/>
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>

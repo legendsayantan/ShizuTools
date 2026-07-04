@@ -5,7 +5,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:animateLayoutChanges="true"
-    android:paddingTop="100dp"
     android:clipToPadding="false"
     android:background="@color/transparent"
     android:layout_width="match_parent"
@@ -14,60 +13,48 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_marginTop="50dp"
         android:layout_height="wrap_content"
         android:gravity="end"
-        android:layout_marginHorizontal="50dp"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="16dp"
         app:layout_constraintBottom_toTopOf="@+id/materialCardView">
+        
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/adSkipButton"
             android:layout_width="50dp"
             android:layout_height="50dp"
-            android:layout_marginStart="25dp"
-            android:theme="@style/Theme.MaterialComponents.DayNight"
+            android:layout_marginStart="16dp"
+            app:cardBackgroundColor="?attr/colorPrimary"
             app:cardCornerRadius="25dp"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <LinearLayout
-                android:background="@color/theme"
+            <ImageView
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
-                <ImageView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:padding="10dp"
-                    android:src="@drawable/rounded_next_plan_24"
-                    android:layout_gravity="center"
-                    app:tint="@color/white" />
-            </LinearLayout>
-
+                android:layout_height="match_parent"
+                android:padding="12dp"
+                android:src="@drawable/rounded_next_plan_24"
+                android:layout_gravity="center"
+                app:tint="?attr/colorOnPrimary" />
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/fullScreenButton"
             android:layout_width="50dp"
             android:layout_height="50dp"
-            android:layout_marginStart="25dp"
-            android:theme="@style/Theme.MaterialComponents.DayNight"
+            android:layout_marginStart="16dp"
+            app:cardBackgroundColor="?attr/colorPrimary"
             app:cardCornerRadius="25dp">
 
-            <LinearLayout
-                android:background="@color/theme"
+            <ImageView
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
-                <ImageView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:padding="10dp"
-                    android:src="@drawable/baseline_fullscreen_24"
-                    android:layout_gravity="center"
-                    app:tint="@color/white" />
-            </LinearLayout>
-
+                android:layout_height="match_parent"
+                android:padding="12dp"
+                android:src="@drawable/baseline_fullscreen_24"
+                android:layout_gravity="center"
+                app:tint="?attr/colorOnPrimary" />
         </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
-
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/materialCardView"
@@ -76,165 +63,125 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:animateLayoutChanges="true"
-        android:translationY="25dp"
-        app:cardCornerRadius="25dp"
-        android:theme="@style/Theme.MaterialComponents.DayNight"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="16dp"
+        app:cardBackgroundColor="@color/transparent"
+        app:strokeWidth="@dimen/stroke_gold"
+        app:strokeColor="?attr/colorSecondary"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="-24dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
         <LinearLayout
             android:orientation="vertical"
-            android:background="@drawable/gradient"
+            android:background="@drawable/bg_paper"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:animateLayoutChanges="true"
-            android:theme="@style/Base.Theme.AdbTools"
             android:minHeight="100dp"
-            android:padding="20dp">
+            android:paddingHorizontal="16dp"
+            android:paddingTop="24dp"
+            android:paddingBottom="48dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <Space
-                    android:layout_weight="0.2"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"/>
+                android:layout_height="wrap_content"
+                android:gravity="center">
+                
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/skipPrev"
                     android:layout_width="50dp"
                     android:layout_height="50dp"
-                    android:theme="@style/Theme.MaterialComponents.DayNight"
+                    android:layout_marginHorizontal="8dp"
+                    app:cardBackgroundColor="?attr/colorPrimary"
                     app:cardCornerRadius="25dp">
 
-                    <LinearLayout
-                        android:background="@color/theme"
+                    <ImageView
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent">
-                        <ImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:padding="10dp"
-                            android:src="@drawable/baseline_skip_previous_24"
-                            android:layout_gravity="center"
-                            app:tint="@color/white" />
-                    </LinearLayout>
-
+                        android:layout_height="match_parent"
+                        android:padding="12dp"
+                        android:src="@drawable/baseline_skip_previous_24"
+                        android:layout_gravity="center"
+                        app:tint="?attr/colorOnPrimary" />
                 </com.google.android.material.card.MaterialCardView>
-                <Space
-                    android:layout_weight="0.5"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"/>
+                
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/rewind"
                     android:layout_width="50dp"
                     android:layout_height="50dp"
-                    android:theme="@style/Theme.MaterialComponents.DayNight"
+                    android:layout_marginHorizontal="8dp"
+                    app:cardBackgroundColor="?attr/colorPrimary"
                     app:cardCornerRadius="25dp">
 
-                    <LinearLayout
-                        android:background="@color/theme"
+                    <ImageView
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent">
-                        <ImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:padding="10dp"
-                            android:src="@drawable/baseline_fast_rewind_24"
-                            android:layout_gravity="center"
-                            app:tint="@color/white" />
-                    </LinearLayout>
-
+                        android:layout_height="match_parent"
+                        android:padding="12dp"
+                        android:src="@drawable/baseline_fast_rewind_24"
+                        android:layout_gravity="center"
+                        app:tint="?attr/colorOnPrimary" />
                 </com.google.android.material.card.MaterialCardView>
-                <Space
-                    android:layout_weight="0.5"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"/>
+                
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/playPause"
                     android:layout_width="50dp"
                     android:layout_height="50dp"
-                    android:theme="@style/Theme.MaterialComponents.DayNight"
+                    android:layout_marginHorizontal="8dp"
+                    app:cardBackgroundColor="?attr/colorPrimary"
                     app:cardCornerRadius="25dp">
 
-                    <LinearLayout
-                        android:background="@color/theme"
+                    <ImageView
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent">
-                        <ImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:padding="10dp"
-                            android:src="@drawable/rounded_play_pause_24"
-                            android:layout_gravity="center"
-                            app:tint="@color/white" />
-                    </LinearLayout>
-
+                        android:layout_height="match_parent"
+                        android:padding="12dp"
+                        android:src="@drawable/rounded_play_pause_24"
+                        android:layout_gravity="center"
+                        app:tint="?attr/colorOnPrimary" />
                 </com.google.android.material.card.MaterialCardView>
-                <Space
-                    android:layout_weight="0.5"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"/>
+                
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/forward"
                     android:layout_width="50dp"
                     android:layout_height="50dp"
-                    android:theme="@style/Theme.MaterialComponents.DayNight"
+                    android:layout_marginHorizontal="8dp"
+                    app:cardBackgroundColor="?attr/colorPrimary"
                     app:cardCornerRadius="25dp">
 
-                    <LinearLayout
-                        android:background="@color/theme"
+                    <ImageView
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent">
-                        <ImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:padding="10dp"
-                            android:src="@drawable/baseline_fast_forward_24"
-                            android:layout_gravity="center"
-                            app:tint="@color/white" />
-                    </LinearLayout>
-
+                        android:layout_height="match_parent"
+                        android:padding="12dp"
+                        android:src="@drawable/baseline_fast_forward_24"
+                        android:layout_gravity="center"
+                        app:tint="?attr/colorOnPrimary" />
                 </com.google.android.material.card.MaterialCardView>
-                <Space
-                    android:layout_weight="0.5"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"/>
+                
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/skipNext"
                     android:layout_width="50dp"
                     android:layout_height="50dp"
-                    android:theme="@style/Theme.MaterialComponents.DayNight"
+                    android:layout_marginHorizontal="8dp"
+                    app:cardBackgroundColor="?attr/colorPrimary"
                     app:cardCornerRadius="25dp">
 
-                    <LinearLayout
-                        android:background="@color/theme"
+                    <ImageView
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent">
-                        <ImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:padding="10dp"
-                            android:src="@drawable/baseline_skip_next_24"
-                            android:layout_gravity="center"
-                            app:tint="@color/white" />
-                    </LinearLayout>
-
+                        android:layout_height="match_parent"
+                        android:padding="12dp"
+                        android:src="@drawable/baseline_skip_next_24"
+                        android:layout_gravity="center"
+                        app:tint="?attr/colorOnPrimary" />
                 </com.google.android.material.card.MaterialCardView>
-                <Space
-                    android:layout_weight="0.2"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"/>
             </LinearLayout>
 
             <Space
                 android:id="@+id/insetSpace"
-                android:layout_width="wrap_content"
-                android:minHeight="50dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
         </LinearLayout>
 
     </com.google.android.material.card.MaterialCardView>
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,241 +1,316 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:paddingVertical="3dp"
     android:layout_width="match_parent"
-    android:animateLayoutChanges="true"
     android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="6dp"
+    app:cardBackgroundColor="@color/transparent"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="@dimen/stroke_gold"
+    app:strokeColor="?attr/colorSecondary">
 
     <LinearLayout
-        android:orientation="horizontal"
-        android:animateLayoutChanges="true"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center">
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content">
+        android:background="@drawable/bg_paper"
+        android:orientation="vertical"
+        android:padding="6dp"
+        android:animateLayoutChanges="true">
 
-            <com.google.android.material.slider.Slider
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"
-                android:id="@+id/volume"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:value="100"
-                android:valueFrom="0"
-                android:valueTo="120"
-                app:trackHeight="35dp"
-                app:thumbRadius="0dp" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="45dp"
-                android:layout_height="45dp"
-                android:layout_marginStart="10dp"
-                app:strokeColor="?attr/colorPrimary"
-                app:strokeWidth="2dp"
-                app:cardCornerRadius="24dp"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintBottom_toBottomOf="@+id/volume"
-                app:layout_constraintTop_toTopOf="parent" >
-                <ImageView
-                    android:id="@+id/image"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"/>
-            </com.google.android.material.card.MaterialCardView>
-            <TextView
-                android:id="@+id/outputDevice"
-                android:layout_marginStart="65dp"
-                android:text="@string/default_"
-                android:gravity="center"
-                android:textColor="@color/white"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-        </androidx.constraintlayout.widget.ConstraintLayout>
-        <ImageView
-            android:id="@+id/audioBtn"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:scaleX="0.6"
-            android:scaleY="0.6"
-            android:src="@drawable/baseline_audiotrack_24"
-            app:tint="?attr/colorPrimary" />
-        <ImageView
-            android:id="@+id/expandBtn"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:scaleX="0.8"
-            android:scaleY="0.8"
-            android:src="@drawable/baseline_expand_more_24"
-            app:tint="?attr/colorPrimary" />
-    </LinearLayout>
-    <LinearLayout
-        android:id="@+id/expanded"
-        android:animateLayoutChanges="true"
-        android:paddingVertical="5dp"
-        android:paddingHorizontal="25dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
         <LinearLayout
-            android:gravity="center"
             android:orientation="horizontal"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
-            <TextView
-                android:text="@string/stereo"
-                android:layout_weight="0.3"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-            <TextView
-                android:text="@string/left"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-            <com.google.android.material.slider.Slider
-                android:id="@+id/balance"
-                android:layout_weight="1"
-                android:valueFrom="-100"
-                android:valueTo="100"
-                android:value="0"
-                app:trackColorInactive="?attr/colorPrimary"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"/>
-            <TextView
-                android:text="@string/right"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-            <ImageView
-                android:id="@+id/balanceReset"
-                android:layout_marginStart="15dp"
-                android:src="@drawable/baseline_restore_24"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:tint="?attr/colorPrimary" />
-        </LinearLayout>
-        <LinearLayout
-            android:baselineAligned="false"
-            android:orientation="horizontal"
-            android:layout_marginTop="10dp"
+            android:animateLayoutChanges="true"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-            <LinearLayout
-                android:orientation="vertical"
-                android:layout_weight="0.3"
+            android:layout_height="wrap_content"
+            android:gravity="center">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="0dp"
-                android:layout_height="match_parent">
+                android:layout_weight="1"
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.slider.Slider
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    android:id="@+id/volume"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:value="100"
+                    android:valueFrom="0"
+                    android:valueTo="120"
+                    app:trackHeight="35dp"
+                    app:thumbRadius="0dp"
+                    app:trackColorActive="?attr/colorSecondary"
+                    app:trackColorInactive="?attr/colorSurfaceVariant"/>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="45dp"
+                    android:layout_height="45dp"
+                    android:layout_marginStart="10dp"
+                    app:strokeColor="?attr/colorPrimary"
+                    app:strokeWidth="2dp"
+                    app:cardCornerRadius="23dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintBottom_toBottomOf="@+id/volume"
+                    app:layout_constraintTop_toTopOf="parent">
+                    
+                    <ImageView
+                        android:id="@+id/image"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"/>
+                </com.google.android.material.card.MaterialCardView>
+
                 <TextView
-                    android:text="@string/eq"
+                    android:id="@+id/outputDevice"
+                    android:layout_marginStart="65dp"
+                    android:text="@string/default_"
+                    android:gravity="center"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textStyle="bold"
+                    android:drawablePadding="8dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"/>
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
+            <ImageView
+                android:id="@+id/audioBtn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:scaleX="0.8"
+                android:scaleY="0.8"
+                android:src="@drawable/baseline_audiotrack_24"
+                android:padding="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="?attr/colorSecondary" />
 
-            </LinearLayout>
+            <ImageView
+                android:id="@+id/expandBtn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:scaleX="0.8"
+                android:scaleY="0.8"
+                android:src="@drawable/baseline_expand_more_24"
+                android:padding="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="?attr/colorSecondary" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/expanded"
+            android:animateLayoutChanges="true"
+            android:paddingVertical="6dp"
+            android:paddingHorizontal="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
             <LinearLayout
-                android:orientation="vertical"
-                android:layout_weight="1"
-                android:layout_width="0dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content">
-                <LinearLayout
-                    android:orientation="horizontal"
-                    android:gravity="center"
+                
+                <TextView
+                    android:text="@string/stereo"
+                    android:layout_weight="0.3"
+                    android:layout_width="0dp"
+                    android:textColor="?attr/colorOnSurface"
+                    android:layout_height="wrap_content"/>
+                
+                <TextView
+                    android:text="@string/left"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content">
+                    android:layout_height="wrap_content"/>
+                
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/balance"
+                    android:layout_weight="1"
+                    android:valueFrom="-100"
+                    android:valueTo="100"
+                    android:value="0"
+                    app:trackColorInactive="?attr/colorSurfaceVariant"
+                    app:trackColorActive="?attr/colorSecondary"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"/>
+                
+                <TextView
+                    android:text="@string/right"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+                
+                <ImageView
+                    android:id="@+id/balanceReset"
+                    android:layout_marginStart="16dp"
+                    android:src="@drawable/baseline_restore_24"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:padding="4dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="?attr/colorSecondary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:baselineAligned="false"
+                android:orientation="horizontal"
+                android:layout_marginTop="12dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                
+                <LinearLayout
+                    android:orientation="vertical"
+                    android:layout_weight="0.3"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent">
+                    
                     <TextView
-                        android:text="@string/low_bands"
-                        android:layout_weight="0.4"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"/>
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/lows"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:valueFrom="0"
-                        android:valueTo="100"
-                        android:value="50"
-                        android:layout_height="match_parent"/>
-                    <ImageView
-                        android:id="@+id/lowReset"
-                        android:src="@drawable/baseline_restore_24"
+                        android:text="@string/eq"
+                        android:textColor="?attr/colorOnSurface"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        app:tint="?attr/colorPrimary" />
+                        android:layout_height="wrap_content"/>
                 </LinearLayout>
+                
                 <LinearLayout
-                    android:orientation="horizontal"
-                    android:gravity="center"
-                    android:layout_marginVertical="5dp"
-                    android:layout_width="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_weight="1"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content">
-                    <TextView
-                        android:text="@string/mid_bands"
-                        android:layout_weight="0.4"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"/>
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/mids"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:valueFrom="0"
-                        android:valueTo="100"
-                        android:value="50"
-                        android:layout_height="match_parent"/>
-                    <ImageView
-                        android:id="@+id/midReset"
-                        android:src="@drawable/baseline_restore_24"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        app:tint="?attr/colorPrimary"/>
-                </LinearLayout>
-                <LinearLayout
-                    android:orientation="horizontal"
-                    android:gravity="center"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content">
-                    <TextView
-                        android:text="@string/high_bands"
-                        android:layout_weight="0.4"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"/>
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/highs"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:valueFrom="0"
-                        android:valueTo="100"
-                        android:value="50"
-                        android:layout_height="match_parent"/>
-                    <ImageView
-                        android:id="@+id/highReset"
-                        android:src="@drawable/baseline_restore_24"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        app:tint="?attr/colorPrimary" />
+                    
+                    <LinearLayout
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+                        
+                        <TextView
+                            android:text="@string/low_bands"
+                            android:layout_weight="0.4"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"/>
+                        
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/lows"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:valueFrom="0"
+                            android:valueTo="100"
+                            android:value="50"
+                            app:trackColorInactive="?attr/colorSurfaceVariant"
+                            app:trackColorActive="?attr/colorSecondary"
+                            android:layout_height="wrap_content"/>
+                        
+                        <ImageView
+                            android:id="@+id/lowReset"
+                            android:src="@drawable/baseline_restore_24"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:padding="4dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            app:tint="?attr/colorSecondary" />
+                    </LinearLayout>
+                    
+                    <LinearLayout
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginVertical="8dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+                        
+                        <TextView
+                            android:text="@string/mid_bands"
+                            android:layout_weight="0.4"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"/>
+                        
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/mids"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:valueFrom="0"
+                            android:valueTo="100"
+                            android:value="50"
+                            app:trackColorInactive="?attr/colorSurfaceVariant"
+                            app:trackColorActive="?attr/colorSecondary"
+                            android:layout_height="wrap_content"/>
+                        
+                        <ImageView
+                            android:id="@+id/midReset"
+                            android:src="@drawable/baseline_restore_24"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:padding="4dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            app:tint="?attr/colorSecondary"/>
+                    </LinearLayout>
+                    
+                    <LinearLayout
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+                        
+                        <TextView
+                            android:text="@string/high_bands"
+                            android:layout_weight="0.4"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"/>
+                        
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/highs"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:valueFrom="0"
+                            android:valueTo="100"
+                            android:value="50"
+                            app:trackColorInactive="?attr/colorSurfaceVariant"
+                            app:trackColorActive="?attr/colorSecondary"
+                            android:layout_height="wrap_content"/>
+                        
+                        <ImageView
+                            android:id="@+id/highReset"
+                            android:src="@drawable/baseline_restore_24"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:padding="4dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            app:tint="?attr/colorSecondary" />
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
-    <LinearLayout
-        android:id="@+id/audioOutput"
-        android:animateLayoutChanges="true"
-        android:paddingVertical="5dp"
-        android:paddingHorizontal="25dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-        <TextView
-            android:text="@string/switch_output_device"
+        
+        <LinearLayout
+            android:id="@+id/audioOutput"
+            android:animateLayoutChanges="true"
+            android:paddingVertical="6dp"
+            android:paddingHorizontal="12dp"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
-        <RadioGroup
-            android:id="@+id/outputGroup"
-            android:orientation="vertical"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-        </RadioGroup>
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            
+            <TextView
+                android:text="@string/switch_output_device"
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+                
+            <RadioGroup
+                android:id="@+id/outputGroup"
+                android:orientation="vertical"
+                android:layout_marginTop="6dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+            </RadioGroup>
+        </LinearLayout>
     </LinearLayout>
-</LinearLayout>
+</com.google.android.material.card.MaterialCardView>

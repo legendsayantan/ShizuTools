@@ -1,12 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Basic Colors -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="grey">#888888</color>
     <color name="transparent">#00000000</color>
-    <color name="theme">#4D5DBA</color>
-    <color name="green">#9968FD0D</color>
-    <color name="theme_light">#7F8DDF</color>
     <color name="red">#B3FB1818</color>
     <color name="yellow">#B3FBB21E</color>
+    <color name="green">#9968FD0D</color> <!-- Keep legacy for now, but migrating to success -->
+
+    <!-- Theme Colors: Light (Premium Sap Green & Sparse Gold) -->
+    <color name="colorPrimary">#204732</color> <!-- Deep Sap Green -->
+    <color name="colorPrimaryVariant">#163323</color> <!-- Darker Sap Green -->
+    <color name="colorSecondary">#A5813E</color> <!-- Darker Premium Gold for light bg -->
+    <color name="colorSecondaryVariant">#80622C</color>
+    
+    <color name="colorBackground">#EFEFDF</color> <!-- Soft paper background -->
+    <color name="colorSurface">#F5F5ED</color> <!-- Lighter surface -->
+    <color name="colorSurfaceVariant">#E2E2D6</color>
+    
+    <color name="colorOnPrimary">#FFFFFF</color>
+    <color name="colorOnSecondary">#FFFFFF</color>
+    <color name="colorOnBackground">#1B261D</color>
+    <color name="colorOnSurface">#273B2C</color>
+    
+    <color name="colorOutline">#96A192</color>
+    <color name="colorError">#B5341A</color>
+    <color name="colorSuccess">#388E3C</color>
+    <color name="colorWarning">#E09B22</color>
+
+    <!-- Per-Tool Accents -->
+    <color name="tool_debloater">#CC4A2E</color>
+    <color name="tool_theme_patcher">#C4922A</color>
+    <color name="tool_mixed_audio">#0B8457</color>
+    <color name="tool_sound_master">#1A6B8A</color>
+    <color name="tool_lookback">#6B3FA0</color>
+    <color name="tool_universal_pip">#B5547A</color>
+    <color name="tool_local_shell">#1A8A80</color>
+    <color name="tool_intent_shell">#C4621A</color>
 </resources>

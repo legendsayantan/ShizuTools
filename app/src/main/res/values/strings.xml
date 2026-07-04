@@ -58,7 +58,7 @@
     <string name="none">None</string>
     <string name="permission_error">Permission error! Open the shizuku app to learn more.</string>
     <string name="shizuku_error">Shizuku Error!</string>
-    <string name="universalpip">UniversalPip beta</string>
+    <string name="universalpip">UniversalPip</string>
     <string name="desc_universalpip">Switch apps to picture-in-picture mode even if they don\'t allow it. May not support some launchers.</string>
     <string name="unmute_all_apps">Unmute All Apps</string>
     <string name="disable_all_mixedaudio">Disable All MixedAudio</string>
@@ -80,4 +80,5 @@
     <string name="auto_hide_soundmaster">Hide after Timeout</string>
     <string name="themepatcher_initial_noti">Take a short trial on Theme Store…</string>
     <string name="themepatcher_patching">ThemePatcher is applying patches </string>
+    <string name="role_shizuku">Shizuku lets us run with higher privileges on your system.</string>
 </resources>

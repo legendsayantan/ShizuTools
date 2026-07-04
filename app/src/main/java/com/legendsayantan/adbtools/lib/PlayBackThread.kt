@@ -44,16 +44,17 @@ class PlayBackThread(
     lateinit var mCapture: AudioRecord
     var mPlayers = (hashMapOf<Int, AudioPlayer>())
     override fun start() {
-        ShizukuRunner.command(
-            "appops set $pkg PLAY_AUDIO deny",
-            object : ShizukuRunner.CommandResultListener {
-                override fun onCommandError(error: String) {
-                    Handler(context.mainLooper).post {
-                        Toast.makeText(context, "Error: $error", Toast.LENGTH_SHORT).show()
-                    }
-                    context.log(error)
+        val uid = context.packageManager.getPackageInfo(pkg, 0).applicationInfo?.uid ?: -1
+        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
+            try {
+                controller.setAppOpMode(pkg, uid, 28, 2)
+            } catch (e: Exception) {
+                Handler(context.mainLooper).post {
+                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
-            })
+                context.log(e.stackTraceToString())
+            }
+        }
         super.start()
     }
 
@@ -187,16 +188,17 @@ class PlayBackThread(
 
     override fun interrupt() {
         playback = false
-        ShizukuRunner.command(
-            "appops set $pkg PLAY_AUDIO allow",
-            object : ShizukuRunner.CommandResultListener {
-                override fun onCommandError(error: String) {
-                    Handler(context.mainLooper).post {
-                        Toast.makeText(context, "Error: $error", Toast.LENGTH_SHORT).show()
-                    }
-                    context.log(error)
+        val uid = context.packageManager.getPackageInfo(pkg, 0).applicationInfo?.uid ?: -1
+        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
+            try {
+                controller.setAppOpMode(pkg, uid, 28, 0)
+            } catch (e: Exception) {
+                Handler(context.mainLooper).post {
+                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
-            })
+                context.log(e.stackTraceToString())
+            }
+        }
         try {
             mCapture.stop()
             mCapture.release()

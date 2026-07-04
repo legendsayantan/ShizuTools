@@ -35,12 +35,17 @@ class SoundMasterDialog(context:Context) : Dialog(context) {
         val prefs = context.getSharedPreferences("soundmaster", Context.MODE_PRIVATE)
         val content = MaterialCardView(context).apply {
             radius = 50f
-            elevation = 20f
+            elevation = 0f
+            strokeWidth = context.resources.getDimensionPixelSize(R.dimen.stroke_gold)
+            val typedArray = context.obtainStyledAttributes(intArrayOf(com.google.android.material.R.attr.colorOutline))
+            strokeColor = typedArray.getColor(0, 0)
+            typedArray.recycle()
+            setCardBackgroundColor(android.graphics.Color.TRANSPARENT)
         }
         content.addView(LinearLayout(context).apply {
-            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT).apply {
-                setMargins(50,50,50,50)
-            }
+            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT)
+            setPadding(50,50,50,50)
+            background = context.getDrawable(R.drawable.bg_paper)
             orientation = LinearLayout.VERTICAL
             addView(TextView(context).apply {
                 setPadding(0,0,0,25)

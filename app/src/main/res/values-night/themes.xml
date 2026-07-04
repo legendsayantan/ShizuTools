@@ -1,17 +1,23 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.AdbTools" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <item name="colorAccent">@color/theme</item>
-        <item name="colorContainer">@color/black</item>
-        <item name="strokeColor">@color/theme_light</item>
-        <item name="colorPrimary">@color/theme_light</item>
-    </style>
-
-    <style name="DialogActivityTheme" parent="Base.Theme.AdbTools">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:background">@android:color/transparent</item>
-        <item name="android:statusBarColor">@color/transparent</item>
-        <item name="android:windowBackground">@color/transparent</item>
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark mode overrides if any. Most colors are handled automatically via values-night/colors.xml -->
+    <style name="Theme.AdbTools" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryVariant">@color/colorPrimaryVariant</item>
+        <item name="colorSecondary">@color/colorSecondary</item>
+        <item name="colorSecondaryVariant">@color/colorSecondaryVariant</item>
+        <item name="colorOnPrimary">@color/colorOnPrimary</item>
+        <item name="colorOnSecondary">@color/colorOnSecondary</item>
+        <item name="android:colorBackground">@color/colorBackground</item>
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorOnBackground">@color/colorOnBackground</item>
+        <item name="colorOnSurface">@color/colorOnSurface</item>
+        <item name="colorError">@color/colorError</item>
+        <item name="android:fontFamily">@font/inter</item>
+        <!-- Status bar: transparent bg, white icons in dark mode -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>

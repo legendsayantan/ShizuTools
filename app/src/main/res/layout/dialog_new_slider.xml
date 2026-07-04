@@ -5,7 +5,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <LinearLayout
         android:padding="20dp"
-        android:background="@drawable/gradient"
+        android:background="@drawable/bg_paper"
         android:animateLayoutChanges="true"
         android:orientation="vertical"
         android:layout_width="match_parent"

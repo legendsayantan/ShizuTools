@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 class SimpleAdapter(private val dataList: List<String>,val onItemClick:(Int)->Unit) : RecyclerView.Adapter<SimpleAdapter.ViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val itemView = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false)
+        val itemView = LayoutInflater.from(parent.context).inflate(com.legendsayantan.adbtools.R.layout.item_simple_list, parent, false)
         return ViewHolder(itemView)
     }
 

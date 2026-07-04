@@ -23,11 +23,13 @@ import com.legendsayantan.adbtools.adapters.VolumeBarAdapter
 import com.legendsayantan.adbtools.data.AudioOutputBase
 import com.legendsayantan.adbtools.dialog.AppSelectionDialog
 import com.legendsayantan.adbtools.dialog.OutputSelectionDialog
-import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
+import com.legendsayantan.adbtools.lib.Utils.Companion.setupEdgeToEdgeInsets
+import com.legendsayantan.adbtools.lib.Utils.Companion.showSnackbar
 import com.legendsayantan.adbtools.services.SoundMasterService
 import com.legendsayantan.adbtools.services.SoundMasterService.Companion.prepareGetAudioDevices
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import java.io.File
 import java.util.Timer
 import kotlin.concurrent.timerTask
@@ -59,7 +61,7 @@ class SoundMasterActivity : AppCompatActivity() {
                 }
             }
         } catch (e: Exception) {
-            log(e.stackTraceToString(), true)
+            applicationContext.log(e.stackTraceToString(), true)
             try{
                 File(applicationContext.filesDir, FILENAME_SOUNDMASTER_PACKAGE_SLIDERS).delete()
             }catch (_: Exception){}
@@ -97,7 +99,7 @@ class SoundMasterActivity : AppCompatActivity() {
                 }
             }
         } catch (e: Exception) {
-            log(e.stackTraceToString(), true)
+            applicationContext.log(e.stackTraceToString(), true)
             try{
                 File(applicationContext.filesDir, FILENAME_SOUNDMASTER_BALANCE_SLIDERS).delete()
             }catch (_: Exception){}
@@ -139,7 +141,7 @@ class SoundMasterActivity : AppCompatActivity() {
                 }
             }
         } catch (e: Exception) {
-            log(e.stackTraceToString(), true)
+            applicationContext.log(e.stackTraceToString(), true)
             try {
                 File(applicationContext.filesDir, FILENAME_SOUNDMASTER_BAND_SLIDERS).delete()
             }catch (_: Exception){}
@@ -200,11 +202,15 @@ class SoundMasterActivity : AppCompatActivity() {
             }
             selectionDialog.show()
         }
+        val root = findViewById<View>(R.id.root_layout)
+        setupEdgeToEdgeInsets(R.id.root_layout, R.id.header_content)
+        ViewCompat.animate(root).alpha(1f).scaleX(1f).scaleY(1f).setDuration(280).start()
 
         //adjustment
-        ViewCompat.getRootWindowInsets(findViewById(R.id.main))?.let {
-            val systemBars = it.getInsets(WindowInsetsCompat.Type.systemBars())
-            findViewById<Space>(R.id.insetSpace).minimumHeight = systemBars.bottom
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { _, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            findViewById<Space>(R.id.insetSpace).minimumHeight = insets.bottom
+            windowInsets
         }
 
         //outside touch
@@ -216,6 +222,7 @@ class SoundMasterActivity : AppCompatActivity() {
         if(prefs.getBoolean("auto_hide", true)){
             setupAutoHide()
         }
+        mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
 
     private fun setupAutoHide() {
@@ -243,61 +250,38 @@ class SoundMasterActivity : AppCompatActivity() {
             if (state) {
                 stopService(SoundMasterService.startingIntent)
             } else if (packageSliders.isEmpty()) {
-                Toast.makeText(
-                    applicationContext,
-                    "No apps selected to control",
-                    Toast.LENGTH_SHORT
-                ).show()
+                showSnackbar("No apps selected to control", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
             } else {
-                ShizukuRunner.command("pm grant ${baseContext.packageName} android.permission.RECORD_AUDIO",
-                    object : ShizukuRunner.CommandResultListener {
-                        override fun onCommandResult(output: String, done: Boolean) {
-                            if (done) {
-                                ShizukuRunner.command("appops set ${baseContext.packageName} PROJECT_MEDIA allow",
-                                    object : ShizukuRunner.CommandResultListener {
-                                        override fun onCommandResult(
-                                            output: String,
-                                            done: Boolean
-                                        ) {
-                                            if (done) {
-                                                if (output.isBlank()) {
-                                                    mediaProjectionManager =
-                                                        applicationContext.getSystemService(
-                                                            Context.MEDIA_PROJECTION_SERVICE
-                                                        ) as MediaProjectionManager
-                                                    startActivityForResult(
-                                                        mediaProjectionManager.createScreenCaptureIntent(),
-                                                        MEDIA_PROJECTION_REQUEST_CODE
-                                                    )
-                                                }
-                                            }
+                ShizukuRunner.execute("pm grant ${baseContext.packageName} android.permission.RECORD_AUDIO",
+                    onResult = { _, done ->
+                        if (done) {
+                            ShizukuRunner.execute("appops set ${baseContext.packageName} PROJECT_MEDIA allow",
+                                onResult = { _, done2 ->
+                                    if (done2) {
+                                        Handler(mainLooper).post {
+                                            startActivityForResult(
+                                                mediaProjectionManager.createScreenCaptureIntent(),
+                                                MEDIA_PROJECTION_REQUEST_CODE
+                                            )
                                         }
-
-                                        override fun onCommandError(error: String) {
-                                            Handler(mainLooper).post {
-                                                Toast.makeText(
-                                                    applicationContext,
-                                                    getString(R.string.permission_error),
-                                                    Toast.LENGTH_LONG
-                                                ).show()
-                                                log(error)
-                                            }
-                                        }
-                                    })
-                            }
+                                    }
+                                },
+                                onError = { error ->
+                                    Handler(mainLooper).post {
+                                        showSnackbar(getString(R.string.permission_error), com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                                        applicationContext.log(error, true)
+                                    }
+                                }
+                            )
                         }
-
-                        override fun onCommandError(error: String) {
-                            Handler(mainLooper).post {
-                                Toast.makeText(
-                                    applicationContext,
-                                    getString(R.string.permission_error),
-                                    Toast.LENGTH_LONG
-                                ).show()
-                                log(error)
-                            }
+                    },
+                    onError = { error ->
+                        Handler(mainLooper).post {
+                            showSnackbar(getString(R.string.permission_error), com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                            applicationContext.log(error, true)
                         }
-                    })
+                    }
+                )
             }
             var count = 0
             Timer().schedule(timerTask {
@@ -317,11 +301,7 @@ class SoundMasterActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == MEDIA_PROJECTION_REQUEST_CODE) {
             if (resultCode == Activity.RESULT_OK) {
-                Toast.makeText(
-                    applicationContext,
-                    "Controlling audio from selected apps",
-                    Toast.LENGTH_SHORT
-                ).show()
+                showSnackbar("Controlling audio from selected apps", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
                 SoundMasterService.projectionData = data
                 startService(Intent(this, SoundMasterService::class.java).apply {
                     putExtra("packages", packageSliders.map { it.pkg }.toTypedArray())
@@ -330,11 +310,8 @@ class SoundMasterActivity : AppCompatActivity() {
                 })
                 isMediaProjectionActive = true
             } else {
-                Toast.makeText(
-                    this, "Request to obtain MediaProjection failed.",
-                    Toast.LENGTH_SHORT
-                ).show()
-                log("Request to obtain MediaProjection failed.")
+                showSnackbar("Request to obtain MediaProjection failed.", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                applicationContext.log("Request to obtain MediaProjection failed.")
                 isMediaProjectionActive = false
             }
             interacted()
@@ -354,87 +331,92 @@ class SoundMasterActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.none).visibility =
             if (packageSliders.isNotEmpty()) View.GONE else View.VISIBLE
         Thread {
-            val adapter =
-                VolumeBarAdapter(this@SoundMasterActivity, packageSliders, onVolumeChanged = { app, vol ->
-                    interacted()
-                    val existingPackages = packageSliders
-                    SoundMasterService.setVolumeOf(existingPackages[app], vol)
-                    existingPackages[app] =
-                        AudioOutputBase(packageSliders[app].pkg, packageSliders[app].output, vol)
-                    packageSliders = existingPackages
-                }, onItemDetached = {
-                    interacted()
-                    val existingPackages = packageSliders
-                    SoundMasterService.onDynamicDetach(existingPackages[it.coerceIn(0,existingPackages.size - 1)])
-                    existingPackages.removeAt(it)
-                    packageSliders = existingPackages
-                    updateSliders()
-                }, onSliderGet = { app, sliderIndex ->
-                    interacted()
-                    val current = packageSliders[app]
-                    if (sliderIndex == 0) {
-                        SoundMasterService.getBalanceOf(current)
-                            ?: balanceSlider[Pair(
-                                current.pkg,
-                                current.output
-                            )] ?: 0f
-                    } else {
-                        SoundMasterService.getBandValueOf(current, sliderIndex - 1)
-                            ?: bandSliders[Pair(
-                                current.pkg,
-                                current.output
-                            ) to sliderIndex - 1] ?: 50f
-                    }
-                }, onSliderSet = { app, slider, value ->
-                    interacted()
-                    val current = packageSliders[app]
-                    if (slider == 0) {
-                        SoundMasterService.setBalanceOf(current, value)
-                        val updatedSliderData = balanceSlider
-                        updatedSliderData[Pair(
-                            current.pkg,
-                            current.output
-                        )] = value
-                        balanceSlider = updatedSliderData
-                    } else {
-                        SoundMasterService.setBandValueOf(current, slider - 1, value)
-                        val updatedSliderData = bandSliders
-                        updatedSliderData[Pair(
-                            current.pkg,
-                            current.output
-                        ) to slider - 1] = value
-                        bandSliders = updatedSliderData
-                    }
-                }, getDevices = {
-                    interacted()
-                    SoundMasterService.getAudioDevices()
-                }, setDeviceFor = { pkg, device ->
-                    interacted()
-                    if (SoundMasterService.switchDeviceFor(packageSliders[pkg], device)) {
-                        val newPackages = packageSliders
-                        newPackages[pkg] = AudioOutputBase(
-                            packageSliders[pkg].pkg,
-                            device?.id ?: -1,
-                            packageSliders[pkg].volume
-                        )
-                        packageSliders = newPackages
-                        updateSliders()
-                        true
-                    } else {
-                        combinationExists()
-                        false
-                    }
-                })
             runOnUiThread {
-                volumeBarView.adapter = adapter
-                volumeBarView.invalidate()
+                val currentAdapter = volumeBarView.adapter
+                if (currentAdapter is VolumeBarAdapter) {
+                    currentAdapter.updateData(packageSliders)
+                } else {
+                    val adapter =
+                        VolumeBarAdapter(this@SoundMasterActivity, packageSliders, onVolumeChanged = { app, vol ->
+                            interacted()
+                            val existingPackages = packageSliders
+                            SoundMasterService.setVolumeOf(existingPackages[app], vol)
+                            existingPackages[app] =
+                                AudioOutputBase(packageSliders[app].pkg, packageSliders[app].output, vol)
+                            packageSliders = existingPackages
+                        }, onItemDetached = {
+                            interacted()
+                            val existingPackages = packageSliders
+                            SoundMasterService.onDynamicDetach(existingPackages[it.coerceIn(0,existingPackages.size - 1)])
+                            existingPackages.removeAt(it)
+                            packageSliders = existingPackages
+                            updateSliders()
+                        }, onSliderGet = { app, sliderIndex ->
+                            interacted()
+                            val current = packageSliders[app]
+                            if (sliderIndex == 0) {
+                                SoundMasterService.getBalanceOf(current)
+                                    ?: balanceSlider[Pair(
+                                        current.pkg,
+                                        current.output
+                                    )] ?: 0f
+                            } else {
+                                SoundMasterService.getBandValueOf(current, sliderIndex - 1)
+                                    ?: bandSliders[Pair(
+                                        current.pkg,
+                                        current.output
+                                    ) to sliderIndex - 1] ?: 50f
+                            }
+                        }, onSliderSet = { app, slider, value ->
+                            interacted()
+                            val current = packageSliders[app]
+                            if (slider == 0) {
+                                SoundMasterService.setBalanceOf(current, value)
+                                val updatedSliderData = balanceSlider
+                                updatedSliderData[Pair(
+                                    current.pkg,
+                                    current.output
+                                )] = value
+                                balanceSlider = updatedSliderData
+                            } else {
+                                SoundMasterService.setBandValueOf(current, slider - 1, value)
+                                val updatedSliderData = bandSliders
+                                updatedSliderData[Pair(
+                                    current.pkg,
+                                    current.output
+                                ) to slider - 1] = value
+                                bandSliders = updatedSliderData
+                            }
+                        }, getDevices = {
+                            interacted()
+                            SoundMasterService.getAudioDevices()
+                        }, setDeviceFor = { pkg, device ->
+                            interacted()
+                            if (SoundMasterService.switchDeviceFor(packageSliders[pkg], device)) {
+                                val newPackages = packageSliders
+                                newPackages[pkg] = AudioOutputBase(
+                                    packageSliders[pkg].pkg,
+                                    device?.id ?: -1,
+                                    packageSliders[pkg].volume
+                                )
+                                packageSliders = newPackages
+                                updateSliders()
+                                true
+                            } else {
+                                combinationExists()
+                                false
+                            }
+                        }, onInteraction = {
+                            interacted()
+                        })
+                    volumeBarView.adapter = adapter
+                }
             }
         }.start()
     }
 
     private fun combinationExists() {
-        Toast.makeText(applicationContext, "Combination already exists.", Toast.LENGTH_SHORT)
-            .apply { setGravity(Gravity.TOP, 0, 100) }.show()
+        showSnackbar("Combination already exists.", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
     }
 
     companion object {

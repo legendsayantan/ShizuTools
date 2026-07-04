@@ -1,75 +1,198 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/gradient"
-    android:fitsSystemWindows="true"
-    tools:context=".DebloatActivity">
+    android:background="@drawable/bg_paper">
 
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/textView3"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="20dp"
-        android:layout_marginTop="50dp"
-        android:text="@string/removable_apps"
-        android:textSize="22sp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <ImageView
-        android:id="@+id/imageSearch"
-        android:layout_width="25dp"
-        android:layout_height="25dp"
-        android:layout_marginEnd="20dp"
-        android:src="@drawable/baseline_filter_list_24"
-        app:layout_constraintBottom_toBottomOf="@+id/textView3"
-        app:layout_constraintEnd_toStartOf="@+id/imageRestore"
-        app:layout_constraintTop_toTopOf="@+id/textView3"
-        app:tint="?attr/colorPrimary" />
-
-    <ImageView
-        android:id="@+id/imageRestore"
-        android:layout_width="25dp"
-        android:layout_height="25dp"
-        android:layout_marginEnd="20dp"
-        android:src="@drawable/baseline_restore_24"
-        app:layout_constraintBottom_toBottomOf="@+id/textView3"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/textView3"
-        app:tint="?attr/colorPrimary" />
-    <ListView
-        android:id="@+id/apps_list"
-        android:divider="@color/transparent"
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/app_bar"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="5dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView3">
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        app:elevation="0dp">
 
+        <com.google.android.material.appbar.CollapsingToolbarLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_scrollFlags="scroll|exitUntilCollapsed"
+            app:contentScrim="@drawable/bg_paper">
 
-    </ListView>
+            <LinearLayout
+                android:id="@+id/header_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="48dp"
+                android:paddingBottom="24dp"
+                android:paddingHorizontal="24dp"
+                android:background="@drawable/gradient_header_green"
+                app:layout_collapseMode="parallax">
+                
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+                    
+                    <TextView
+                        android:id="@+id/app_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/debloater"
+                        android:textSize="32sp"
+                        android:textColor="?attr/colorOnBackground"
+                        android:fontFamily="@font/literata"
+                        android:textStyle="bold"/>
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"/>
+                        
+                        
+                    <ImageView
+                        android:id="@+id/imageRestore"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="8dp"
+                        android:src="@drawable/baseline_restore_24"
+                        android:padding="8dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        app:tint="?attr/colorOnSurface"/>
+                </LinearLayout>
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:minHeight="48dp">
+                    
+                    <TextView
+                        android:id="@+id/infoView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:text="Loading..."
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorOnSurface"
+                        android:fontFamily="@font/inter"/>
+
+                    <EditText
+                        android:id="@+id/search_bar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:background="@android:color/transparent"
+                        android:hint="Search apps..."
+                        android:textColorHint="?attr/colorOutline"
+                        android:textColor="?attr/colorOnBackground"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/inter"
+                        android:inputType="text"
+                        android:maxLines="1"
+                        android:visibility="gone"/>
+                </FrameLayout>
+            </LinearLayout>
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                app:layout_collapseMode="pin" />
+
+        </com.google.android.material.appbar.CollapsingToolbarLayout>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/stroke_gold"
+        android:background="?attr/colorSecondary"
+        app:layout_anchor="@id/app_bar"
+        app:layout_anchorGravity="bottom"/>
 
     <LinearLayout
         android:id="@+id/loader"
         android:layout_width="match_parent"
-        android:layout_height="100dp"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_height="match_parent"
         android:gravity="center"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:orientation="vertical"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
         <ProgressBar
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/infoView"
-            android:textSize="18sp"
-            android:text="@string/please_wait"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:indeterminateTint="?attr/colorSecondary"/>
     </LinearLayout>
-</androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/apps_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:padding="8dp"
+        android:paddingBottom="80dp"
+        android:clipToPadding="false"
+        android:visibility="gone"/>
+
+    <!-- Batch Action Bar -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/batch_action_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_margin="16dp"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp"
+        app:strokeWidth="@dimen/stroke_gold"
+        app:strokeColor="?attr/colorSecondary"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="8dp"
+            android:gravity="center_vertical">
+            
+            <ImageView
+                android:id="@+id/batch_cancel"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/baseline_close_24"
+                android:padding="8dp"
+                app:tint="?attr/colorOnSurface"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+                
+            <TextView
+                android:id="@+id/batch_count"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="0 selected"
+                android:textColor="?attr/colorOnSurface"
+                android:fontFamily="@font/inter"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+                
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_batch_disable"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Disable"
+                android:textColor="?attr/colorSecondary"/>
+                
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_batch_uninstall"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Uninstall"
+                android:textColor="?attr/colorError"/>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

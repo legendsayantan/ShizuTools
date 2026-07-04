@@ -24,14 +24,16 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="50dp"
-            android:theme="@style/Theme.MaterialComponents.DayNight"
+            app:strokeWidth="1dp"
+            app:strokeColor="?attr/colorOutline"
+            app:cardBackgroundColor="@android:color/transparent"
             app:layout_constraintBottom_toTopOf="@+id/materialCardView">
 
             <LinearLayout
                 android:padding="10dp"
                 android:gravity="center"
                 android:orientation="horizontal"
-                android:background="@color/theme"
+                android:background="@drawable/bg_paper_card"
                 android:layout_width="match_parent"
                 android:layout_height="50dp">
 
@@ -48,8 +50,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
                     android:text="@string/new_slider"
-                    android:textSize="22sp"
-                    android:textColor="@color/white"
+                    android:textSize="20sp"
+                    android:fontFamily="@font/literata"
+                    android:textColor="?attr/colorSecondary"
                     android:layout_marginHorizontal="7dp"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
@@ -63,12 +66,14 @@
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:layout_marginStart="25dp"
-            android:theme="@style/Theme.MaterialComponents.DayNight"
             app:cardCornerRadius="25dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="?attr/colorOutline"
+            app:cardBackgroundColor="@android:color/transparent"
             app:layout_constraintEnd_toEndOf="parent">
 
             <LinearLayout
-                android:background="@color/theme"
+                android:background="@drawable/bg_paper_card"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
                 <ImageView
@@ -95,18 +100,20 @@
         android:animateLayoutChanges="true"
         android:translationY="25dp"
         app:cardCornerRadius="25dp"
-        android:theme="@style/Theme.MaterialComponents.DayNight"
+        app:strokeWidth="1dp"
+        app:strokeColor="?attr/colorOutline"
+        app:cardBackgroundColor="@android:color/transparent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
         <LinearLayout
             android:orientation="vertical"
-            android:background="@drawable/gradient"
+            android:background="@drawable/bg_paper"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:animateLayoutChanges="true"
-            android:theme="@style/Base.Theme.AdbTools"
+            android:theme="@style/Theme.AdbTools"
             android:minHeight="100dp"
             android:padding="20dp">
 

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="corner_card">12dp</dimen>
+    <dimen name="corner_sheet">20dp</dimen>
+    <dimen name="corner_chip">50dp</dimen>
+    <dimen name="padding_screen">12dp</dimen>
+    <dimen name="padding_card">12dp</dimen>
+    <dimen name="stroke_gold">0.8dp</dimen>
+    <dimen name="tool_icon_size">40dp</dimen>
+    <dimen name="tool_accent_stripe">4dp</dimen>
+    <dimen name="elevation_card">2dp</dimen>
+    <dimen name="elevation_sheet">4dp</dimen>
+    <dimen name="header_padding_top_extra">4dp</dimen>
+</resources>

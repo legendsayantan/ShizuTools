@@ -1,70 +1,103 @@
 package com.legendsayantan.adbtools.adapters
 
-/**
- * @author legendsayantan
- */
 import android.app.Activity
-import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.BaseAdapter
+import android.widget.ImageView
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.textview.MaterialTextView
-import com.legendsayantan.adbtools.data.AppData
 import com.legendsayantan.adbtools.R
+import com.legendsayantan.adbtools.data.AppData
 import com.legendsayantan.adbtools.lib.Utils.Companion.removeUrls
 
-/**
- * @author legendsayantan
- */
+class DebloatAdapter(
+    private val activity: Activity,
+    private val dataList: HashMap<String, AppData>,
+    private val onItemClick: (String, AppData) -> Unit,
+    private val onItemLongClick: (String, AppData) -> Unit,
+    private val isBatchMode: () -> Boolean,
+    private val isSelected: (String) -> Boolean
+) : RecyclerView.Adapter<DebloatAdapter.ViewHolder>() {
 
-class DebloatAdapter(private val activity: Activity, private val dataList: HashMap<String,AppData>) :
-    BaseAdapter() {
+    private val entries = dataList.entries.toList()
 
-    override fun getCount(): Int {
-        return dataList.size
+    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val appNameTextView: MaterialTextView = view.findViewById(R.id.app_name)
+        val listModeTextView: MaterialTextView = view.findViewById(R.id.listMode)
+        val disabledBadge: MaterialTextView = view.findViewById(R.id.disabled_badge)
+        val descriptionTextView: MaterialTextView = view.findViewById(R.id.Description)
+        val severityStrip: View = view.findViewById(R.id.severity_strip)
+        val root: MaterialCardView = view.findViewById(R.id.background)
+        val checkbox: MaterialCheckBox = view.findViewById(R.id.batch_checkbox)
+        val actionIcon: ImageView = view.findViewById(R.id.action_icon)
     }
 
-    override fun getItem(position: Int): Pair<String,AppData> {
-        return dataList.entries.toList()[position].toPair()
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_debloat, parent, false)
+        return ViewHolder(view)
     }
 
-    override fun getItemId(position: Int): Long {
-        return position.toLong()
-    }
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val entry = entries[position]
+        val pkg = entry.key
+        val app = entry.value
 
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
-        val data = getItem(position)
-
-        val view: View = if (convertView == null) {
-            val inflater =
-                activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-            inflater.inflate(R.layout.item_debloat, null)
+        val desc = if (app.description.isNotEmpty()) {
+            app.description.replace("\n\n", "\n").removeUrls()
         } else {
-            convertView
+            pkg
         }
 
-        val appNameTextView = view.findViewById<MaterialTextView>(R.id.app_name)
-        val listModeTextView = view.findViewById<MaterialTextView>(R.id.listMode)
-        val descriptionTextView = view.findViewById<MaterialTextView>(R.id.Description)
-        val background = view.findViewById<MaterialCardView>(R.id.background)
+        holder.appNameTextView.text = app.name
+        holder.listModeTextView.text = if (app.list.isNullOrEmpty()) "Third-party" else app.list
+        holder.descriptionTextView.text = desc
 
-        val desc = if(data.second.description.isNotEmpty()){
-            data.second.description.replace("\n\n","\n").removeUrls()
-        }else{
-            data.first
+        val colorRes = when (app.removal) {
+            "Recommended" -> R.color.green
+            "Advanced" -> R.color.yellow
+            "Expert" -> R.color.red
+            else -> R.color.transparent
+        }
+        val color = ContextCompat.getColor(activity, colorRes)
+        holder.severityStrip.setBackgroundColor(color)
+
+        // Handle disabled state
+        if (app.isDisabled) {
+            holder.disabledBadge.visibility = View.VISIBLE
+            holder.appNameTextView.alpha = 0.5f
+            holder.descriptionTextView.alpha = 0.5f
+        } else {
+            holder.disabledBadge.visibility = View.GONE
+            holder.appNameTextView.alpha = 1f
+            holder.descriptionTextView.alpha = 1f
         }
 
-        appNameTextView.text = data.second.name
-        listModeTextView.text = data.second.list
-        descriptionTextView.text = desc
-        background.strokeColor = when (data.second.removal) {
-            "Recommended" -> activity.getColor(R.color.green)
-            "Advanced" -> activity.getColor(R.color.yellow)
-            "Expert" -> activity.getColor(R.color.red)
-            else -> activity.getColor(R.color.transparent)
+        // Handle batch mode
+        val batchMode = isBatchMode()
+        if (batchMode) {
+            holder.checkbox.visibility = View.VISIBLE
+            holder.actionIcon.visibility = View.GONE
+            holder.checkbox.isChecked = isSelected(pkg)
+        } else {
+            holder.checkbox.visibility = View.GONE
+            holder.actionIcon.visibility = View.VISIBLE
+            holder.checkbox.isChecked = false
         }
-        return view
+
+        holder.root.setOnClickListener {
+            onItemClick(pkg, app)
+        }
+        
+        holder.root.setOnLongClickListener {
+            onItemLongClick(pkg, app)
+            true
+        }
     }
+
+    override fun getItemCount(): Int = entries.size
 }

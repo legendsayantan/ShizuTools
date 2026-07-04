@@ -1,51 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:padding="3dp"
+    android:id="@+id/background"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="6dp"
+    app:cardBackgroundColor="@color/transparent"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="@dimen/stroke_gold"
+    app:strokeColor="?attr/colorSecondary">
 
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/background"
-        app:strokeWidth="1dp"
-        app:cardCornerRadius="15dp"
-        app:strokeColor="@color/transparent"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_paper"
+        android:orientation="horizontal">
+
+        <!-- Severity Color Strip -->
+        <View
+            android:id="@+id/severity_strip"
+            android:layout_width="6dp"
+            android:layout_height="match_parent"
+            android:background="@color/transparent" />
+
         <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:orientation="vertical"
-            android:padding="10dp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-            <LinearLayout
+            android:padding="12dp">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/app_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
-                <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/app_name"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:textSize="20sp"
-                    android:layout_weight="1"
-                    android:text="No Name" />
+                android:textColor="?attr/colorOnBackground"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:orientation="horizontal">
+                
                 <com.google.android.material.textview.MaterialTextView
                     android:id="@+id/listMode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/app" />
-
-
+                    android:background="?attr/colorPrimaryVariant"
+                    android:paddingHorizontal="6dp"
+                    android:paddingVertical="2dp"
+                    android:textColor="?attr/colorOnPrimary"
+                    android:textSize="10sp"
+                    app:cornerRadius="4dp" />
+                    
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/disabled_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:background="?attr/colorOutline"
+                    android:paddingHorizontal="6dp"
+                    android:paddingVertical="2dp"
+                    android:textColor="?attr/colorOnSurface"
+                    android:text="Disabled"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="4dp"
+                    android:visibility="gone" />
             </LinearLayout>
-
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/Description"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="15sp"
-                android:text="@string/no_description" />
+                android:layout_marginTop="6dp"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="14sp" />
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+        
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/batch_checkbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="8dp"
+            android:visibility="gone" />
+            
+        <ImageView
+            android:id="@+id/action_icon"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="12dp"
+            android:src="@drawable/baseline_arrow_forward_24"
+            app:tint="?attr/colorSecondary"/>
+    </LinearLayout>
 
-</LinearLayout>
+</com.google.android.material.card.MaterialCardView>

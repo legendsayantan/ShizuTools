@@ -3,6 +3,7 @@ package com.legendsayantan.adbtools
 import android.content.Context
 import android.os.Bundle
 import android.os.Handler
+import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -24,6 +25,22 @@ class PipStarterActivity : AppCompatActivity() {
             if (pkg == null) {
                 showing = true
                 setContentView(R.layout.activity_pip_starter)
+                
+                androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { _, windowInsets ->
+                    val insets = windowInsets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                    findViewById<android.widget.Space>(R.id.insetSpace).minimumHeight = insets.bottom
+                    windowInsets
+                }
+                
+                val prefs = getSharedPreferences("universal_pip", Context.MODE_PRIVATE)
+                val uses = prefs.getInt("pip_uses_count", 0)
+                if (uses < 3) {
+                    hideTimerInterval = 6000L
+                    prefs.edit().putInt("pip_uses_count", uses + 1).apply()
+                } else {
+                    hideTimerInterval = 3000L
+                }
+                
                 val controls = listOf<MaterialCardView>(
                     findViewById(R.id.skipPrev),
                     findViewById(R.id.rewind),
@@ -42,6 +59,7 @@ class PipStarterActivity : AppCompatActivity() {
                     Handler(mainLooper).post {
                         controls.forEachIndexed { index, materialCardView ->
                             materialCardView.setOnClickListener {
+                                materialCardView.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                                 keys[index].forEach { key ->
                                     ShizukuRunner.command("input -d $display keyevent $key",
                                         object : ShizukuRunner.CommandResultListener {
@@ -60,6 +78,7 @@ class PipStarterActivity : AppCompatActivity() {
                     findViewById(R.id.fullScreenButton)
                 )
                 extraBtns[0].setOnClickListener {
+                    extraBtns[0].performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                     interacted()
                     val metrics = getWindowParams()
                     getExternalDisplayId {
@@ -72,6 +91,7 @@ class PipStarterActivity : AppCompatActivity() {
                     }
                 }
                 extraBtns[1].setOnClickListener {
+                    extraBtns[1].performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                     disablePip()
                     interacted()
                 }
@@ -107,7 +127,7 @@ class PipStarterActivity : AppCompatActivity() {
 
     companion object {
         var showing = false
-        private const val hideTimerInterval = 3000L
+        var hideTimerInterval = 3000L
         var lastInteractionAt = 0L
         var interacted = {
             lastInteractionAt = System.currentTimeMillis()

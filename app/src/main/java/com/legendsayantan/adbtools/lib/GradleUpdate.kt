@@ -20,7 +20,7 @@ import java.net.URL
  */
 class GradleUpdate(val context: Context, private val gradleFileUrl: String, private val checkInterval:Long) {
     val prefs = context.getSharedPreferences("update",Context.MODE_PRIVATE)
-    private fun check(updateAvailable: (String) -> Unit, noUpdateAvailable: () -> Unit = {}) {
+    fun check(updateAvailable: (String) -> Unit, noUpdateAvailable: () -> Unit = {}) {
         if((System.currentTimeMillis() - prefs.getLong("lastchecked",0)) < checkInterval){
             return
         }

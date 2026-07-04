@@ -57,6 +57,22 @@ class ShizukuRunner {
 
             }.start()
         }
+        
+        fun execute(
+            command: String,
+            onResult: (String, Boolean) -> Unit = { _, _ -> },
+            onError: (String) -> Unit = {},
+            lineBundle: Int = 50
+        ) {
+            command(command, object : CommandResultListener {
+                override fun onCommandResult(output: String, done: Boolean) {
+                    onResult(output, done)
+                }
+                override fun onCommandError(error: String) {
+                    onError(error)
+                }
+            }, lineBundle)
+        }
     }
 }
 

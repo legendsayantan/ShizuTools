@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="padding_screen">24dp</dimen>
+    <dimen name="corner_card">24dp</dimen>
+    <dimen name="tool_icon_size">56dp</dimen>
+</resources>

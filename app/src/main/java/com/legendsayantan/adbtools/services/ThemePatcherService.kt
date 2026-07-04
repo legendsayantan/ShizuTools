@@ -42,6 +42,7 @@ class ThemePatcherService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
 
         val builder = NotificationCompat.Builder(this, "notifications")
             .setContentTitle(getString(R.string.themepatcher))
@@ -87,6 +88,7 @@ class ThemePatcherService : Service() {
     }
 
     override fun onTimeout(startId: Int) {
+        isRunning = false
         try {
             stopService(Intent(this, ThemePatcherService::class.java))
         } catch (_: Exception) {
@@ -95,12 +97,20 @@ class ThemePatcherService : Service() {
         super.onTimeout(startId)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        isRunning = false
+    }
+
     private fun startPatcher(
         storepackages: List<ApplicationInfo>,
         patched: (Array<String>) -> Unit
     ) {
+        logListener?.invoke("Starting ThemePatcher...")
+        logListener?.invoke("Resetting trial items...")
         patchAll() {}
         Thread {
+            logListener?.invoke("Scanning for applied trial items (waiting for user)...")
             var trialStates = trialItems()
             while (trialStates[3].isEmpty()) {
                 trialStates = trialItems()
@@ -109,20 +119,30 @@ class ThemePatcherService : Service() {
             trialStates = trialItems()
             var notiMessage = "Applying on " + trialStates.take(3).filter { it.isNotEmpty() }
                 .joinToString(separator = ", ")
+            logListener?.invoke("Detected: $notiMessage")
             handler.post {
                 postNotification(
                     getString(R.string.themepatcher_patching),
                     notiMessage, success = false, NOTI_ID * 10
                 )
             }
+            logListener?.invoke("Waiting for system to stabilize (12s)...")
             Thread.sleep(12000)
+            logListener?.invoke("Killing Theme Store apps...")
             killStores(storepackages)
             Thread.sleep(3000)
+            logListener?.invoke("Ensuring Theme Store apps are dead...")
             killStores(storepackages)
+            logListener?.invoke("Patching trial configurations...")
             patchAll() {
                 if (it.isEmpty()) {
-                    handler.post { patched(trialStates) }
+                    logListener?.invoke("Patching complete!")
+                    handler.post { 
+                        patched(trialStates)
+                        patchCompleteListener?.invoke(trialStates)
+                    }
                 } else {
+                    logListener?.invoke("Patching Error: $it")
                     handler.post {
                         postNotification(
                             getString(R.string.themepatcher),
@@ -130,9 +150,9 @@ class ThemePatcherService : Service() {
                         )
                     }
                 }
+                logListener?.invoke("Shutting down service in 10s...")
                 Thread.sleep(10000)
                 try {
-
                     stopService(Intent(this, ThemePatcherService::class.java))
                 } catch (_: Exception) {
                     stopForeground(STOP_FOREGROUND_DETACH)
@@ -251,5 +271,8 @@ class ThemePatcherService : Service() {
 
     companion object {
         const val NOTI_ID = 2
+        var isRunning: Boolean = false
+        var logListener: ((String) -> Unit)? = null
+        var patchCompleteListener: ((Array<String>) -> Unit)? = null
     }
 }
