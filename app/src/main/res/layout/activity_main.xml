@@ -26,7 +26,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingTop="60dp"
-                android:paddingBottom="12dp"
+                android:paddingBottom="4dp"
                 android:paddingHorizontal="24dp"
                 android:background="@drawable/gradient_header_green"
                 app:layout_collapseMode="parallax">
@@ -101,20 +101,14 @@
         </com.google.android.material.appbar.CollapsingToolbarLayout>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- Hairline Separator -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="@dimen/stroke_gold"
-        android:background="?attr/colorSecondary"
-        app:layout_anchor="@id/app_bar"
-        app:layout_anchorGravity="bottom"/>
+    <!-- Hairline Separator Removed -->
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_tools"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        android:paddingTop="8dp"
+        android:paddingTop="4dp"
         android:paddingHorizontal="8dp"
         android:paddingBottom="80dp"
         android:clipToPadding="false"/>

@@ -10,5 +10,5 @@
     <dimen name="tool_accent_stripe">4dp</dimen>
     <dimen name="elevation_card">2dp</dimen>
     <dimen name="elevation_sheet">4dp</dimen>
-    <dimen name="header_padding_top_extra">4dp</dimen>
+    <dimen name="header_padding_top_extra">14dp</dimen>
 </resources>

@@ -29,13 +29,13 @@
     <color name="colorSuccess">#388E3C</color>
     <color name="colorWarning">#E09B22</color>
 
-    <!-- Per-Tool Accents -->
-    <color name="tool_debloater">#CC4A2E</color>
-    <color name="tool_theme_patcher">#C4922A</color>
-    <color name="tool_mixed_audio">#0B8457</color>
-    <color name="tool_sound_master">#1A6B8A</color>
-    <color name="tool_lookback">#6B3FA0</color>
-    <color name="tool_universal_pip">#B5547A</color>
-    <color name="tool_local_shell">#1A8A80</color>
-    <color name="tool_intent_shell">#C4621A</color>
+    <!-- Per-Tool Accents (Pastel) -->
+    <color name="tool_debloater">#E5989B</color>
+    <color name="tool_theme_patcher">#E6C27A</color>
+    <color name="tool_mixed_audio">#A3D9A5</color>
+    <color name="tool_sound_master">#82A0BC</color>
+    <color name="tool_lookback">#A69CAC</color>
+    <color name="tool_universal_pip">#F2A2DA</color>
+    <color name="tool_local_shell">#6ED3CF</color>
+    <color name="tool_intent_shell">#F3AD6A</color>
 </resources>
