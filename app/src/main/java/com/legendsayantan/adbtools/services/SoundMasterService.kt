@@ -21,7 +21,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.legendsayantan.adbtools.R
-import com.legendsayantan.adbtools.SoundMasterActivity
+
 import com.legendsayantan.adbtools.data.AudioOutputBase
 import com.legendsayantan.adbtools.data.AudioOutputKey
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
@@ -49,6 +49,7 @@ class SoundMasterService : Service() {
     var apps = mutableListOf<AudioOutputBase>()
     var latency = mutableListOf(0)
     var latencyUpdateTimer = Timer()
+    private lateinit var notiBuilder: NotificationCompat.Builder
 
     override fun onBind(intent: Intent): IBinder {
         return null!!
@@ -60,8 +61,13 @@ class SoundMasterService : Service() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             return
         }
+        
+        Handler(mainLooper).post {
+            bubble = com.legendsayantan.adbtools.views.SoundMasterBubble(this)
+        }
+        setupSmartVisibility()
 
-        val builder = NotificationCompat.Builder(this, "notifications")
+        notiBuilder = NotificationCompat.Builder(this, "notifications")
             .setContentText(
                 getString(
                     R.string.soundmaster_initial_noti,
@@ -71,16 +77,12 @@ class SoundMasterService : Service() {
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOnlyAlertOnce(true)
-        startForeground(
-            NOTI_ID,
-            builder.build(),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-        )
+            
         latencyUpdateTimer.schedule(timerTask {
             val avg = packageThreads.values.map { it.getLatency() }.average().toInt()
             packageThreads.values.forEach { it.loadedCycles = 0 }
-            builder.setContentTitle(applicationContext.getString(R.string.soundmaster) + " is controlling ${packageThreads.size} apps.")
-            builder.setContentText("Average Latency: $avg ms")
+            notiBuilder.setContentTitle(applicationContext.getString(R.string.soundmaster) + " is controlling ${packageThreads.size} apps.")
+            notiBuilder.setContentText("Average Latency: $avg ms")
             latency.clear()
             if (ActivityCompat.checkSelfPermission(
                     applicationContext,
@@ -88,11 +90,10 @@ class SoundMasterService : Service() {
                 ) == PackageManager.PERMISSION_GRANTED
             ) {
                 NotificationManagerCompat.from(applicationContext)
-                    .notify(NOTI_ID, builder.build())
+                    .notify(NOTI_ID, notiBuilder.build())
             }
         }, updateInterval, updateInterval)
 
-        initVolumeBtnControl()
 
         mediaProjectionManager =
             applicationContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -179,56 +180,156 @@ class SoundMasterService : Service() {
             pkgs.forEachIndexed { index, s ->
                 apps.add(AudioOutputBase(s, devices[index], volumes[index]))
             }
-            if (apps.isNotEmpty()) {
+            if (!running) {
                 running = true
                 startingIntent = intent
-                mediaProjection = mediaProjectionManager?.getMediaProjection(
-                    Activity.RESULT_OK,
-                    projectionData!!
-                ) as MediaProjection
-                apps.forEach { base ->
-                    onDynamicAttach(base,
-                        getAudioDevices().find { it?.id == base.output }
-                    )
+                
+                val isDsp = com.legendsayantan.adbtools.lib.SoundMasterPreferences.isAdvancedDspMode(this)
+                
+                if (isDsp) {
+                    mediaProjection = mediaProjectionManager?.getMediaProjection(
+                        Activity.RESULT_OK,
+                        projectionData!!
+                    ) as MediaProjection
+                }
+                
+                val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    if (isDsp) {
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                    } else {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                        } else {
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+                        }
+                    }
+                } else 0
+                
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        startForeground(NOTI_ID, notiBuilder.build(), type)
+                    }else{
+                        startForeground(NOTI_ID, notiBuilder.build())
+                    }
+                } catch (e: Exception) {
+                    startForeground(NOTI_ID, notiBuilder.build())
+                }
+
+                if (apps.isNotEmpty()) {
+                    apps.forEach { base ->
+                        onDynamicAttach(base,
+                            getAudioDevices().find { it?.id == base.output }
+                        )
+                    }
                 }
             }
         }
         return START_STICKY
     }
 
-    private fun initVolumeBtnControl() {
+    val mainHandler by lazy { Handler(applicationContext.mainLooper) }
+    private val fadeOutRunnable = Runnable {
+        if (::bubble.isInitialized) bubble.hide()
+    }
+    private lateinit var bubble: com.legendsayantan.adbtools.views.SoundMasterBubble
+    private lateinit var mPlaybackCallback: AudioManager.AudioPlaybackCallback
+
+    private fun setupSmartVisibility() {
         val prefs by lazy { getSharedPreferences("soundmaster", MODE_PRIVATE) }
-        mVolumeObserver = object : ContentObserver(Handler(mainLooper)) {
+        mVolumeObserver = object : ContentObserver(mainHandler) {
             var prevVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
             override fun onChange(selfChange: Boolean) {
                 super.onChange(selfChange)
-                if(prefs.getBoolean("show_on_volume_change", false)) {
+                if(prefs.getBoolean("show_on_volume_change", true)) {
                     val newVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
                     if (newVolume != prevVolume) {
                         prevVolume = newVolume
-
-                        Handler(mainLooper).post {
-                            if (SoundMasterActivity.showing) SoundMasterActivity.interacted()
-                            else ShizukuRunner.command("am start -n $packageName/${SoundMasterActivity::class.java.canonicalName}",
-                                object : ShizukuRunner.CommandResultListener {
-                                    override fun onCommandError(error: String) {
-                                        log(error)
-                                    }
-                                })
-                        }
+                        wakeBubble()
                     }
                 }
             }
         }
         contentResolver.registerContentObserver(
-            Settings.System.CONTENT_URI, true,
-            mVolumeObserver
+            Settings.System.CONTENT_URI, true, mVolumeObserver
         )
+
+        mPlaybackCallback = object : AudioManager.AudioPlaybackCallback() {
+            var wasPlaying = false
+            override fun onPlaybackConfigChanged(configs: MutableList<android.media.AudioPlaybackConfiguration>?) {
+                super.onPlaybackConfigChanged(configs)
+                com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
+                    val uids = service.activeAudioUids
+                    val isPlaying = uids != null && uids.isNotEmpty()
+                    
+                    if (isPlaying) {
+                        // Persist Smart Volume
+                        if (!com.legendsayantan.adbtools.lib.SoundMasterPreferences.isAdvancedDspMode(applicationContext)) {
+                            val prefs = getSharedPreferences("soundmaster_vols", Context.MODE_PRIVATE)
+                            val pm = packageManager
+                            uids?.forEach { uid ->
+                                try {
+                                    val pkgs = pm.getPackagesForUid(uid)
+                                    val pkg = pkgs?.firstOrNull()
+                                    if (pkg != null) {
+                                        val vol = prefs.getFloat(pkg, 1.0f)
+                                        service.setPlayerVolume(uid, vol)
+                                    }
+                                } catch (e: Exception) {}
+                            }
+                        }
+                    
+                        if (!wasPlaying) {
+                            val prefs = getSharedPreferences("soundmaster", MODE_PRIVATE)
+                            if (prefs.getBoolean("auto_wakeup", true)) {
+                                mainHandler.post { wakeBubble() }
+                            }
+                        }
+                    } else if (wasPlaying) {
+                        mainHandler.post {
+                            if (::bubble.isInitialized) bubble.hide()
+                        }
+                    }
+                    
+                    mainHandler.post {
+                        if (::bubble.isInitialized) {
+                            bubble.updateBubbleAppIcon(uids)
+                        }
+                    }
+                    
+                    wasPlaying = isPlaying
+                }
+            }
+        }
+        audioManager.registerAudioPlaybackCallback(mPlaybackCallback, mainHandler)
+    }
+
+    private fun wakeBubble() {
+        if (::bubble.isInitialized) {
+            bubble.show(com.legendsayantan.adbtools.views.SoundMasterBubble.State.BUBBLE)
+            mainHandler.removeCallbacks(fadeOutRunnable)
+            val prefs = getSharedPreferences("soundmaster", MODE_PRIVATE)
+            val timeout = prefs.getLong("auto_hide_timeout", 5000L)
+            if (timeout > 0) {
+                mainHandler.postDelayed(fadeOutRunnable, timeout)
+            }
+        }
+    }
+
+    fun onModeChanged(isDsp: Boolean) {
+        if (isDsp) {
+            // Start DSP logic
+        } else {
+            // Stop DSP threads
+            packageThreads.forEach { it.value.interrupt() }
+            packageThreads.clear()
+        }
     }
 
     override fun onDestroy() {
         running = false
         contentResolver.unregisterContentObserver(mVolumeObserver)
+        audioManager.unregisterAudioPlaybackCallback(mPlaybackCallback)
+        if (::bubble.isInitialized) bubble.hide()
         latencyUpdateTimer.cancel()
         packageThreads.forEach { it.value.interrupt() }
         mediaProjection?.stop()
@@ -259,7 +360,7 @@ class SoundMasterService : Service() {
         fun Context.prepareGetAudioDevices() {
             if (getAudioDevices().isEmpty())
                 getAudioDevices = {
-                    var dev = (getSystemService(Context.AUDIO_SERVICE) as AudioManager).getDevices(
+                    var dev = (getSystemService(AUDIO_SERVICE) as AudioManager).getDevices(
                         AudioManager.GET_DEVICES_OUTPUTS
                     ).filter {
                         it.type !in arrayOf(1, 7, 18, 25)
@@ -271,7 +372,7 @@ class SoundMasterService : Service() {
         }
 
         //debug
-        var getDisconnectedAppsFromSystem = { callback : (String)->Unit ->  }
+        var getDisconnectedAppsFromSystem = { _ : (String)->Unit ->  }
         var getAudioRmsData = { listOf<String>() }
     }
 }

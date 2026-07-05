@@ -49,7 +49,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="Regenerate Key"
-            style="@style/Widget.Material3.Button.TonalButton" />
+            style="@style/AppTonalButton" />
 
     <TextView
         android:layout_width="wrap_content"

@@ -12,6 +12,7 @@ import com.legendsayantan.adbtools.services.SoundMasterService
 /**
  * @author legendsayantan
  */
+@Suppress("DEPRECATION")
 class AudioPlayer(
     streamType : Int,
     sampleRateInHz : Int,

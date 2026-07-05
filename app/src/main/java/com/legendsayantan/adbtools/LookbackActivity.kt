@@ -27,8 +27,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.progressindicator.LinearProgressIndicator
+import com.google.android.material.checkbox.MaterialCheckBox
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
-import com.legendsayantan.adbtools.lib.ShizukuRunner
+import com.legendsayantan.adbtools.lib.ShizuToolsController
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.lib.Utils.Companion.setupEdgeToEdgeInsets
 import com.legendsayantan.adbtools.lib.Utils.Companion.showSnackbar
@@ -39,34 +40,58 @@ import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.zip.ZipInputStream
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.app.PendingIntent
+import android.widget.ImageButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class LookbackActivity : AppCompatActivity() {
 
     private lateinit var cardSelect: MaterialCardView
     private lateinit var cardProgress: MaterialCardView
-    private lateinit var cardPreview: MaterialCardView
     private lateinit var dropZone: LinearLayout
     private lateinit var btnStart: MaterialButton
-    private lateinit var btnInstall: MaterialButton
-    private lateinit var btnCancel: MaterialButton
     
     private lateinit var progressTitle: TextView
     private lateinit var progressSubtitle: TextView
     private lateinit var progressBar: LinearProgressIndicator
     
-    private lateinit var previewIcon: ImageView
-    private lateinit var previewAppName: TextView
-    private lateinit var previewPackage: TextView
-    private lateinit var previewVersionInfo: TextView
-    private lateinit var previewWarning: TextView
-    
     private lateinit var recyclerHistory: RecyclerView
     private lateinit var historyEmpty: TextView
     
-    private var cacheFile: File? = null
-    private var parsedPackageName: String = ""
-    private var parsedVersionCode: Long = 0
-    private var parsedVersionName: String = ""
+    private lateinit var appsContainer: LinearLayout
+    private lateinit var globalActions: LinearLayout
+    private lateinit var btnInstallAll: MaterialButton
+    private lateinit var btnCancel: MaterialButton
+    
+    enum class InstallStatus { PENDING, INSTALLING, SUCCESS, FAILED }
+
+    data class AppGroup(
+        val packageName: String,
+        val files: List<File>,
+        val basePackageInfo: PackageInfo,
+        val baseAppInfo: ApplicationInfo,
+        var status: InstallStatus = InstallStatus.PENDING,
+        var isDowngrade: Boolean = false,
+        var isUpgrade: Boolean = false,
+        var isSame: Boolean = false,
+        var installedVersionName: String? = null,
+        var installedVersionCode: Long = -1L
+    )
+    
+    private var cacheFiles = mutableListOf<File>()
+    private val appGroups = mutableListOf<AppGroup>()
+    private val installQueue: java.util.Queue<AppGroup> = java.util.LinkedList()
+    
+    // Global flags
+    private var flagDowngrade = true
+    private var flagReplace = true
+    private var flagTest = false
+    private var flagPermissions = false
+    private var flagAllUsers = false
+    private var flagDontKill = false
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -86,22 +111,18 @@ class LookbackActivity : AppCompatActivity() {
     private fun initViews() {
         cardSelect = findViewById(R.id.card_select)
         cardProgress = findViewById(R.id.card_progress)
-        cardPreview = findViewById(R.id.card_preview)
         dropZone = findViewById(R.id.drop_zone)
         
         btnStart = findViewById(R.id.startBtn)
-        btnInstall = findViewById(R.id.btn_install)
         btnCancel = findViewById(R.id.btn_cancel)
+        btnInstallAll = findViewById(R.id.btn_install_all)
         
         progressTitle = findViewById(R.id.progress_title)
         progressSubtitle = findViewById(R.id.progress_subtitle)
         progressBar = findViewById(R.id.progress_bar)
         
-        previewIcon = findViewById(R.id.preview_icon)
-        previewAppName = findViewById(R.id.preview_app_name)
-        previewPackage = findViewById(R.id.preview_package)
-        previewVersionInfo = findViewById(R.id.preview_version_info)
-        previewWarning = findViewById(R.id.preview_warning)
+        appsContainer = findViewById(R.id.apps_container)
+        globalActions = findViewById(R.id.global_actions)
         
         recyclerHistory = findViewById(R.id.recycler_history)
         historyEmpty = findViewById(R.id.history_empty)
@@ -114,8 +135,14 @@ class LookbackActivity : AppCompatActivity() {
             resetUI()
         }
         
-        btnInstall.setOnClickListener {
-            installApk()
+        btnInstallAll.setOnClickListener {
+            installQueue.clear()
+            installQueue.addAll(appGroups.filter { it.status == InstallStatus.PENDING || it.status == InstallStatus.FAILED })
+            processInstallQueue()
+        }
+        
+        findViewById<ImageButton>(R.id.btn_settings).setOnClickListener {
+            showSettingsDialog()
         }
         
         dropZone.setOnDragListener { _, event ->
@@ -134,8 +161,13 @@ class LookbackActivity : AppCompatActivity() {
                 }
                 DragEvent.ACTION_DROP -> {
                     dropZone.alpha = 1f
-                    val item = event.clipData.getItemAt(0)
-                    item.uri?.let { processUri(it) }
+                    val dropPermissions = requestDragAndDropPermissions(event)
+                    val uris = mutableListOf<Uri>()
+                    for (i in 0 until event.clipData.itemCount) {
+                        event.clipData.getItemAt(i).uri?.let { uris.add(it) }
+                    }
+                    if (uris.isNotEmpty()) processUris(uris, dropPermissions)
+                    else dropPermissions?.release()
                     true
                 }
                 else -> false
@@ -144,17 +176,22 @@ class LookbackActivity : AppCompatActivity() {
     }
 
     private fun resetUI() {
-        cacheFile?.delete()
-        cacheFile = null
+        cacheFiles.forEach { it.delete() }
+        cacheFiles.clear()
+        appGroups.clear()
+        installQueue.clear()
+        appsContainer.removeAllViews()
+        appsContainer.visibility = View.GONE
+        globalActions.visibility = View.GONE
         cardSelect.visibility = View.VISIBLE
         cardProgress.visibility = View.GONE
-        cardPreview.visibility = View.GONE
     }
 
     private fun selectFile() {
         val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
             type = "*/*" 
-            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/vnd.android.package-archive", "application/octet-stream"))
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/vnd.android.package-archive", "application/octet-stream", "application/zip"))
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
         }
         startActivityForResult(intent, PICK_FILE_REQUEST_CODE)
     }
@@ -162,207 +199,368 @@ class LookbackActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
-            data?.data?.let { uri -> processUri(uri) }
+            val uris = mutableListOf<Uri>()
+            if (data?.clipData != null) {
+                for (i in 0 until data.clipData!!.itemCount) {
+                    data.clipData!!.getItemAt(i).uri?.let { uris.add(it) }
+                }
+            } else {
+                data?.data?.let { uris.add(it) }
+            }
+            if (uris.isNotEmpty()) processUris(uris)
         }
     }
 
-    private fun processUri(uri: Uri) {
+    private fun processUris(uris: List<Uri>, dropPermissions: android.view.DragAndDropPermissions? = null) {
         cardSelect.visibility = View.GONE
         cardProgress.visibility = View.VISIBLE
-        progressTitle.text = "Copying APK to cache..."
+        progressTitle.text = "Processing files..."
         progressBar.isIndeterminate = true
-        progressSubtitle.text = "Preparing..."
+        progressSubtitle.text = "Preparing cache..."
 
         Thread {
-            val file = File(Environment.getExternalStorageDirectory(), "/Android/data/${packageName}/installcache.apk")
-            file.parentFile?.mkdirs()
+            val cacheDir = File(Environment.getExternalStorageDirectory(), "/Android/data/${packageName}/installcache")
+            cacheDir.deleteRecursively()
+            cacheDir.mkdirs()
             
-            // Get file size for progress
-            var fileSize = 0L
-            try {
-                contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                    if (cursor.moveToFirst()) {
-                        val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
-                        if (sizeIndex != -1) fileSize = cursor.getLong(sizeIndex)
+            var successCount = 0
+            
+            for (uri in uris) {
+                // Get filename
+                var filename = "temp_${System.currentTimeMillis()}.apk"
+                try {
+                    contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                            if (nameIndex != -1) filename = cursor.getString(nameIndex)
+                        }
+                    }
+                } catch (e: Exception) {}
+
+                val lowerName = filename.lowercase(Locale.ROOT)
+                val isArchive = lowerName.endsWith(".apks") || lowerName.endsWith(".apkm") || lowerName.endsWith(".xapk") || lowerName.endsWith(".zip")
+
+                if (isArchive) {
+                    try {
+                        val inputStream = contentResolver.openInputStream(uri) ?: continue
+                        ZipInputStream(inputStream).use { zis ->
+                            var entry = zis.nextEntry
+                            while (entry != null) {
+                                if (!entry.isDirectory && entry.name.lowercase(Locale.ROOT).endsWith(".apk")) {
+                                    val outFile = File(cacheDir, entry.name.substringAfterLast('/'))
+                                    outFile.parentFile?.mkdirs()
+                                    FileOutputStream(outFile).use { out ->
+                                        zis.copyTo(out)
+                                    }
+                                    cacheFiles.add(outFile)
+                                    successCount++
+                                }
+                                entry = zis.nextEntry
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                } else {
+                    val outFile = File(cacheDir, filename)
+                    try {
+                        val inputStream = contentResolver.openInputStream(uri)
+                        if (inputStream != null) {
+                            FileOutputStream(outFile).use { out ->
+                                inputStream.copyTo(out)
+                            }
+                            cacheFiles.add(outFile)
+                            successCount++
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 }
-            } catch (e: Exception) {}
-
-            val inputStream = contentResolver.openInputStream(uri)
-            val success = copyFileWithProgress(inputStream, file, fileSize)
+            }
             
             Handler(mainLooper).post {
-                if (success) {
-                    cacheFile = file
-                    parseAndShowMetadata(file)
+                dropPermissions?.release()
+                if (cacheFiles.isNotEmpty()) {
+                    parseAndGroupMetadata()
                 } else {
-                    showSnackbar("Failed to copy APK", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                    showSnackbar("Failed to find valid APKs", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
                     resetUI()
                 }
             }
         }.start()
     }
 
-    private fun copyFileWithProgress(inputStream: InputStream?, outputFile: File, totalSize: Long): Boolean {
-        if (inputStream == null) return false
-        try {
-            if (!outputFile.exists()) outputFile.createNewFile()
-            val outputStream = FileOutputStream(outputFile)
-            val buffer = ByteArray(8192)
-            var copied = 0L
-            var read: Int
-            
-            Handler(mainLooper).post {
-                if (totalSize > 0) progressBar.isIndeterminate = false
-            }
-
-            inputStream.use { input ->
-                outputStream.use { output ->
-                    while (input.read(buffer).also { read = it } != -1) {
-                        output.write(buffer, 0, read)
-                        copied += read
-                        if (totalSize > 0) {
-                            val percent = (copied * 100 / totalSize).toInt()
-                            val mbCopied = copied / (1024 * 1024)
-                            val mbTotal = totalSize / (1024 * 1024)
-                            Handler(mainLooper).post {
-                                progressBar.progress = percent
-                                progressSubtitle.text = "Copied ${mbCopied}MB / ${mbTotal}MB ($percent%)"
-                            }
-                        }
-                    }
-                }
-            }
-            return true
-        } catch (e: Exception) {
-            applicationContext.log(e.stackTraceToString(), true)
-            return false
-        }
-    }
-
-    private fun parseAndShowMetadata(file: File) {
+    private fun parseAndGroupMetadata() {
         progressTitle.text = "Parsing APK metadata..."
         progressBar.isIndeterminate = true
-        progressSubtitle.text = "Please wait"
+        progressSubtitle.text = "Grouping applications..."
         
         Thread {
             try {
                 val pm = packageManager
-                val packageInfo = pm.getPackageArchiveInfo(file.absolutePath, 0)
+                val groupMap = mutableMapOf<String, MutableList<File>>()
                 
-                if (packageInfo == null) {
-                    Handler(mainLooper).post {
-                        showSnackbar("Invalid APK file", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
-                        resetUI()
+                for (file in cacheFiles) {
+                    val packageInfo = pm.getPackageArchiveInfo(file.absolutePath, 0) ?: continue
+                    val pName = packageInfo.packageName ?: continue
+                    if (!groupMap.containsKey(pName)) {
+                        groupMap[pName] = mutableListOf()
                     }
-                    return@Thread
+                    groupMap[pName]?.add(file)
                 }
                 
-                packageInfo.applicationInfo.sourceDir = file.absolutePath
-                packageInfo.applicationInfo.publicSourceDir = file.absolutePath
+                appGroups.clear()
                 
-                val appIcon = packageInfo.applicationInfo.loadIcon(pm)
-                val appName = packageInfo.applicationInfo.loadLabel(pm).toString()
-                
-                parsedPackageName = packageInfo.packageName
-                parsedVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) packageInfo.longVersionCode else packageInfo.versionCode.toLong()
-                parsedVersionName = packageInfo.versionName ?: "Unknown"
-                
-                // Check currently installed version
-                var installedVersionCode = -1L
-                var installedVersionName = "None"
-                try {
-                    val installedInfo = pm.getPackageInfo(parsedPackageName, 0)
-                    installedVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) installedInfo.longVersionCode else installedInfo.versionCode.toLong()
-                    installedVersionName = installedInfo.versionName ?: "Unknown"
-                } catch (e: PackageManager.NameNotFoundException) {
-                    // Not installed
+                for ((pName, files) in groupMap) {
+                    var bestPackageInfo: PackageInfo? = null
+                    var bestAppInfo: ApplicationInfo? = null
+                    
+                    for (file in files) {
+                        val pInfo = pm.getPackageArchiveInfo(file.absolutePath, 0) ?: continue
+                        pInfo.applicationInfo.sourceDir = file.absolutePath
+                        pInfo.applicationInfo.publicSourceDir = file.absolutePath
+                        
+                        if (bestPackageInfo == null || file.name.contains("base", true) || pInfo.applicationInfo.className != null) {
+                            bestPackageInfo = pInfo
+                            bestAppInfo = pInfo.applicationInfo
+                        }
+                    }
+                    
+                    if (bestPackageInfo == null || bestAppInfo == null) continue
+                    
+                    val group = AppGroup(pName, files, bestPackageInfo, bestAppInfo)
+                    val parsedVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) bestPackageInfo.longVersionCode else bestPackageInfo.versionCode.toLong()
+                    
+                    try {
+                        val installedInfo = pm.getPackageInfo(pName, 0)
+                        group.installedVersionName = installedInfo.versionName
+                        group.installedVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) installedInfo.longVersionCode else installedInfo.versionCode.toLong()
+                        
+                        group.isSame = group.installedVersionCode == parsedVersionCode
+                        group.isUpgrade = parsedVersionCode > group.installedVersionCode
+                        group.isDowngrade = parsedVersionCode < group.installedVersionCode
+                    } catch (e: PackageManager.NameNotFoundException) {
+                        // Not installed
+                    }
+                    appGroups.add(group)
                 }
-                
-                val isDowngrade = installedVersionCode != -1L && parsedVersionCode < installedVersionCode
-                val isUpgrade = installedVersionCode != -1L && parsedVersionCode > installedVersionCode
-                val isSame = installedVersionCode != -1L && parsedVersionCode == installedVersionCode
                 
                 Handler(mainLooper).post {
-                    cardProgress.visibility = View.GONE
-                    cardPreview.visibility = View.VISIBLE
-                    
-                    previewIcon.setImageDrawable(appIcon)
-                    previewAppName.text = appName
-                    previewPackage.text = parsedPackageName
-                    
-                    if (installedVersionCode == -1L) {
-                        previewVersionInfo.text = "Installing new app v$parsedVersionName"
-                        previewWarning.visibility = View.GONE
+                    if (appGroups.isEmpty()) {
+                        showSnackbar("Failed to parse valid APKs", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                        resetUI()
                     } else {
-                        previewVersionInfo.text = "Current: v$installedVersionName  ➔  New: v$parsedVersionName"
-                        previewWarning.visibility = View.VISIBLE
-                        when {
-                            isDowngrade -> {
-                                previewWarning.text = "Valid Downgrade"
-                                previewWarning.setTextColor(getColor(R.color.tool_lookback))
-                            }
-                            isSame -> {
-                                previewWarning.text = "Warning: This version is already installed."
-                                previewWarning.setTextColor(getColor(R.color.red))
-                            }
-                            isUpgrade -> {
-                                previewWarning.text = "Notice: This is an upgrade, not a downgrade."
-                                previewWarning.setTextColor(getColor(R.color.colorSecondary))
-                            }
-                        }
+                        buildAppsUI()
                     }
                 }
                 
             } catch (e: Exception) {
                 applicationContext.log(e.stackTraceToString(), true)
                 Handler(mainLooper).post {
-                    showSnackbar("Failed to parse APK", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                    showSnackbar("Failed to group APKs", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
                     resetUI()
                 }
             }
         }.start()
     }
 
-    private fun installApk() {
-        val file = cacheFile ?: return
-        cardPreview.visibility = View.GONE
-        cardProgress.visibility = View.VISIBLE
-        progressTitle.text = "Installing $parsedPackageName..."
-        progressBar.isIndeterminate = true
-        progressSubtitle.text = "Executing ADB command..."
+    private fun buildAppsUI() {
+        cardProgress.visibility = View.GONE
+        appsContainer.visibility = View.VISIBLE
+        globalActions.visibility = View.VISIBLE
+        appsContainer.removeAllViews()
         
-        Thread {
-            val command = "cat ${file.absolutePath} | pm install -S ${file.length()} -r -d"
-            ShizukuRunner.execute(command, onResult = { output, done ->
-                if (done) {
-                    Handler(mainLooper).post {
-                        if (output.contains("Success", true)) {
-                            showSnackbar("Installed Successfully.", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
-                            saveHistory(parsedPackageName, parsedVersionName)
-                            resetUI()
-                            loadHistory()
-                        } else {
-                            showSnackbar("Error installing.\n$output", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
-                            resetUI()
-                        }
+        val pm = packageManager
+        for (group in appGroups) {
+            val view = LayoutInflater.from(this).inflate(R.layout.item_lookback_app, appsContainer, false)
+            
+            val icon = view.findViewById<ImageView>(R.id.app_icon)
+            val name = view.findViewById<TextView>(R.id.app_name)
+            val pkg = view.findViewById<TextView>(R.id.app_package)
+            val versionInfo = view.findViewById<TextView>(R.id.app_version_info)
+            val warning = view.findViewById<TextView>(R.id.app_warning)
+            val btnInstallSingle = view.findViewById<MaterialButton>(R.id.btn_install_single)
+            
+            icon.setImageDrawable(group.baseAppInfo.loadIcon(pm))
+            name.text = group.baseAppInfo.loadLabel(pm).toString()
+            pkg.text = group.packageName
+            
+            val parsedVersionName = group.basePackageInfo.versionName ?: "Unknown"
+            
+            if (group.installedVersionCode == -1L) {
+                versionInfo.text = "Installing new app v$parsedVersionName"
+                warning.visibility = View.GONE
+            } else {
+                versionInfo.text = "Current: v${group.installedVersionName}  ➔  New: v$parsedVersionName"
+                warning.visibility = View.VISIBLE
+                when {
+                    group.isDowngrade -> {
+                        warning.text = "Valid Downgrade (Check Allow Downgrade in settings)"
+                        warning.setTextColor(getColor(R.color.tool_lookback))
+                    }
+                    group.isSame -> {
+                        warning.text = "Warning: This version is already installed."
+                        warning.setTextColor(getColor(R.color.red))
+                    }
+                    group.isUpgrade -> {
+                        warning.text = "Notice: This is an upgrade."
+                        warning.setTextColor(getColor(R.color.colorSecondary))
                     }
                 }
-            }, onError = { error ->
-                Handler(mainLooper).post {
-                    showSnackbar("Failed to start install process", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
-                    resetUI()
+            }
+            
+            btnInstallSingle.setOnClickListener {
+                if (group.status != InstallStatus.INSTALLING) {
+                    installQueue.clear()
+                    installQueue.add(group)
+                    processInstallQueue()
                 }
-                applicationContext.log(error)
-            })
+            }
+            
+            view.tag = group.packageName
+            appsContainer.addView(view)
+        }
+    }
+    
+    private fun showSettingsDialog() {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_lookback_settings, null)
+        val cbDowngrade = view.findViewById<com.google.android.material.checkbox.MaterialCheckBox>(R.id.cb_downgrade)
+        val cbReplace = view.findViewById<com.google.android.material.checkbox.MaterialCheckBox>(R.id.cb_replace)
+        val cbTest = view.findViewById<com.google.android.material.checkbox.MaterialCheckBox>(R.id.cb_test)
+        val cbPermissions = view.findViewById<com.google.android.material.checkbox.MaterialCheckBox>(R.id.cb_permissions)
+        val cbAllUsers = view.findViewById<com.google.android.material.checkbox.MaterialCheckBox>(R.id.cb_all_users)
+        val cbDontKill = view.findViewById<com.google.android.material.checkbox.MaterialCheckBox>(R.id.cb_dont_kill)
+        
+        cbDowngrade.isChecked = flagDowngrade
+        cbReplace.isChecked = flagReplace
+        cbTest.isChecked = flagTest
+        cbPermissions.isChecked = flagPermissions
+        cbAllUsers.isChecked = flagAllUsers
+        cbDontKill.isChecked = flagDontKill
+        
+        MaterialAlertDialogBuilder(this)
+            .setView(view)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save") { _, _ ->
+                flagDowngrade = cbDowngrade.isChecked
+                flagReplace = cbReplace.isChecked
+                flagTest = cbTest.isChecked
+                flagPermissions = cbPermissions.isChecked
+                flagAllUsers = cbAllUsers.isChecked
+                flagDontKill = cbDontKill.isChecked
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun updateAppStatus(packageName: String, statusText: String, color: Int) {
+        for (i in 0 until appsContainer.childCount) {
+            val view = appsContainer.getChildAt(i)
+            if (view.tag == packageName) {
+                val tvStatus = view.findViewById<TextView>(R.id.app_status)
+                val btnInstallSingle = view.findViewById<MaterialButton>(R.id.btn_install_single)
+                tvStatus.visibility = View.VISIBLE
+                tvStatus.text = statusText
+                tvStatus.setTextColor(getColor(color))
+                if (statusText == "Installing...") {
+                    btnInstallSingle.isEnabled = false
+                } else {
+                    btnInstallSingle.isEnabled = true
+                }
+                break
+            }
+        }
+    }
+
+    private var currentInstallingGroup: AppGroup? = null
+
+    private val installReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val status = intent.getIntExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, android.content.pm.PackageInstaller.STATUS_FAILURE)
+            val msg = intent.getStringExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE)
+            
+            currentInstallingGroup?.let { group ->
+                if (status == android.content.pm.PackageInstaller.STATUS_SUCCESS) {
+                    group.status = InstallStatus.SUCCESS
+                    updateAppStatus(group.packageName, "Success", R.color.green)
+                    val appName = group.baseAppInfo.loadLabel(packageManager).toString()
+                    saveHistory(group.packageName, group.basePackageInfo.versionName ?: "", appName)
+                } else {
+                    group.status = InstallStatus.FAILED
+                    updateAppStatus(group.packageName, "Failed: $msg", R.color.red)
+                }
+            }
+            
+            try {
+                unregisterReceiver(this)
+            } catch(e:Exception){}
+            
+            currentInstallingGroup = null
+            loadHistory()
+            
+            // Process next in queue
+            Handler(mainLooper).postDelayed({
+                processInstallQueue()
+            }, 500)
+        }
+    }
+
+    private fun processInstallQueue() {
+        if (installQueue.isEmpty()) {
+            return
+        }
+        
+        val group = installQueue.poll() ?: return
+        currentInstallingGroup = group
+        group.status = InstallStatus.INSTALLING
+        updateAppStatus(group.packageName, "Installing...", R.color.tool_lookback)
+        
+        var flags = 0
+        if (flagDowngrade) flags = flags or 0x00000080
+        if (flagReplace) flags = flags or 0x00000002
+        if (flagTest) flags = flags or 0x00000004
+        if (flagPermissions) flags = flags or 0x00000100
+        if (flagAllUsers) flags = flags or 0x00000040
+        if (flagDontKill) flags = flags or 0x40000000 
+        
+        val paths = group.files.map { it.absolutePath }
+        
+        val action = "com.legendsayantan.adbtools.INSTALL_RESULT_${System.currentTimeMillis()}"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(installReceiver, IntentFilter(action), Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(installReceiver, IntentFilter(action))
+        }
+        
+        val pendingIntent = PendingIntent.getBroadcast(
+            this,
+            0,
+            Intent(action).setPackage(packageName),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+        
+        Thread {
+            ShizuToolsController.execute { service ->
+                try {
+                    service.installApks(paths, flags, pendingIntent.intentSender)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Handler(mainLooper).post {
+                        group.status = InstallStatus.FAILED
+                        updateAppStatus(group.packageName, "Failed: ${e.message}", R.color.red)
+                        try { unregisterReceiver(installReceiver) } catch(e:Exception){}
+                        processInstallQueue()
+                    }
+                }
+            }
         }.start()
     }
 
-    private fun saveHistory(pkg: String, version: String) {
+    private fun saveHistory(pkg: String, version: String, appName: String) {
         try {
             val file = File(filesDir, "lookback_history.txt")
             val date = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
-            val entry = "$pkg|$version|$date\n"
+            val entry = "$pkg|$version|$date|$appName\n"
             file.appendText(entry)
         } catch (e: Exception) {
             applicationContext.log(e.stackTraceToString(), true)
@@ -415,11 +613,18 @@ class LookbackActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val parts = items[position].split("|")
-            if (parts.size >= 3) {
+            if (parts.size >= 4) {
                 val pkg = parts[0]
                 val ver = parts[1]
                 val d = parts[2]
-                holder.text.text = "Installed $pkg v$ver"
+                val appName = parts[3]
+                holder.text.text = "$appName v$ver"
+                holder.date.text = "$pkg • $d"
+            } else if (parts.size >= 3) {
+                val pkg = parts[0]
+                val ver = parts[1]
+                val d = parts[2]
+                holder.text.text = "$pkg v$ver"
                 holder.date.text = d
             }
         }

@@ -15,7 +15,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_paper"
+        android:background="?attr/colorSurface"
         android:orientation="horizontal">
 
         <!-- Severity Color Strip -->
@@ -24,6 +24,14 @@
             android:layout_width="6dp"
             android:layout_height="match_parent"
             android:background="@color/transparent" />
+
+        <ImageView
+            android:id="@+id/app_icon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="4dp" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -89,15 +97,6 @@
             android:layout_gravity="center_vertical"
             android:layout_marginEnd="8dp"
             android:visibility="gone" />
-            
-        <ImageView
-            android:id="@+id/action_icon"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_gravity="center_vertical"
-            android:layout_marginEnd="12dp"
-            android:src="@drawable/baseline_arrow_forward_24"
-            app:tint="?attr/colorSecondary"/>
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>

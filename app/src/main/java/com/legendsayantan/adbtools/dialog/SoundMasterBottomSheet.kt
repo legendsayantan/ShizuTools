@@ -1,0 +1,243 @@
+package com.legendsayantan.adbtools.dialog
+
+import android.annotation.SuppressLint
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.materialswitch.MaterialSwitch
+import com.legendsayantan.adbtools.R
+import com.legendsayantan.adbtools.SoundMasterProjectionActivity
+import com.legendsayantan.adbtools.lib.ShizukuRunner
+import com.legendsayantan.adbtools.lib.SoundMasterPreferences
+import com.legendsayantan.adbtools.lib.Utils.Companion.showSnackbar
+import com.legendsayantan.adbtools.services.SoundMasterService
+import com.legendsayantan.adbtools.services.SoundMasterService.Companion.prepareGetAudioDevices
+import com.legendsayantan.adbtools.lib.Logger.Companion.log
+
+class SoundMasterBottomSheet : BottomSheetDialogFragment() {
+
+    @SuppressLint("ApplySharedPref")
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        showing = true
+        return inflater.inflate(R.layout.bottom_sheet_sound_master, container, false)
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        requireContext().prepareGetAudioDevices()
+        setupSettings(view)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        view?.let { updateBtnState(it) }
+    }
+
+    private fun updateBtnState(view: View) {
+        val btnImage = view.findViewById<ImageView>(R.id.playPauseButton)
+        val btnText = view.findViewById<TextView>(R.id.toggleText)
+        val btnCard = view.findViewById<MaterialCardView>(R.id.newSlider)
+
+        val isRunning = SoundMasterService.running
+        btnImage.setImageResource(if (isRunning) R.drawable.baseline_stop_24 else R.drawable.baseline_play_arrow_24)
+        btnText.text = if (isRunning) "Stop Engine" else "Start Engine"
+
+        val modeToggleGroup = view.findViewById<MaterialButtonToggleGroup>(R.id.modeToggleGroup)
+        modeToggleGroup.isEnabled = !isRunning
+        for (i in 0 until modeToggleGroup.childCount) {
+            modeToggleGroup.getChildAt(i).isEnabled = !isRunning
+        }
+
+        btnCard.setOnClickListener {
+            if (isRunning) {
+                requireContext().stopService(SoundMasterService.startingIntent)
+                Handler(Looper.getMainLooper()).postDelayed({ view.let { updateBtnState(it) } }, 500)
+            } else {
+                val startEngineLogic = {
+                    val isDspMode = SoundMasterPreferences.isAdvancedDspMode(requireContext())
+                    if (isDspMode) {
+                        ShizukuRunner.execute("pm grant ${requireContext().packageName} android.permission.RECORD_AUDIO",
+                            onResult = { _, done ->
+                                if (done) {
+                                    com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
+                                        try {
+                                            service.setAppOpMode(requireContext().packageName, android.os.Process.myUid(), 46, android.app.AppOpsManager.MODE_ALLOWED)
+                                            Handler(Looper.getMainLooper()).post {
+                                                requireContext().startActivity(Intent(requireContext(), SoundMasterProjectionActivity::class.java).apply {
+                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                })
+                                                dismiss()
+                                            }
+                                        } catch(e: Exception) {
+                                            Handler(Looper.getMainLooper()).post {
+                                                requireActivity().showSnackbar(getString(R.string.permission_error), com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                                                requireContext().applicationContext.log(e.stackTraceToString(), true)
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            onError = { error ->
+                                Handler(Looper.getMainLooper()).post {
+                                    requireActivity().showSnackbar(getString(R.string.permission_error), com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                                    requireContext().applicationContext.log(error, true)
+                                }
+                            }
+                        )
+                    } else {
+                        requireActivity().showSnackbar("Smart Volume Engine Started", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                        SoundMasterService.projectionData = null
+                        requireContext().startService(Intent(requireContext(), SoundMasterService::class.java))
+                        Handler(Looper.getMainLooper()).postDelayed({ view.let { updateBtnState(it) } }, 500)
+                    }
+                }
+
+                if (!android.provider.Settings.canDrawOverlays(requireContext())) {
+                    com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
+                        try {
+                            service.setAppOpMode(requireContext().packageName, android.os.Process.myUid(), 24, android.app.AppOpsManager.MODE_ALLOWED)
+                            Handler(Looper.getMainLooper()).post {
+                                startEngineLogic()
+                            }
+                        } catch(e: Exception) {
+                            Handler(Looper.getMainLooper()).post {
+                                requireActivity().showSnackbar("Overlay permission required for SoundMaster.", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                                requireContext().startActivity(Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${requireContext().packageName}")))
+                            }
+                        }
+                    }
+                } else {
+                    startEngineLogic()
+                }
+            }
+        }
+    }
+
+    override fun onDestroyView() {
+        showing = false
+        super.onDestroyView()
+    }
+
+    private fun setupSettings(view: View) {
+        val prefs = requireContext().getSharedPreferences("soundmaster", Context.MODE_PRIVATE)
+        val switchNoti = view.findViewById<MaterialSwitch>(R.id.switch_notification)
+        val switchVol = view.findViewById<MaterialSwitch>(R.id.switch_volume_change)
+        val switchAutoWakeup = view.findViewById<MaterialSwitch>(R.id.switch_auto_wakeup)
+        val dropdownHide = view.findViewById<android.widget.AutoCompleteTextView>(R.id.dropdown_auto_hide)
+
+        val modeToggleGroup = view.findViewById<MaterialButtonToggleGroup>(R.id.modeToggleGroup)
+        val textModeDescription = view.findViewById<TextView>(R.id.textModeDescription)
+
+        val isDsp = SoundMasterPreferences.isAdvancedDspMode(requireContext())
+        if (isDsp) {
+            modeToggleGroup.check(R.id.btnModeDsp)
+            textModeDescription.text = "Advanced audio engine with equalizer and custom effects. Uses slightly more battery."
+        } else {
+            modeToggleGroup.check(R.id.btnModeSmart)
+            textModeDescription.text = "Simple volume control with zero latency and no extra battery drain."
+        }
+
+        modeToggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                val newIsDsp = checkedId == R.id.btnModeDsp
+                SoundMasterPreferences.setAdvancedDspMode(requireContext(), newIsDsp)
+                if (newIsDsp) {
+                    textModeDescription.text = "Advanced audio engine with equalizer and custom effects. Uses slightly more battery."
+                } else {
+                    textModeDescription.text = "Simple volume control with zero latency and no extra battery drain."
+                }
+            }
+        }
+
+        switchNoti.isChecked = prefs.getBoolean("show_notification", false)
+        switchVol.isChecked = prefs.getBoolean("show_on_volume_change", false)
+        switchAutoWakeup.isChecked = prefs.getBoolean("auto_wakeup", true)
+
+        val hideOptions = arrayOf("Disabled", "2 Seconds", "5 Seconds", "10 Seconds", "30 Seconds")
+        val hideValues = arrayOf(0L, 2000L, 5000L, 10000L, 30000L)
+        val adapter = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, hideOptions)
+        dropdownHide.setAdapter(adapter)
+
+        val currentTimeout = prefs.getLong("auto_hide_timeout", 5000L)
+        val currentIndex = hideValues.indexOf(currentTimeout).takeIf { it >= 0 } ?: 2
+        dropdownHide.setText(hideOptions[currentIndex], false)
+
+        dropdownHide.setOnItemClickListener { _, _, position, _ ->
+            prefs.edit().putLong("auto_hide_timeout", hideValues[position]).apply()
+        }
+        
+        updateControlNotiState(requireContext(), switchNoti.isChecked)
+
+        switchNoti.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("show_notification", isChecked).apply()
+            updateControlNotiState(requireContext(), isChecked)
+        }
+        switchVol.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("show_on_volume_change", isChecked).apply()
+        }
+        switchAutoWakeup.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("auto_wakeup", isChecked).apply()
+        }
+    }
+
+    private fun updateControlNotiState(context: Context, show: Boolean) {
+        val notificationID = 3
+        if (show) {
+            val intent = Intent(context, SoundMasterService::class.java).apply {
+                action = "bubble"
+            }
+            val pendingIntent = PendingIntent.getService(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val channelId = "notifications"
+            val notificationBuilder = NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(R.drawable.outline_info_24)
+                .setContentTitle("Tap to control " + context.getString(R.string.soundmaster))
+                .setOngoing(true)
+                .setSound(null)
+                .setSilent(true)
+                .setContentIntent(pendingIntent)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+
+            with(NotificationManagerCompat.from(context)) {
+                if (ActivityCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    notify(notificationID, notificationBuilder.build())
+                }
+            }
+        } else {
+            with(NotificationManagerCompat.from(context)) {
+                cancel(notificationID)
+            }
+        }
+    }
+
+    companion object {
+        var showing = false
+        var isMediaProjectionActive = false
+    }
+}

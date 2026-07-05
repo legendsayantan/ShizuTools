@@ -8,7 +8,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.button.MaterialButton
-import com.legendsayantan.adbtools.lib.ShizukuRunner
+import com.legendsayantan.adbtools.lib.ShizuToolsController
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.services.ThemePatcherService
@@ -35,10 +35,15 @@ class ThemePatcherActivity : AppCompatActivity() {
 
         val themeStoreBtn = findViewById<MaterialButton>(R.id.launchThemeStore)
 
-        ShizukuRunner.command("pm grant $packageName android.permission.WRITE_SETTINGS",
-            object : ShizukuRunner.CommandResultListener { })
-        ShizukuRunner.command("pm grant $packageName android.permission.WRITE_SECURE_SETTINGS",
-            object : ShizukuRunner.CommandResultListener { })
+        ShizuToolsController.execute { service ->
+            try {
+                val uid = packageManager.getPackageInfo(packageName, 0).applicationInfo?.uid ?: -1
+                service.setAppOpMode(packageName, uid, 23, 0)
+                service.grantPermission(packageName, "android.permission.WRITE_SECURE_SETTINGS")
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
 
         val logContainer = findViewById<View>(R.id.log_container)
         val logTextView = findViewById<android.widget.TextView>(R.id.patcher_log)

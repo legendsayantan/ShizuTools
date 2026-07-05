@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="48dp"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center">
+
+    <TextView
+        android:id="@+id/eq_gain"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0dB"
+        android:textColor="#FFFFFF"
+        android:textSize="10sp" />
+
+    <!-- A frame layout to hold rotated seekbar -->
+    <FrameLayout
+        android:layout_width="48dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp">
+
+        <SeekBar
+            android:id="@+id/eq_slider"
+            android:layout_width="120dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:rotation="270"
+            android:max="240"
+            android:progress="120"
+            android:progressTint="#0288D1"
+            android:thumbTint="#40C4FF" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/eq_freq"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1kHz"
+        android:textColor="#B3FFFFFF"
+        android:textSize="10sp" />
+</LinearLayout>

@@ -131,7 +131,7 @@
                         android:layout_height="wrap_content"
                         android:text="@string/start"
                         android:backgroundTint="@color/tool_lookback"
-                        android:textColor="?attr/colorOnPrimary" />
+                        android:textColor="@android:color/white" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -177,102 +177,54 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Metadata / Preview Area -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_preview"
+            <!-- Dynamic Apps Container -->
+            <LinearLayout
+                android:id="@+id/apps_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:orientation="vertical"
                 android:visibility="gone"
-                android:layout_marginTop="16dp"
-                app:cardBackgroundColor="@color/transparent"
-                app:cardCornerRadius="16dp"
-                app:strokeWidth="1dp"
-                app:strokeColor="?attr/colorOutline">
+                android:layout_marginTop="16dp"/>
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+            <!-- Global Action Buttons -->
+            <LinearLayout
+                android:id="@+id/global_actions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="end|center_vertical"
+                android:visibility="gone"
+                android:layout_marginTop="8dp">
+                
+                <ImageButton
+                    android:id="@+id/btn_settings"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/baseline_settings_24"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                    android:contentDescription="Settings"/>
+                    
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"/>
+                
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_cancel"
+                    style="@style/AppTonalButton"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="24dp">
+                    android:layout_marginEnd="8dp"
+                    app:backgroundTint="@color/colorTonalBackground"
+                    android:text="Cancel"/>
                     
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="16dp">
-                        
-                        <ImageView
-                            android:id="@+id/preview_icon"
-                            android:layout_width="64dp"
-                            android:layout_height="64dp"
-                            android:layout_marginEnd="16dp"/>
-                            
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical">
-                            
-                            <TextView
-                                android:id="@+id/preview_app_name"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="App Name"
-                                android:textStyle="bold"
-                                android:textSize="18sp"
-                                android:textColor="?attr/colorOnSurface"/>
-                                
-                            <TextView
-                                android:id="@+id/preview_package"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="com.example.app"
-                                android:textSize="14sp"
-                                android:textColor="?attr/colorOnSurfaceVariant"/>
-                        </LinearLayout>
-                    </LinearLayout>
-                    
-                    <TextView
-                        android:id="@+id/preview_version_info"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Downgrading from v2.0 to v1.0"
-                        android:textSize="14sp"
-                        android:textColor="?attr/colorOnSurface"
-                        android:layout_marginBottom="16dp"/>
-                        
-                    <TextView
-                        android:id="@+id/preview_warning"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Warning: Not a downgrade."
-                        android:textSize="14sp"
-                        android:textColor="?attr/colorError"
-                        android:visibility="gone"
-                        android:layout_marginBottom="16dp"/>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="end">
-                        
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_cancel"
-                            style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="8dp"
-                            android:text="Cancel"/>
-                            
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_install"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Install"/>
-                    </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_install_all"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Install All"/>
+            </LinearLayout>
 
             <!-- History Area -->
             <TextView

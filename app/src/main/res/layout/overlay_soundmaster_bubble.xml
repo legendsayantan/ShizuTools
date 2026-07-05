@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="60dp"
+    android:layout_height="60dp">
+
+    <!-- RMS Meter view placed behind the card -->
+    <com.legendsayantan.adbtools.views.RmsMeterView
+        android:id="@+id/rms_meter"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Glassmorphism Bubble Base -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/bubble_card"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_gravity="center"
+        app:cardCornerRadius="26dp"
+        app:cardElevation="10dp"
+        app:cardBackgroundColor="#CC1C1E2E"
+        app:strokeColor="#40FFFFFF"
+        app:strokeWidth="1dp">
+
+        <ImageView
+            android:id="@+id/app_icon"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:src="@mipmap/ic_launcher"
+            android:scaleType="centerCrop"/>
+    </com.google.android.material.card.MaterialCardView>
+    
+    <!-- Status Dot -->
+    <View
+        android:id="@+id/status_dot"
+        android:layout_width="12dp"
+        android:layout_height="12dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="2dp"
+        android:background="@drawable/circle_green"
+        android:elevation="12dp" />
+
+</FrameLayout>

@@ -74,6 +74,7 @@ class PlayBackThread(
 
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun run() {
+        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO)
         if (ActivityCompat.checkSelfPermission(
                 context,
                 android.Manifest.permission.RECORD_AUDIO
@@ -121,12 +122,14 @@ class PlayBackThread(
             mCapture.startRecording()
             Log.i(LOG_TAG, "Audio Recording started")
             while (playback) {
-                mCapture.read(dataBuffer, 0, BUF_SIZE)
-                val players = mPlayers.values.toList()
-                players.forEach {
-                    it.write(dataBuffer, 0, dataBuffer.size)
+                val read = mCapture.read(dataBuffer, 0, BUF_SIZE)
+                if (read > 0) {
+                    val players = mPlayers.values.toList()
+                    players.forEach {
+                        it.write(dataBuffer, 0, read)
+                    }
+                    loadedCycles++
                 }
-                loadedCycles++
             }
         } catch (e: Exception) {
             Log.e(LOG_TAG, "Error in PlayBackThread")
@@ -232,14 +235,17 @@ class PlayBackThread(
         return mPlayers[it.output]?.volume?.times(100f)
     }
 
+    private val rmsShortBuffer = ShortArray(BUF_SIZE / 2)
+    private val rmsByteBuffer = ByteBuffer.wrap(dataBuffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+
     fun calculateRMS(): Float {
-        val shortBuffer = ShortArray(dataBuffer.size / 2)
-        ByteBuffer.wrap(dataBuffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(shortBuffer)
+        rmsByteBuffer.position(0)
+        rmsByteBuffer.get(rmsShortBuffer)
         var sum = 0.0
-        for (sample in shortBuffer) {
+        for (sample in rmsShortBuffer) {
             sum += (sample * sample).toFloat()
         }
-        return sqrt(sum / shortBuffer.size).toFloat()
+        return sqrt(sum / rmsShortBuffer.size).toFloat()
     }
 
 

@@ -25,7 +25,8 @@ import com.legendsayantan.adbtools.data.ToolCard
 import com.legendsayantan.adbtools.dialog.IntentShellBottomSheet
 import com.legendsayantan.adbtools.dialog.LocalShellBottomSheet
 import com.legendsayantan.adbtools.dialog.LogBottomSheetDialog
-import com.legendsayantan.adbtools.dialog.SoundMasterDialog
+
+import com.legendsayantan.adbtools.dialog.UniversalPipDialog
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.Utils.Companion.getNotiPerms
 import com.legendsayantan.adbtools.receivers.PipReceiver
@@ -61,7 +62,9 @@ class MainActivity : AppCompatActivity() {
             view.setPadding(insets.left, 0, insets.right, 0)
             // Push the header content below the status bar
             val header = findViewById<android.widget.LinearLayout>(R.id.header_content)
-            header?.setPadding(header.paddingLeft, insets.top + resources.getDimensionPixelSize(R.dimen.header_padding_top_extra), header.paddingRight, header.paddingBottom)
+            header?.let {
+                it.setPadding(it.paddingLeft, insets.top + resources.getDimensionPixelSize(R.dimen.header_padding_top_extra), it.paddingRight, it.paddingBottom)
+            }
             WindowInsetsCompat.CONSUMED
         }
         
@@ -92,6 +95,10 @@ class MainActivity : AppCompatActivity() {
         setupDebug()
         setupShortcuts()
         checkUpdates()
+        
+        if (intent?.action == "OPEN_SOUNDMASTER") {
+            com.legendsayantan.adbtools.dialog.SoundMasterBottomSheet().show(supportFragmentManager, "SoundMaster")
+        }
     }
 
     override fun onResume() {
@@ -110,6 +117,14 @@ class MainActivity : AppCompatActivity() {
             iconRes = R.drawable.ic_debloater,
             accentColorRes = R.color.tool_debloater,
             activityClass = DebloatActivity::class.java
+        ))
+        tools.add(ToolCard(
+            id = "standbybucket",
+            nameRes = R.string.standby_bucket,
+            descRes = R.string.desc_standby_bucket,
+            iconRes = R.drawable.ic_standby_bucket,
+            accentColorRes = R.color.tool_standby_bucket,
+            activityClass = StandbyBucketActivity::class.java
         ))
         tools.add(ToolCard(
             id = "themepatcher",
@@ -135,11 +150,7 @@ class MainActivity : AppCompatActivity() {
             iconRes = R.drawable.ic_sound_master,
             accentColorRes = R.color.tool_sound_master,
             activityClass = null,
-            onClickOverride = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    SoundMasterDialog(this).show()
-                }
-            },
+            onClickOverride = { com.legendsayantan.adbtools.dialog.SoundMasterBottomSheet().show(supportFragmentManager, "SoundMaster") },
             isServiceActive = { SoundMasterService.running }
         ))
         tools.add(ToolCard(
@@ -157,9 +168,17 @@ class MainActivity : AppCompatActivity() {
             iconRes = R.drawable.ic_universal_pip,
             accentColorRes = R.color.tool_universal_pip,
             activityClass = null,
-            onClickOverride = { togglePipService() }
+            onClickOverride = { UniversalPipDialog(this).show() }
         ))
         tools.add("Advanced")
+        tools.add(ToolCard(
+            id = "virtualmount",
+            nameRes = R.string.virtualmount,
+            descRes = R.string.desc_virtualmount,
+            iconRes = R.drawable.ic_virtual_mount,
+            accentColorRes = R.color.tool_local_shell,
+            activityClass = VirtualMountActivity::class.java
+        ))
         tools.add(ToolCard(
             id = "localshell",
             nameRes = R.string.localshell,
@@ -178,6 +197,7 @@ class MainActivity : AppCompatActivity() {
             activityClass = null,
             onClickOverride = { IntentShellBottomSheet(this).show() }
         ))
+
     }
 
     private fun setupRecyclerView() {
@@ -187,7 +207,7 @@ class MainActivity : AppCompatActivity() {
         gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
                 val item = tools[position]
-                return if (item is String || (item is ToolCard && (item.id == "debloater" || item.id == "soundmaster"))) {
+                return if (item is String || (item is ToolCard && (item.id == "soundmaster" || item.id == "virtualmount"))) {
                     spanCount
                 } else {
                     1
@@ -206,34 +226,6 @@ class MainActivity : AppCompatActivity() {
         recycler.layoutAnimation = AnimationUtils.loadLayoutAnimation(this, R.anim.layout_animation_stagger)
     }
 
-    private fun togglePipService() {
-        val intent = Intent(this, PipReceiver::class.java)
-        SoundMasterService.uiIntent = intent
-        val channelId = "notifications"
-        val notificationBuilder = NotificationCompat.Builder(applicationContext, channelId)
-            .setSmallIcon(R.drawable.outline_info_24)
-            .setContentTitle("Tap to show controls / Tap to toggle " + getString(R.string.universalpip))
-            .setOngoing(true)
-            .setContentIntent(
-                PendingIntent.getBroadcast(
-                    this,
-                    0,
-                    intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-            )
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-
-        with(NotificationManagerCompat.from(applicationContext)) {
-            if (ActivityCompat.checkSelfPermission(
-                    applicationContext,
-                    android.Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
-                notify(4, notificationBuilder.build())
-            }
-        }
-    }
 
     private fun registerGlobalExceptionLogger() {
         Thread.setDefaultUncaughtExceptionHandler { _, e ->
@@ -281,8 +273,8 @@ class MainActivity : AppCompatActivity() {
             .setIntent(debloatIntent)
             .build()
 
-        val soundMasterIntent = Intent(this, SoundMasterActivity::class.java).apply {
-            action = Intent.ACTION_VIEW
+        val soundMasterIntent = Intent(this, MainActivity::class.java).apply {
+            action = "OPEN_SOUNDMASTER"
         }
         val soundMasterShortcut = ShortcutInfoCompat.Builder(this, "shortcut_soundmaster")
             .setShortLabel("SoundMaster")

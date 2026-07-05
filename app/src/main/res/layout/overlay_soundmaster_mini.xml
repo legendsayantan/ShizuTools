@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:padding="4dp">
+
+    <!-- Compact Container for dynamic vertical sliders (1 per app) -->
+    <!-- It will contain item_mini_slider layouts dynamically injected -->
+    <LinearLayout
+        android:id="@+id/mini_sliders_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"/>
+        
+    <!-- Button to open expanded menu -->
+    <ImageButton
+        android:id="@+id/btn_more"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/circle_green"
+        android:backgroundTint="#80000000"
+        android:src="@android:drawable/ic_menu_more"
+        android:tint="#FFFFFF" />
+
+</LinearLayout>

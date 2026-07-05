@@ -13,9 +13,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.content.edit
 import androidx.core.widget.doOnTextChanged
-import com.legendsayantan.adbtools.SoundMasterActivity.Companion.FILENAME_SOUNDMASTER_BALANCE_SLIDERS
-import com.legendsayantan.adbtools.SoundMasterActivity.Companion.FILENAME_SOUNDMASTER_BAND_SLIDERS
-import com.legendsayantan.adbtools.SoundMasterActivity.Companion.FILENAME_SOUNDMASTER_PACKAGE_SLIDERS
 import com.legendsayantan.adbtools.lib.AudioOutputMap
 import com.legendsayantan.adbtools.lib.AppParameters
 import com.legendsayantan.adbtools.lib.AppParameters.Companion.defaultSettings
@@ -126,7 +123,7 @@ class DebugSettingsActivity : AppCompatActivity() {
             val data =
                 """
                 Soundmaster active : ${SoundMasterService.running}
-                MediaProjection active : ${SoundMasterActivity.isMediaProjectionActive}
+                MediaProjection active : ${com.legendsayantan.adbtools.dialog.SoundMasterBottomSheet.isMediaProjectionActive}
                 Loaded apps : $loadedData
                 
                 Audio output devices : 
@@ -149,7 +146,7 @@ class DebugSettingsActivity : AppCompatActivity() {
                 ${
                     File(
                         applicationContext.filesDir,
-                        FILENAME_SOUNDMASTER_PACKAGE_SLIDERS
+                        "soundmaster.txt"
                     ).let { if (it.exists()) it.readText() else "No data" }
                 }
                 
@@ -157,7 +154,7 @@ class DebugSettingsActivity : AppCompatActivity() {
                 ${
                     File(
                         applicationContext.filesDir,
-                        FILENAME_SOUNDMASTER_BALANCE_SLIDERS
+                        "soundmaster_balance.txt"
                     ).let { if (it.exists()) it.readText() else "No data" }
                 }
                 
@@ -165,7 +162,7 @@ class DebugSettingsActivity : AppCompatActivity() {
                 ${
                     File(
                         applicationContext.filesDir,
-                        FILENAME_SOUNDMASTER_BAND_SLIDERS
+                        "soundmaster_band.txt"
                     ).let { if (it.exists()) it.readText() else "No data" }
                 }
                     """.trimIndent().replace(Regex("(?m)^\\s+"), "")

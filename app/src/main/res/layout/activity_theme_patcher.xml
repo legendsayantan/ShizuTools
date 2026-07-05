@@ -127,7 +127,7 @@
                             android:layout_height="wrap_content"
                             android:text="@string/start"
                             android:backgroundTint="@color/tool_theme_patcher"
-                            android:textColor="?attr/colorOnPrimary" />
+                            android:textColor="@android:color/white" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/stopPatcherBtn"

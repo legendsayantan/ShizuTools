@@ -26,7 +26,7 @@ class IntentReceiver : BroadcastReceiver() {
         }
         val command = intent.getStringExtra("command") ?: intent.data ?: return
         val responseAction = intent.getStringExtra("response")
-        val listener = object : ShizukuRunner.CommandResultListener {
+        val listener = object : com.legendsayantan.adbtools.services.ICommandCallback.Stub() {
             override fun onCommandResult(output: String, done: Boolean) {
                 if (done && responseAction!=null) {
                     context.sendBroadcast(Intent(responseAction).apply {
@@ -48,6 +48,8 @@ class IntentReceiver : BroadcastReceiver() {
         if (historyList.size > 5) historyList.removeAt(0)
         prefs.edit().putString("intent_history", historyList.joinToString("|||")).apply()
 
-        ShizukuRunner.command(command.toString(), listener)
+        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
+            service.runCommand(command.toString(), listener, 50)
+        }
     }
 }

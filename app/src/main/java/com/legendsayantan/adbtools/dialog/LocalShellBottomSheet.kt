@@ -142,35 +142,37 @@ class LocalShellBottomSheet(context: Context) : BottomSheetDialog(context, R.sty
             updateOutputView(commandOut, currentHeader, true)
             btnRun.isEnabled = false
             
-            ShizukuRunner.command(cmd, object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {
-                    commandOut.post {
-                        if (done) {
+            com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
+                service.runCommand(cmd, object : com.legendsayantan.adbtools.services.ICommandCallback.Stub() {
+                    override fun onCommandResult(output: String, done: Boolean) {
+                        commandOut.post {
+                            if (done) {
+                                historyBuffer.append(currentHeader)
+                                historyBuffer.append(output)
+                                if (output.isNotEmpty() && !output.endsWith("\n")) historyBuffer.append("\n")
+                                historyBuffer.append("[$time] ✓\n")
+                                saveAndRefreshOutput(commandOut)
+                                btnRun.isEnabled = true
+                                editText.requestFocus() // UX 9.7
+                            } else {
+                                updateOutputView(commandOut, currentHeader + output, true)
+                            }
+                        }
+                    }
+                    
+                    override fun onCommandError(error: String) {
+                        commandOut.post {
                             historyBuffer.append(currentHeader)
-                            historyBuffer.append(output)
-                            if (output.isNotEmpty() && !output.endsWith("\n")) historyBuffer.append("\n")
-                            historyBuffer.append("[$time] ✓\n")
+                            historyBuffer.append("Error: $error\n")
+                            historyBuffer.append("[$time] ✗\n")
                             saveAndRefreshOutput(commandOut)
                             btnRun.isEnabled = true
                             editText.requestFocus() // UX 9.7
-                        } else {
-                            updateOutputView(commandOut, currentHeader + output, true)
                         }
+                        context.applicationContext.log(error)
                     }
-                }
-                
-                override fun onCommandError(error: String) {
-                    commandOut.post {
-                        historyBuffer.append(currentHeader)
-                        historyBuffer.append("Error: $error\n")
-                        historyBuffer.append("[$time] ✗\n")
-                        saveAndRefreshOutput(commandOut)
-                        btnRun.isEnabled = true
-                        editText.requestFocus() // UX 9.7
-                    }
-                    context.applicationContext.log(error)
-                }
-            })
+                }, 50)
+            }
             editText.selectAll()
             editText.requestFocus()
         }

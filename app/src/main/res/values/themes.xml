@@ -6,6 +6,8 @@
         <item name="colorPrimaryVariant">@color/colorPrimaryVariant</item>
         <item name="colorSecondary">@color/colorSecondary</item>
         <item name="colorSecondaryVariant">@color/colorSecondaryVariant</item>
+        <item name="colorSecondaryContainer">@color/colorTonalBackground</item>
+        <item name="colorOnSecondaryContainer">@color/white</item>
         <item name="colorOnPrimary">@color/colorOnPrimary</item>
         <item name="colorOnSecondary">@color/colorOnSecondary</item>
         <item name="android:colorBackground">@color/colorBackground</item>
@@ -26,6 +28,8 @@
         <item name="bottomSheetStyle">@style/SheetStyle</item>
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorOnPrimary">@color/colorOnPrimary</item>
+        <item name="colorSecondaryContainer">@color/colorTonalBackground</item>
+        <item name="colorOnSecondaryContainer">@color/white</item>
         <item name="colorSurface">@color/colorSurface</item>
         <item name="colorOnSurface">@color/colorOnSurface</item>
         <item name="colorOnSurfaceVariant">@color/colorOnSurface</item>
@@ -59,8 +63,21 @@
         <item name="buttonBarNeutralButtonStyle">@style/AppDialogButton</item>
     </style>
 
-    <style name="AppDialogButton" parent="Widget.Material3.Button.TonalButton">
+    <style name="AppDialogButton" parent="Widget.Material3.Button">
         <item name="android:textColor">@color/colorSecondary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="backgroundTint">@color/colorTonalBackground</item>
+        <item name="rippleColor">?attr/colorOnSecondaryContainer</item>
+        <item name="iconTint">?attr/colorOnSecondaryContainer</item>
+        <item name="fontFamily">@font/inter</item>
+    </style>
+
+    <style name="AppTonalButton" parent="Widget.Material3.Button">
+        <item name="android:textColor">@color/colorSecondary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="backgroundTint">@color/colorTonalBackground</item>
+        <item name="rippleColor">?attr/colorOnSecondaryContainer</item>
+        <item name="iconTint">?attr/colorOnSecondaryContainer</item>
         <item name="fontFamily">@font/inter</item>
     </style>
 

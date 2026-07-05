@@ -35,26 +35,32 @@ object ShizuToolsController {
         .version(1)
 
     fun execute(action: (IShizuToolsService) -> Unit) {
-        activeClients++
-        handler.removeCallbacks(disconnectRunnable)
+        handler.post {
+            activeClients++
+            handler.removeCallbacks(disconnectRunnable)
+        }
         
         if (service != null && service!!.asBinder().isBinderAlive) {
-            try {
-                action(service!!)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                releaseClient()
-            }
+            Thread {
+                try {
+                    action(service!!)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    releaseClient()
+                }
+            }.start()
         } else {
             bind(action)
         }
     }
     
     private fun releaseClient() {
-        activeClients--
-        if (activeClients == 0) {
-            handler.postDelayed(disconnectRunnable, IDLE_TIMEOUT_MS)
+        handler.post {
+            activeClients--
+            if (activeClients == 0) {
+                handler.postDelayed(disconnectRunnable, IDLE_TIMEOUT_MS)
+            }
         }
     }
 
@@ -67,15 +73,17 @@ object ShizuToolsController {
                 service = IShizuToolsService.Stub.asInterface(binder)
                 val actionsToRun = pendingActions.toList()
                 pendingActions.clear()
-                actionsToRun.forEach { act ->
-                    try {
-                        act(service!!)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    } finally {
-                        releaseClient()
+                Thread {
+                    actionsToRun.forEach { act ->
+                        try {
+                            act(service!!)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        } finally {
+                            releaseClient()
+                        }
                     }
-                }
+                }.start()
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {

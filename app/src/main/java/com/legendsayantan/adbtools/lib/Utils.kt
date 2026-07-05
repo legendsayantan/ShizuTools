@@ -112,26 +112,20 @@ class Utils {
         }
 
         fun loadApps(specifyUser:Int=-1,callback: (List<String>) -> Unit,errorCallback:(String)->Unit={}) {
-            ShizukuRunner.command(
-                "pm list packages"+(if(specifyUser>=0)" --user $specifyUser" else ""),
-                object : ShizukuRunner.CommandResultListener {
-                    override fun onCommandResult(output: String, done: Boolean) {
-                        if(done){
-                            val packages = output.replace("package:", "").split("\n")
-                            callback(packages)
-                        }
-                    }
-                    override fun onCommandError(error: String) {
-                        if(specifyUser>=0) {
-                            //error on fallback mode
-                            errorCallback(error)
-                        }
-                        else {
-                            //switch to fallback mode
+            Thread {
+                ShizuToolsController.execute { service ->
+                    try {
+                        val packages = service.getInstalledPackages(specifyUser)
+                        callback(packages)
+                    } catch (e: Exception) {
+                        if (specifyUser >= 0) {
+                            errorCallback(e.message ?: "Error getting packages")
+                        } else {
                             loadApps(0, callback, errorCallback)
                         }
                     }
-                })
+                }
+            }.start()
         }
 
         fun getAppUidFromPackage(context: Context, packageName: String): Int {

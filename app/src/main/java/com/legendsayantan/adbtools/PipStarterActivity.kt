@@ -3,6 +3,7 @@ package com.legendsayantan.adbtools
 import android.content.Context
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import androidx.activity.enableEdgeToEdge
@@ -10,7 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.google.android.material.card.MaterialCardView
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
-import com.legendsayantan.adbtools.lib.ShizukuRunner
+import com.legendsayantan.adbtools.lib.ShizuToolsController
+import com.legendsayantan.adbtools.services.ICommandCallback
 import java.util.Timer
 import kotlin.concurrent.timerTask
 
@@ -55,18 +57,15 @@ class PipStarterActivity : AppCompatActivity() {
                     arrayOf(KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,KeyEvent.KEYCODE_DPAD_RIGHT),
                     arrayOf(KeyEvent.KEYCODE_MEDIA_NEXT)
                 )
-                getExternalDisplayId { display->
+                getExternalDisplayId(this) { display->
                     Handler(mainLooper).post {
                         controls.forEachIndexed { index, materialCardView ->
                             materialCardView.setOnClickListener {
                                 materialCardView.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                                 keys[index].forEach { key ->
-                                    ShizukuRunner.command("input -d $display keyevent $key",
-                                        object : ShizukuRunner.CommandResultListener {
-                                            override fun onCommandError(error: String) {
-                                                applicationContext.log(error)
-                                            }
-                                        })
+                                    ShizuToolsController.execute { service -> 
+                                        service.injectKeyEvent(display, key)
+                                    }
                                     interacted()
                                 }
                             }
@@ -81,18 +80,15 @@ class PipStarterActivity : AppCompatActivity() {
                     extraBtns[0].performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                     interacted()
                     val metrics = getWindowParams()
-                    getExternalDisplayId {
-                        ShizukuRunner.command("input -d $it tap ${(metrics.first * 0.95).toInt()} ${(metrics.second*0.86).toInt()}",
-                            object : ShizukuRunner.CommandResultListener {
-                                override fun onCommandError(error: String) {
-                                    applicationContext.log(error)
-                                }
-                            })
+                    getExternalDisplayId(this) { display ->
+                        ShizuToolsController.execute { service ->
+                            service.injectTap(display, (metrics.first * 0.95).toInt(), (metrics.second*0.86).toInt())
+                        }
                     }
                 }
                 extraBtns[1].setOnClickListener {
                     extraBtns[1].performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    disablePip()
+                    disablePip(this)
                     interacted()
                 }
 
@@ -137,135 +133,113 @@ class PipStarterActivity : AppCompatActivity() {
             val metrics = resources.displayMetrics
             return Pair(metrics.widthPixels,((metrics.widthPixels / (metrics.heightPixels.toFloat() / metrics.widthPixels)) + 100).toInt())
         }
-        fun getExternalDisplayId(callback:(Int)->Unit){
-            ShizukuRunner.command("dumpsys display | grep 'Display [0-9][0-9]*'",
-                object :
-                    ShizukuRunner.CommandResultListener {
-                    override fun onCommandResult(
-                        output: String,
-                        done: Boolean
-                    ) {
+        
+        fun getExternalDisplayId(context: Context, callback:(Int)->Unit){
+            ShizuToolsController.execute { service ->
+                val listener = object : ICommandCallback.Stub() {
+                    override fun onCommandResult(output: String, done: Boolean) {
                         if (done) {
-                            callback("\\d+".toRegex()
+                            val id = "\\d+".toRegex()
                                 .findAll(output)
                                 .filter { it.value != "0" }
                                 .map { it.value.toInt() }
-                                .maxOrNull() ?: 0)
+                                .maxOrNull() ?: 0
+                            Handler(Looper.getMainLooper()).post { callback(id) }
                         }
                     }
-
                     override fun onCommandError(error: String) {
                         println(error)
-                        disablePip()
-                        log(error)
+                        Handler(Looper.getMainLooper()).post { 
+                            disablePip(context)
+                            log(error) 
+                        }
                     }
-                })
+                }
+                service.runCommand("dumpsys display | grep 'Display [0-9][0-9]*'", listener, 0)
+            }
         }
 
-
         fun Context.handlePip() {
-            ShizukuRunner.command("settings get global overlay_display_devices",
-                object : ShizukuRunner.CommandResultListener {
-                    override fun onCommandResult(output: String, done: Boolean) {
-                        if (done) {
-                            if (output.trim().contains("null", true)) {
-                                enablePip()
-                            } else {
-                                ShizukuRunner.command("am start -n $packageName/${PipStarterActivity::class.java.canonicalName} --display 0",
-                                    object : ShizukuRunner.CommandResultListener {
-                                        override fun onCommandError(
-                                            error: String
-                                        ) {
-                                            disablePip()
-                                            println(error)
-                                            log(error)
-                                        }
-                                    })
+            ShizuToolsController.execute { service ->
+                val output = service.getGlobalSetting("overlay_display_devices")
+                if (output.trim().contains("null", true)) {
+                    Handler(Looper.getMainLooper()).post { enablePip() }
+                } else {
+                    val listener = object : ICommandCallback.Stub() {
+                        override fun onCommandResult(output: String, done: Boolean) {}
+                        override fun onCommandError(error: String) {
+                            Handler(Looper.getMainLooper()).post {
+                                disablePip(this@handlePip)
+                                println(error)
+                                log(error)
                             }
                         }
                     }
-                })
+                    service.runCommand("am start -n $packageName/${PipStarterActivity::class.java.canonicalName} --display 0", listener, 0)
+                }
+            }
         }
 
         fun Context.enablePip() {
             Timer().schedule(timerTask {
-                ShizukuRunner.command(
-                    "dumpsys window displays | grep -E 'mCurrentFocus'",
-                    object : ShizukuRunner.CommandResultListener {
+                ShizuToolsController.execute { service ->
+                    val listener = object : ICommandCallback.Stub() {
                         override fun onCommandResult(output: String, done: Boolean) {
                             if (done) {
-                                val pipPackage = output.split(" ")[4].split("/")[0]
-                                val metrics = getWindowParams()
-                                ShizukuRunner.command("settings put global overlay_display_devices ${metrics.first}x${metrics.second}/240",
-                                    object : ShizukuRunner.CommandResultListener {
-                                        override fun onCommandResult(
-                                            output: String,
-                                            done: Boolean
-                                        ) {
-                                            if (done) {
-                                                Timer().schedule(timerTask {
-                                                    getExternalDisplayId { newDisplayId->
-                                                        val command =
-                                                            "am start -n $packageName/${PipStarterActivity::class.java.canonicalName} --es package $pipPackage --display $newDisplayId"
-                                                        ShizukuRunner.command(
-                                                            command,
-                                                            object :
-                                                                ShizukuRunner.CommandResultListener {
-                                                                override fun onCommandResult(
-                                                                    output: String,
-                                                                    done: Boolean
-                                                                ) {
-                                                                    if (done) {
-                                                                        println("PIP started")
-                                                                    }
-                                                                }
-
-                                                                override fun onCommandError(
-                                                                    error: String
-                                                                ) {
-                                                                    disablePip()
-                                                                    println(error)
-                                                                    log(error)
-                                                                }
-                                                            })
+                                val split = output.split(" ")
+                                if (split.size > 4) {
+                                    val pipPackage = split[4].split("/")[0]
+                                    val metrics = getWindowParams()
+                                    service.putGlobalSetting("overlay_display_devices", "${metrics.first}x${metrics.second}/240")
+                                    
+                                    Timer().schedule(timerTask {
+                                        getExternalDisplayId(this@enablePip) { newDisplayId ->
+                                            ShizuToolsController.execute { innerService ->
+                                                val innerListener = object : ICommandCallback.Stub() {
+                                                    override fun onCommandResult(innerOut: String, innerDone: Boolean) {
+                                                        if (innerDone) println("PIP started")
                                                     }
-                                                }, 500)
+                                                    override fun onCommandError(error: String) {
+                                                        Handler(Looper.getMainLooper()).post {
+                                                            disablePip(this@enablePip)
+                                                            println(error)
+                                                            log(error)
+                                                        }
+                                                    }
+                                                }
+                                                val command = "am start -n $packageName/${PipStarterActivity::class.java.canonicalName} --es package $pipPackage --display $newDisplayId"
+                                                innerService.runCommand(command, innerListener, 0)
                                             }
                                         }
-
-                                        override fun onCommandError(error: String) {
-                                            disablePip()
-                                            println(error)
-                                            log(error)
-                                        }
-                                    })
+                                    }, 500)
+                                }
                             }
                         }
-                    })
+                        override fun onCommandError(error: String) {
+                            Handler(Looper.getMainLooper()).post {
+                                disablePip(this@enablePip)
+                                println(error)
+                                log(error)
+                            }
+                        }
+                    }
+                    service.runCommand("dumpsys window displays | grep -E 'mCurrentFocus'", listener, 0)
+                }
             }, 1500)
         }
 
-        fun disablePip() {
-            ShizukuRunner.command("settings put global overlay_display_devices null",
-                object : ShizukuRunner.CommandResultListener {
-                    override fun onCommandResult(output: String, done: Boolean) {
-                        playVideo()
-                    }
-
-                    override fun onCommandError(error: String) {
-                        log(error)
-                    }
-                })
+        fun disablePip(context: Context) {
+            ShizuToolsController.execute { service ->
+                service.putGlobalSetting("overlay_display_devices", "null")
+                Handler(Looper.getMainLooper()).post { playVideo() }
+            }
         }
 
         fun playVideo() {
             Timer().schedule(timerTask {
-                ShizukuRunner.command("input keyevent ${KeyEvent.KEYCODE_MEDIA_PLAY}",
-                    object : ShizukuRunner.CommandResultListener {
-                        override fun onCommandError(error: String) {
-                            log(error)
-                        }
-                    })
+                ShizuToolsController.execute { service ->
+                    service.injectKeyEvent(0, KeyEvent.KEYCODE_MEDIA_PLAY)
+                }
             }, 1500)
         }
     }

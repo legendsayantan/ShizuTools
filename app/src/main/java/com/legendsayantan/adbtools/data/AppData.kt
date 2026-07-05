@@ -11,5 +11,6 @@ data class AppData(
     val neededBy: ArrayList<String> = arrayListOf(),
     val labels: ArrayList<String> = arrayListOf(),
     val removal: String = "",
-    var isDisabled: Boolean = false
+    var isDisabled: Boolean = false,
+    var isHidden: Boolean = false
 )

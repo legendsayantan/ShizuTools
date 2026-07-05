@@ -53,7 +53,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:text="@string/run"
-            style="@style/Widget.Material3.Button.TonalButton"/>
+            style="@style/AppTonalButton"/>
     </LinearLayout>
     
     <FrameLayout

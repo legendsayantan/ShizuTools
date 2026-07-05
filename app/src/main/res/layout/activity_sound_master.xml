@@ -12,132 +12,162 @@
     android:layout_height="match_parent"
     tools:context=".SoundMasterActivity">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_marginTop="50dp"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="50dp"
-        app:layout_constraintBottom_toTopOf="@+id/materialCardView">
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/newSlider"
-            app:cardCornerRadius="25dp"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="50dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="?attr/colorOutline"
-            app:cardBackgroundColor="@android:color/transparent"
-            app:layout_constraintBottom_toTopOf="@+id/materialCardView">
-
-            <LinearLayout
-                android:padding="10dp"
-                android:gravity="center"
-                android:orientation="horizontal"
-                android:background="@drawable/bg_paper_card"
-                android:layout_width="match_parent"
-                android:layout_height="50dp">
-
-                <ImageView
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:src="@drawable/baseline_add_24"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toStartOf="@+id/textView4"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:tint="@color/white" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:text="@string/new_slider"
-                    android:textSize="20sp"
-                    android:fontFamily="@font/literata"
-                    android:textColor="?attr/colorSecondary"
-                    android:layout_marginHorizontal="7dp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:layout_marginStart="25dp"
-            app:cardCornerRadius="25dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="?attr/colorOutline"
-            app:cardBackgroundColor="@android:color/transparent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-            <LinearLayout
-                android:background="@drawable/bg_paper_card"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent">
-                <ImageView
-                    android:id="@+id/playPauseButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:padding="10dp"
-                    android:src="@drawable/baseline_play_arrow_24"
-                    android:layout_gravity="center"
-                    app:tint="@color/white" />
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-    </LinearLayout>
-
-
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/materialCardView"
-        android:focusable="true"
         android:clickable="true"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:animateLayoutChanges="true"
-        android:translationY="25dp"
+        android:layout_margin="24dp"
         app:cardCornerRadius="25dp"
         app:strokeWidth="1dp"
         app:strokeColor="?attr/colorOutline"
-        app:cardBackgroundColor="@android:color/transparent"
+        app:cardBackgroundColor="?attr/colorSurface"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
         <LinearLayout
             android:orientation="vertical"
-            android:background="@drawable/bg_paper"
+            android:gravity="center"
+            android:padding="32dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:animateLayoutChanges="true"
-            android:theme="@style/Theme.AdbTools"
-            android:minHeight="100dp"
-            android:padding="20dp">
+            android:theme="@style/Theme.AdbTools">
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/volumeBars"
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/baseline_equalizer_24"
+                app:tint="?attr/colorPrimary"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SoundMaster"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/literata"
+                android:textColor="?attr/colorOnSurface"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Smart Multi-App Audio Routing"
+                android:textSize="14sp"
+                android:textAlignment="center"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginBottom="24dp" />
+                
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/modeToggleGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:singleSelection="true"
+                app:selectionRequired="true"
+                android:layout_marginBottom="8dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnModeSmart"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:text="Smart Volume" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnModeDsp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:text="Advanced DSP" />
+
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <TextView
+                android:id="@+id/textModeDescription"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+                android:text="Lightweight volume control using native Binder services. Uses 0% extra CPU and has zero latency. Does not support EQ or reverb."
+                android:textSize="12sp"
+                android:textAlignment="center"
+                android:paddingHorizontal="24dp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginBottom="24dp" />
 
-            <Space
-                android:id="@+id/insetSpace"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:layout_marginBottom="32dp">
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_notification"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/show_soundmaster_notification"
+                    android:paddingVertical="8dp"/>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_volume_change"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/show_on_volume_change"
+                    android:paddingVertical="8dp"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:hint="Auto-hide Timeout">
+                    <AutoCompleteTextView
+                        android:id="@+id/dropdown_auto_hide"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/newSlider"
+                app:cardCornerRadius="25dp"
                 android:layout_width="wrap_content"
-                android:minHeight="50dp"
-                android:layout_height="wrap_content"/>
+                android:layout_height="50dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutline"
+                app:cardBackgroundColor="?attr/colorPrimary">
+
+                <LinearLayout
+                    android:padding="10dp"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp">
+
+                    <ImageView
+                        android:id="@+id/playPauseButton"
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
+                        android:src="@drawable/baseline_play_arrow_24"
+                        app:tint="?attr/colorOnPrimary" />
+
+                    <TextView
+                        android:id="@+id/toggleText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Start Engine"
+                        android:textSize="18sp"
+                        android:fontFamily="@font/literata"
+                        android:textColor="?attr/colorOnPrimary"
+                        android:layout_marginHorizontal="12dp" />
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/none"
-            android:text="@string/no_sliders_added"
-            android:layout_width="match_parent"
-            android:layout_margin="25dp"
-            android:textSize="20sp"
-            android:layout_height="wrap_content"/>
     </com.google.android.material.card.MaterialCardView>
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

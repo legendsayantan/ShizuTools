@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Global Installation Options"
+        android:textStyle="bold"
+        android:textSize="18sp"
+        android:textColor="?attr/colorOnSurface"
+        android:layout_marginBottom="16dp"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/cb_downgrade"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Allow Downgrade"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/cb_replace"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Replace Existing"
+        android:checked="true"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/cb_test"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Allow Test APKs"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/cb_permissions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Grant All Permissions"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/cb_all_users"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Install for All Users"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/cb_dont_kill"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Don't Kill App"/>
+
+</LinearLayout>

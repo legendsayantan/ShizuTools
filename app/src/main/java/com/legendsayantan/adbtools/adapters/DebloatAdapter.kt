@@ -17,8 +17,8 @@ import com.legendsayantan.adbtools.lib.Utils.Companion.removeUrls
 class DebloatAdapter(
     private val activity: Activity,
     private val dataList: HashMap<String, AppData>,
-    private val onItemClick: (String, AppData) -> Unit,
-    private val onItemLongClick: (String, AppData) -> Unit,
+    private val onItemClick: (Int, String, AppData) -> Unit,
+    private val onItemLongClick: (Int, String, AppData) -> Unit,
     private val isBatchMode: () -> Boolean,
     private val isSelected: (String) -> Boolean
 ) : RecyclerView.Adapter<DebloatAdapter.ViewHolder>() {
@@ -33,7 +33,7 @@ class DebloatAdapter(
         val severityStrip: View = view.findViewById(R.id.severity_strip)
         val root: MaterialCardView = view.findViewById(R.id.background)
         val checkbox: MaterialCheckBox = view.findViewById(R.id.batch_checkbox)
-        val actionIcon: ImageView = view.findViewById(R.id.action_icon)
+        val appIcon: ImageView = view.findViewById(R.id.app_icon)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -56,6 +56,13 @@ class DebloatAdapter(
         holder.appNameTextView.text = app.name
         holder.listModeTextView.text = if (app.list.isNullOrEmpty()) "Third-party" else app.list
         holder.descriptionTextView.text = desc
+
+        try {
+            val icon = activity.packageManager.getApplicationIcon(pkg)
+            holder.appIcon.setImageDrawable(icon)
+        } catch (e: Exception) {
+            holder.appIcon.setImageResource(R.mipmap.ic_launcher)
+        }
 
         val colorRes = when (app.removal) {
             "Recommended" -> R.color.green
@@ -81,20 +88,18 @@ class DebloatAdapter(
         val batchMode = isBatchMode()
         if (batchMode) {
             holder.checkbox.visibility = View.VISIBLE
-            holder.actionIcon.visibility = View.GONE
             holder.checkbox.isChecked = isSelected(pkg)
         } else {
             holder.checkbox.visibility = View.GONE
-            holder.actionIcon.visibility = View.VISIBLE
             holder.checkbox.isChecked = false
         }
 
         holder.root.setOnClickListener {
-            onItemClick(pkg, app)
+            onItemClick(holder.adapterPosition, pkg, app)
         }
         
         holder.root.setOnLongClickListener {
-            onItemLongClick(pkg, app)
+            onItemLongClick(holder.adapterPosition, pkg, app)
             true
         }
     }

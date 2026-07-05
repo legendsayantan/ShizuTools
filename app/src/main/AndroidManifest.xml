@@ -9,6 +9,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
@@ -18,6 +19,7 @@
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:allowBackup="true"
@@ -60,7 +62,11 @@
             android:name=".services.SoundMasterService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
+            android:foregroundServiceType="mediaProjection|mediaPlayback|specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Audio Volume Routing" />
+        </service>
 
         <receiver
             android:name=".receivers.IntentReceiver"
@@ -75,7 +81,7 @@
         </receiver>
 
         <activity
-            android:name=".SoundMasterActivity"
+            android:name=".SoundMasterProjectionActivity"
             android:excludeFromRecents="true"
             android:exported="true"
             android:label=""
@@ -122,6 +128,26 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <activity
+            android:name=".VirtualMountActivity"
+            android:exported="false" />
+
+        <provider
+            android:name=".providers.VirtualMountProvider"
+            android:authorities="${applicationId}.providers.virtualmount"
+            android:enabled="false"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
+
+        <activity android:name=".StandbyBucketActivity" android:exported="false" android:theme="@style/Theme.AdbTools" />
+
+
     </application>
 
 </manifest>

@@ -64,7 +64,7 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
             android:text="Copy Log"
-            style="@style/Widget.Material3.Button.TonalButton" />
+            style="@style/AppTonalButton" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_restart_app"

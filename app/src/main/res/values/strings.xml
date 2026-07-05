@@ -62,6 +62,8 @@
     <string name="desc_universalpip">Switch apps to picture-in-picture mode even if they don\'t allow it. May not support some launchers.</string>
     <string name="unmute_all_apps">Unmute All Apps</string>
     <string name="disable_all_mixedaudio">Disable All MixedAudio</string>
+    <string name="virtualmount">Virtual Mount</string>
+    <string name="desc_virtualmount">Mount restricted directories like Android/data to bypass Android 11+ restrictions.</string>
     <string name="confirm_to_disable">Disable</string>
     <string name="confirm_to_enable">Enable</string>
     <!-- Strings used for fragments for navigation -->
@@ -81,4 +83,7 @@
     <string name="themepatcher_initial_noti">Take a short trial on Theme Store…</string>
     <string name="themepatcher_patching">ThemePatcher is applying patches </string>
     <string name="role_shizuku">Shizuku lets us run with higher privileges on your system.</string>
+    <string name="standby_bucket">Governor</string>
+    <string name="desc_standby_bucket">Manage App Standby Buckets and force background states.</string>
+    <string name="desc_accessibility_governor">ShizuTools Governor uses Accessibility to instantly enforce locked background limits when apps lose focus.</string>
 </resources>

@@ -14,6 +14,7 @@
     <color name="colorPrimaryVariant">#163323</color> <!-- Darker Sap Green -->
     <color name="colorSecondary">#A5813E</color> <!-- Darker Premium Gold for light bg -->
     <color name="colorSecondaryVariant">#80622C</color>
+    <color name="colorTonalBackground">#34403A</color> <!-- Dark muted cohesive grey-green -->
     
     <color name="colorBackground">#EFEFDF</color> <!-- Soft paper background -->
     <color name="colorSurface">#F5F5ED</color> <!-- Lighter surface -->
@@ -34,8 +35,9 @@
     <color name="tool_theme_patcher">#E6C27A</color>
     <color name="tool_mixed_audio">#A3D9A5</color>
     <color name="tool_sound_master">#82A0BC</color>
-    <color name="tool_lookback">#A69CAC</color>
+    <color name="tool_lookback">#A0B09A</color>
     <color name="tool_universal_pip">#F2A2DA</color>
     <color name="tool_local_shell">#6ED3CF</color>
     <color name="tool_intent_shell">#F3AD6A</color>
+    <color name="tool_standby_bucket">#D684D3</color>
 </resources>

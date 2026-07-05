@@ -9,6 +9,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.ProgressBar
+import android.view.LayoutInflater
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -74,8 +76,8 @@ class MixedAudioActivity : AppCompatActivity() {
                 val filteredMap = focusMap.filter { it.key.lowercase().contains(filterBy) || it.value.name.lowercase().contains(filterBy)}
                 val sortedFilteredMap = filteredMap.entries.sortedWith(compareBy { it.value.name }).associate { it.key to it.value } as java.util.HashMap<String, AudioState>
                 
-                recyclerView.adapter = AudioStateAdapter(this@MixedAudioActivity, sortedFilteredMap) { pkg, state, action ->
-                    handleQuickAction(pkg, state, action)
+                recyclerView.adapter = AudioStateAdapter(this@MixedAudioActivity, sortedFilteredMap) { position, pkg, state, action ->
+                    handleQuickAction(position, pkg, state, action)
                 }
             }
         })
@@ -150,8 +152,8 @@ class MixedAudioActivity : AppCompatActivity() {
                                                                                             val filterBy = searchBar.text.toString().lowercase()
                                                                                             val filteredMap = focusMap.filter { it.key.lowercase().contains(filterBy) || it.value.name.lowercase().contains(filterBy)}
                                                                                             val sortedFocusMap = filteredMap.entries.sortedWith(compareBy { it.value.name }).associate { it.key to it.value } as HashMap<String, AudioState>
-                                                                                            recyclerView.adapter = AudioStateAdapter(this@MixedAudioActivity, sortedFocusMap) { pkg, state, action ->
-                                                                                                handleQuickAction(pkg, state, action)
+                                                                                            recyclerView.adapter = AudioStateAdapter(this@MixedAudioActivity, sortedFocusMap) { position, pkg, state, action ->
+                                                                                                handleQuickAction(position, pkg, state, action)
                                                                                             }
                                                                                             recyclerView.layoutAnimation = AnimationUtils.loadLayoutAnimation(this@MixedAudioActivity, R.anim.layout_animation_stagger)
                                                                                             recyclerView.scheduleLayoutAnimation()
@@ -189,54 +191,69 @@ class MixedAudioActivity : AppCompatActivity() {
         return pkg
     }
 
-
-
     private fun restoreAll() {
-        val builder = MaterialAlertDialogBuilder(this).apply {
-            setPositiveButton("Cancel") { _, _ -> }
-        }
-        val dialog = builder.create()
-        dialog.show()
-        dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)?.setTextColor(getColor(R.color.colorSecondary))
-        dialog.setTitle("Restore settings")
-        dialog.setMessage("Select operation for all apps:")
-        val layout = LinearLayout(this)
-        layout.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        layout.setPadding(50, 0, 50, 0)
-        layout.orientation = LinearLayout.VERTICAL
-        layout.addView(MaterialButton(this).apply {
-            text = context.getString(R.string.unmute_all_apps)
-            setOnClickListener {
-                dialog.dismiss()
-                setProgressText("Applying changes...")
-                com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
-                    focusMap.filter { it.value.muted }.forEach { (t, _) ->
-                        val uid = packageManager.getPackageInfo(t, 0).applicationInfo?.uid ?: -1
-                        controller.setAppOpMode(t, uid, 28, 0)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_mixedaudio_restore, null)
+        val dialog = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        dialog.setContentView(view)
+
+        val recycler = view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_restore)
+        val loader = view.findViewById<ProgressBar>(R.id.restore_loader)
+        val emptyText = view.findViewById<TextView>(R.id.empty_text)
+        val btnClose = view.findViewById<ImageView>(R.id.btn_close_restore)
+        val btnRestoreAll = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_restore_all)
+
+        btnClose.setOnClickListener { dialog.dismiss() }
+        
+        recycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
+
+        loader.visibility = View.VISIBLE
+        recycler.visibility = View.GONE
+        emptyText.visibility = View.GONE
+
+        Thread {
+            val modifiedApps = focusMap.filter { it.value.muted || it.value.focus != AudioState.Focus.ALLOWED }.entries.toList()
+            runOnUiThread {
+                loader.visibility = View.GONE
+                if (modifiedApps.isEmpty()) {
+                    emptyText.visibility = View.VISIBLE
+                    btnRestoreAll.visibility = View.GONE
+                } else {
+                    recycler.visibility = View.VISIBLE
+                    btnRestoreAll.visibility = View.VISIBLE
+                    recycler.adapter = RestoreAdapter(modifiedApps) { pkg ->
+                        setProgressText("Restoring $pkg...")
+                        val uid = packageManager.getPackageInfo(pkg, 0).applicationInfo?.uid ?: -1
+                        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { 
+                            it.setAppOpMode(pkg, uid, 28, 0) // Mute op
+                            it.setAppOpMode(pkg, uid, 32, 0) // Focus op
+                            runOnUiThread { 
+                                showSnackbar("Restored $pkg", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                                reloadApps()
+                                dialog.dismiss()
+                            }
+                        }
                     }
-                    runOnUiThread { reloadApps() }
+                    
+                    btnRestoreAll.setOnClickListener {
+                        dialog.dismiss()
+                        setProgressText("Restoring all apps...")
+                        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
+                            modifiedApps.forEach { (t, _) ->
+                                val uid = packageManager.getPackageInfo(t, 0).applicationInfo?.uid ?: -1
+                                controller.setAppOpMode(t, uid, 28, 0)
+                                controller.setAppOpMode(t, uid, 32, 0)
+                            }
+                            runOnUiThread { reloadApps() }
+                        }
+                    }
                 }
             }
-        })
-        layout.addView(MaterialButton(this).apply {
-            text = context.getString(R.string.disable_all_mixedaudio)
-            setOnClickListener {
-                dialog.dismiss()
-                setProgressText("Applying changes...")
-                com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
-                    focusMap.filter { it.value.focus != AudioState.Focus.ALLOWED }.forEach { (t, _) ->
-                        val uid = packageManager.getPackageInfo(t, 0).applicationInfo?.uid ?: -1
-                        controller.setAppOpMode(t, uid, 32, 0)
-                    }
-                    runOnUiThread { reloadApps() }
-                }
-            }
-        })
-        dialog.setView(layout)
+        }.start()
+
         dialog.show()
     }
 
-    private fun handleQuickAction(pkg: String, state: AudioState, action: String) {
+    private fun handleQuickAction(position: Int, pkg: String, state: AudioState, action: String) {
         setProgressText("Applying changes...")
         val uid = packageManager.getPackageInfo(pkg, 0).applicationInfo?.uid ?: -1
         if (action == "MUTE_TOGGLE") {
@@ -244,17 +261,34 @@ class MixedAudioActivity : AppCompatActivity() {
             com.legendsayantan.adbtools.lib.ShizuToolsController.execute { 
                 it.setAppOpMode(pkg, uid, 28, mode)
                 runOnUiThread { 
-                    showSnackbar("Success", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
-                    reloadApps()
+                    state.muted = !state.muted
+                    showSnackbar(if (state.muted) "Muted ${state.name}" else "Unmuted ${state.name}", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                    findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.apps)?.adapter?.notifyItemChanged(position)
+                    findViewById<View>(R.id.loading_container)?.visibility = View.GONE
                 }
             }
         } else if (action == "MIXED_TOGGLE") {
-            val mode = if (state.focus != AudioState.Focus.ALLOWED) 0 else 1 // 0=allow, 1=ignore
+            val mode = when (state.focus) {
+                AudioState.Focus.ALLOWED -> 1 // 1=ignore (on)
+                AudioState.Focus.IGNORED -> 2 // 2=deny (forced)
+                AudioState.Focus.DENIED -> 0 // 0=allow (default)
+            }
             com.legendsayantan.adbtools.lib.ShizuToolsController.execute { 
                 it.setAppOpMode(pkg, uid, 32, mode)
                 runOnUiThread { 
-                    showSnackbar("Success", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
-                    reloadApps()
+                    state.focus = when (state.focus) {
+                        AudioState.Focus.ALLOWED -> AudioState.Focus.IGNORED
+                        AudioState.Focus.IGNORED -> AudioState.Focus.DENIED
+                        AudioState.Focus.DENIED -> AudioState.Focus.ALLOWED
+                    }
+                    val stateText = when(state.focus) {
+                        AudioState.Focus.ALLOWED -> "Default"
+                        AudioState.Focus.IGNORED -> "On"
+                        AudioState.Focus.DENIED -> "Forced"
+                    }
+                    showSnackbar("MixedAudio for ${state.name} set to $stateText", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                    findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.apps)?.adapter?.notifyItemChanged(position)
+                    findViewById<View>(R.id.loading_container)?.visibility = View.GONE
                 }
             }
         }
@@ -263,5 +297,37 @@ class MixedAudioActivity : AppCompatActivity() {
     private fun onShizukuError(err: String) {
         applicationContext.log(err)
         runOnUiThread { showSnackbar("Error loading apps : $err", com.google.android.material.snackbar.Snackbar.LENGTH_LONG) }
+    }
+
+    inner class RestoreAdapter(
+        private val items: List<Map.Entry<String, AudioState>>,
+        private val onRestore: (String) -> Unit
+    ) : androidx.recyclerview.widget.RecyclerView.Adapter<RestoreAdapter.ViewHolder>() {
+
+        inner class ViewHolder(view: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
+            val appName: TextView = view.findViewById(R.id.app_name)
+            val btn: com.google.android.material.button.MaterialButton = view.findViewById(R.id.btn_restore)
+            val icon: ImageView = view.findViewById(R.id.app_icon)
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            return ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.item_restore, parent, false))
+        }
+
+        override fun getItemCount(): Int = items.size
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val item = items[position]
+            holder.appName.text = item.value.name
+            try {
+                holder.icon.setImageDrawable(packageManager.getApplicationIcon(item.key))
+            } catch (e: Exception) {
+                holder.icon.setImageResource(R.mipmap.ic_launcher)
+            }
+            holder.btn.text = "Restore"
+            holder.btn.setOnClickListener {
+                onRestore(item.key)
+            }
+        }
     }
 }

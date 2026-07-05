@@ -179,7 +179,7 @@
                 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_batch_disable"
-                style="@style/Widget.Material3.Button.TonalButton"
+                style="@style/AppTonalButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Disable"
@@ -187,7 +187,7 @@
                 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_batch_uninstall"
-                style="@style/Widget.Material3.Button.TonalButton"
+                style="@style/AppTonalButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Uninstall"
