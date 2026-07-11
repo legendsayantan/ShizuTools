@@ -8,6 +8,7 @@ import android.os.Looper
 import com.legendsayantan.adbtools.services.IShizuToolsService
 import com.legendsayantan.adbtools.services.ShizuToolsService
 import rikka.shizuku.Shizuku
+import java.util.concurrent.Executors
 
 object ShizuToolsController {
     
@@ -19,6 +20,7 @@ object ShizuToolsController {
     private const val IDLE_TIMEOUT_MS = 10000L // Shut down after 10 seconds of inactivity
     
     private val pendingActions = mutableListOf<(IShizuToolsService) -> Unit>()
+    private val executor = Executors.newCachedThreadPool()
     
     private val disconnectRunnable = Runnable {
         if (activeClients == 0 && connection != null) {
@@ -41,7 +43,7 @@ object ShizuToolsController {
         }
         
         if (service != null && service!!.asBinder().isBinderAlive) {
-            Thread {
+            executor.execute {
                 try {
                     action(service!!)
                 } catch (e: Exception) {
@@ -49,7 +51,7 @@ object ShizuToolsController {
                 } finally {
                     releaseClient()
                 }
-            }.start()
+            }
         } else {
             bind(action)
         }
@@ -73,7 +75,7 @@ object ShizuToolsController {
                 service = IShizuToolsService.Stub.asInterface(binder)
                 val actionsToRun = pendingActions.toList()
                 pendingActions.clear()
-                Thread {
+                executor.execute {
                     actionsToRun.forEach { act ->
                         try {
                             act(service!!)
@@ -83,7 +85,7 @@ object ShizuToolsController {
                             releaseClient()
                         }
                     }
-                }.start()
+                }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {

@@ -25,26 +25,29 @@ class AudioPlayer(
     private var stereoGainFactor = arrayOf(1f, 1f)
     private var bandCompensations = arrayOf(0, 0, 0)
     var savedBands = arrayOf(50f, 50f, 50f)
-    val equalizer by lazy { Equalizer(0, audioSessionId) }
-    val enhancer by lazy { LoudnessEnhancer(audioSessionId) }
-    val suppress by lazy { NoiseSuppressor.create(audioSessionId) }
-    val echoCancel by lazy { AcousticEchoCanceler.create(audioSessionId) }
+    private var equalizer: Equalizer? = null
+    private var enhancer: LoudnessEnhancer? = null
+    private var suppress: NoiseSuppressor? = null
+    private var echoCancel: AcousticEchoCanceler? = null
     fun setCurrentVolume(it: Float) {
         volume = (it / 100f).coerceAtMost(1f)
         setStereoVolume(volume * stereoGainFactor[0], volume * stereoGainFactor[1])
         try {
-            enhancer.enabled = it > 100
-            if (it > 100) enhancer.setTargetGain(((it.toInt() - 100) * 150))
+            if (enhancer == null) enhancer = LoudnessEnhancer(audioSessionId)
+            enhancer?.enabled = it > 100
+            if (it > 100) enhancer?.setTargetGain(((it.toInt() - 100) * 150))
         } catch (e: Exception) {
             Log.i(LOG_TAG, "ENHANCER NOT SUPPORTED")
         }
         try {
-            suppress.enabled = it > 100
+            if (suppress == null) suppress = NoiseSuppressor.create(audioSessionId)
+            suppress?.enabled = it > 100
         } catch (e: Exception) {
             Log.i(LOG_TAG, "NOISE SUPPRESSION NOT SUPPORTED")
         }
         try {
-            echoCancel.enabled = it > 100
+            if (echoCancel == null) echoCancel = AcousticEchoCanceler.create(audioSessionId)
+            echoCancel?.enabled = it > 100
         } catch (e: Exception) {
             Log.i(LOG_TAG, "ECHO CANCELLATION NOT SUPPORTED")
         }
@@ -55,19 +58,21 @@ class AudioPlayer(
      */
     private fun updateBandLevel(bandRange: Int, percentage: Float = -1f) {
         try {
+            if (equalizer == null) equalizer = Equalizer(0, audioSessionId)
+            val eq = equalizer ?: return
             // Iterate through the frequency bands
             val modifiedLevel =
-                equalizer.bandLevelRange[0] +
-                        ((equalizer.bandLevelRange[1] - equalizer.bandLevelRange[0]) * percentage / 100f) +
+                eq.bandLevelRange[0] +
+                        ((eq.bandLevelRange[1] - eq.bandLevelRange[0]) * percentage / 100f) +
                         bandCompensations[bandRange]
-            for (i in 0 until equalizer.numberOfBands) {
-                val centerFreq = equalizer.getCenterFreq(i.toShort()) / 1000
+            for (i in 0 until eq.numberOfBands) {
+                val centerFreq = eq.getCenterFreq(i.toShort()) / 1000
                 if (centerFreq in bandDivision[bandRange]..bandDivision[bandRange + 1]) {
-                    equalizer.setBandLevel(
+                    eq.setBandLevel(
                         i.toShort(),
                         if (percentage >= 0) modifiedLevel.toInt().toShort()
-                        else (equalizer.getBandLevel(i.toShort()) + bandCompensations[bandRange]).toShort()
-                            .coerceIn(equalizer.bandLevelRange[0], equalizer.bandLevelRange[1])
+                        else (eq.getBandLevel(i.toShort()) + bandCompensations[bandRange]).toShort()
+                            .coerceIn(eq.bandLevelRange[0], eq.bandLevelRange[1])
                     )
                 }
             }
@@ -90,9 +95,22 @@ class AudioPlayer(
     fun setBand(band: Int, value: Float) {
         savedBands[band] = value
         try {
-            equalizer.enabled = savedBands.any { it!=50f }
+            if (equalizer == null) equalizer = Equalizer(0, audioSessionId)
+            equalizer?.enabled = savedBands.any { it!=50f }
             updateBandLevel(band, value)
         } catch (_: Exception) { }
+    }
+
+    override fun release() {
+        try { super.release() } catch (e: Exception) {}
+        try { equalizer?.release() } catch (e: Exception) {}
+        try { enhancer?.release() } catch (e: Exception) {}
+        try { suppress?.release() } catch (e: Exception) {}
+        try { echoCancel?.release() } catch (e: Exception) {}
+        equalizer = null
+        enhancer = null
+        suppress = null
+        echoCancel = null
     }
 
     companion object{

@@ -22,7 +22,6 @@ import com.google.android.material.card.MaterialCardView
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.legendsayantan.adbtools.R
 import com.legendsayantan.adbtools.SoundMasterProjectionActivity
-import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.SoundMasterPreferences
 import com.legendsayantan.adbtools.lib.Utils.Companion.showSnackbar
 import com.legendsayantan.adbtools.services.SoundMasterService
@@ -65,43 +64,67 @@ class SoundMasterBottomSheet : BottomSheetDialogFragment() {
         for (i in 0 until modeToggleGroup.childCount) {
             modeToggleGroup.getChildAt(i).isEnabled = !isRunning
         }
+        
+        val btnRepairAudio = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnRepairAudio)
+        val prefs = requireContext().getSharedPreferences("sm_recovery", Context.MODE_PRIVATE)
+        val strandedApps = prefs.all.keys
+        
+        if (!isRunning && strandedApps.isNotEmpty()) {
+            btnRepairAudio.visibility = View.VISIBLE
+            btnRepairAudio.setOnClickListener {
+                btnRepairAudio.isEnabled = false
+                btnRepairAudio.text = "Repairing..."
+                com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
+                    strandedApps.forEach { pkg ->
+                        try {
+                            val uid = requireContext().packageManager.getPackageInfo(pkg, 0).applicationInfo?.uid ?: -1
+                            val savedState = prefs.getString(pkg, "0,0")
+                            val modes = savedState?.split(",")?.mapNotNull { it.toIntOrNull() } ?: listOf(0, 0)
+                            val playAudioMode = modes.getOrElse(0) { 0 }
+                            val focusMode = modes.getOrElse(1) { 0 }
+                            
+                            controller.setAppOpMode(pkg, uid, 28, playAudioMode)
+                            controller.setAppOpMode(pkg, uid, 32, focusMode)
+                        } catch (e: Exception) {}
+                    }
+                    prefs.edit().clear().apply()
+                    Handler(Looper.getMainLooper()).post {
+                        requireActivity().showSnackbar("Audio routing repaired.", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                        updateBtnState(view)
+                    }
+                }
+            }
+        } else {
+            btnRepairAudio.visibility = View.GONE
+        }
 
         btnCard.setOnClickListener {
             if (isRunning) {
-                requireContext().stopService(SoundMasterService.startingIntent)
+                requireContext().stopService(Intent(requireContext(), SoundMasterService::class.java))
                 Handler(Looper.getMainLooper()).postDelayed({ view.let { updateBtnState(it) } }, 500)
             } else {
                 val startEngineLogic = {
                     val isDspMode = SoundMasterPreferences.isAdvancedDspMode(requireContext())
                     if (isDspMode) {
-                        ShizukuRunner.execute("pm grant ${requireContext().packageName} android.permission.RECORD_AUDIO",
-                            onResult = { _, done ->
-                                if (done) {
-                                    com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
-                                        try {
-                                            service.setAppOpMode(requireContext().packageName, android.os.Process.myUid(), 46, android.app.AppOpsManager.MODE_ALLOWED)
-                                            Handler(Looper.getMainLooper()).post {
-                                                requireContext().startActivity(Intent(requireContext(), SoundMasterProjectionActivity::class.java).apply {
-                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                })
-                                                dismiss()
-                                            }
-                                        } catch(e: Exception) {
-                                            Handler(Looper.getMainLooper()).post {
-                                                requireActivity().showSnackbar(getString(R.string.permission_error), com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
-                                                requireContext().applicationContext.log(e.stackTraceToString(), true)
-                                            }
-                                        }
-                                    }
+                        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
+                            try {
+                                val uid = android.os.Process.myUid()
+                                val pkg = requireContext().packageName
+                                service.setAppOpMode(pkg, uid, 27, android.app.AppOpsManager.MODE_ALLOWED) // RECORD_AUDIO
+                                service.setAppOpMode(pkg, uid, 46, android.app.AppOpsManager.MODE_ALLOWED) // MEDIA_PROJECTION
+                                Handler(Looper.getMainLooper()).post {
+                                    requireContext().startActivity(Intent(requireContext(), SoundMasterProjectionActivity::class.java).apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    })
+                                    dismiss()
                                 }
-                            },
-                            onError = { error ->
+                            } catch(e: Exception) {
                                 Handler(Looper.getMainLooper()).post {
                                     requireActivity().showSnackbar(getString(R.string.permission_error), com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
-                                    requireContext().applicationContext.log(error, true)
+                                    requireContext().applicationContext.log(e.stackTraceToString(), true)
                                 }
                             }
-                        )
+                        }
                     } else {
                         requireActivity().showSnackbar("Smart Volume Engine Started", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
                         SoundMasterService.projectionData = null

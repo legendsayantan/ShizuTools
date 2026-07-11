@@ -7,6 +7,7 @@ import android.util.Log
 class ShizuToolsService(private val context: android.content.Context) : IShizuToolsService.Stub() {
     
     private val lockedBuckets = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val uidLastActive = mutableMapOf<Int, Long>()
 
     init {
         try {
@@ -594,6 +595,7 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
     @SuppressLint("BlockedPrivateApi", "DiscouragedPrivateApi")
     override fun getActiveAudioUids(): IntArray {
         val uids = mutableSetOf<Int>()
+        val currentTime = System.currentTimeMillis()
         try {
             val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
             val configs = audioManager.activePlaybackConfigurations
@@ -602,12 +604,24 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
                     val getClientUid = config.javaClass.getDeclaredMethod("getClientUid")
                     getClientUid.isAccessible = true
                     val uid = getClientUid.invoke(config) as Int
-                    if (uid > 0) uids.add(uid)
+                    val isActuallyPlaying = try {
+                        val getStateMethod = config.javaClass.getDeclaredMethod("getPlayerState")
+                        getStateMethod.isAccessible = true
+                        val state = getStateMethod.invoke(config) as Int
+                        state == 2 // AudioPlaybackConfiguration.PLAYER_STATE_STARTED = 2
+                    } catch (e: Exception) {
+                        false
+                    }
+                    if (uid > 0 && isActuallyPlaying) {
+                        uidLastActive[uid] = currentTime
+                    }
                 } catch (e: Exception) {}
             }
         } catch (e: Exception) {
             Log.e("ShizuToolsService", "Error getting active audio UIDs: ${e.message}")
         }
+        uidLastActive.entries.removeIf { currentTime - it.value > 30_000 }
+        uids.addAll(uidLastActive.keys)
         return uids.toIntArray()
     }
 }

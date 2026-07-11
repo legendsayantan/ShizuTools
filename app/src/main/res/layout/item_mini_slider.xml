@@ -24,7 +24,16 @@
             android:rotation="270"
             android:max="100"
             android:progress="100"
-            android:progressTint="#00E676"
-            android:thumbTint="#00E676"/>
+            android:progressTint="?attr/colorSecondary"
+            android:thumbTint="?attr/colorSecondary"/>
     </FrameLayout>
+
+    <ImageView
+        android:id="@+id/btn_mixed_audio"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginTop="8dp"
+        android:src="@drawable/ic_audio_mixed"
+        android:alpha="0.4"
+        android:tint="#FFFFFF"/>
 </LinearLayout>

@@ -45,16 +45,37 @@ class PlayBackThread(
     var mPlayers = (hashMapOf<Int, AudioPlayer>())
     override fun start() {
         val uid = context.packageManager.getPackageInfo(pkg, 0).applicationInfo?.uid ?: -1
-        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
-            try {
-                controller.setAppOpMode(pkg, uid, 28, 2)
-            } catch (e: Exception) {
-                Handler(context.mainLooper).post {
-                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+        
+        com.legendsayantan.adbtools.lib.ShizukuRunner.command("appops get $pkg PLAY_AUDIO", object : com.legendsayantan.adbtools.lib.ShizukuRunner.CommandResultListener {
+            override fun onCommandResult(output: String, done: Boolean) {
+                if (done) {
+                    val playAudioMode = if (output.contains("deny")) 1 else if (output.contains("ignore")) 2 else 0
+                    com.legendsayantan.adbtools.lib.ShizukuRunner.command("appops get $pkg TAKE_AUDIO_FOCUS", object : com.legendsayantan.adbtools.lib.ShizukuRunner.CommandResultListener {
+                        override fun onCommandResult(out2: String, d2: Boolean) {
+                            if (d2) {
+                                val focusMode = if (out2.contains("deny")) 1 else if (out2.contains("ignore")) 2 else 0
+                                val prefs = context.getSharedPreferences("sm_recovery", Context.MODE_PRIVATE)
+                                prefs.edit().putString(pkg, "$playAudioMode,$focusMode").apply()
+                                
+                                com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
+                                    try {
+                                        controller.setAppOpMode(pkg, uid, 28, 2)
+                                    } catch (e: Exception) {
+                                        Handler(context.mainLooper).post {
+                                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        }
+                                        context.log(e.stackTraceToString())
+                                    }
+                                }
+                            }
+                        }
+                        override fun onCommandError(error: String) {}
+                    })
                 }
-                context.log(e.stackTraceToString())
             }
-        }
+            override fun onCommandError(error: String) {}
+        })
+        
         super.start()
     }
 
@@ -166,6 +187,7 @@ class PlayBackThread(
     fun deleteOutput(outputKey: Int, interruption: Boolean = true): AudioPlayer? {
         val plyr = mPlayers.remove(outputKey)
         plyr?.stop()
+        plyr?.release()
         if (mPlayers.size == 0 && interruption) {
             interrupt()
         }
@@ -192,9 +214,17 @@ class PlayBackThread(
     override fun interrupt() {
         playback = false
         val uid = context.packageManager.getPackageInfo(pkg, 0).applicationInfo?.uid ?: -1
+        
+        val prefs = context.getSharedPreferences("sm_recovery", Context.MODE_PRIVATE)
+        val savedState = prefs.getString(pkg, "0,0")
+        val modes = savedState?.split(",")?.mapNotNull { it.toIntOrNull() } ?: listOf(0, 0)
+        val playAudioMode = modes.getOrElse(0) { 0 }
+        val focusMode = modes.getOrElse(1) { 0 }
+        
         com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
             try {
-                controller.setAppOpMode(pkg, uid, 28, 0)
+                controller.setAppOpMode(pkg, uid, 28, playAudioMode)
+                controller.setAppOpMode(pkg, uid, 32, focusMode)
             } catch (e: Exception) {
                 Handler(context.mainLooper).post {
                     Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -202,12 +232,17 @@ class PlayBackThread(
                 context.log(e.stackTraceToString())
             }
         }
+        prefs.edit().remove(pkg).apply()
+
         try {
             mCapture.stop()
             mCapture.release()
         } catch (_: Exception) {
         }
-        mPlayers.values.forEach { it.stop() }
+        mPlayers.values.forEach { 
+            it.stop()
+            it.release()
+        }
         super.interrupt()
     }
 

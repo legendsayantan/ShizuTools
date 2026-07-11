@@ -30,7 +30,7 @@ class AudioStateAdapter(
     
     // Check if SoundMaster is running and get its active packages
     private val isSoundMasterRunning = SoundMasterService.running
-    private val soundMasterPackages = SoundMasterService.startingIntent?.getStringArrayExtra("packages")?.toList() ?: emptyList()
+    private val soundMasterPackages = SoundMasterService.apps.map { it.pkg }.toList()
 
     init {
         loadApps(callback = {

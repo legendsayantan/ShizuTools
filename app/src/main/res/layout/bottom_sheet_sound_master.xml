@@ -121,7 +121,8 @@
                 android:layout_height="50dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="?attr/colorOutline"
-                app:cardBackgroundColor="?attr/colorPrimary">
+                app:cardBackgroundColor="?attr/colorPrimary"
+                android:layout_marginBottom="8dp">
 
                 <LinearLayout
                     android:padding="10dp"
@@ -149,4 +150,16 @@
                 </LinearLayout>
 
             </com.google.android.material.card.MaterialCardView>
+            
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRepairAudio"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Repair Audio"
+                android:textColor="#E53935"
+                app:icon="@drawable/round_volume_up_24"
+                app:iconTint="#E53935"
+                style="?attr/materialButtonOutlinedStyle"
+                app:strokeColor="#E53935"
+                android:visibility="gone" />
 </LinearLayout>
