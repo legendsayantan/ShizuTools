@@ -67,10 +67,8 @@ class SoundMasterService : Service() {
         }
         setupSmartVisibility()
 
-        val wakeIntent = Intent(this, SoundMasterService::class.java).apply {
-            action = "ACTION_WAKE_BUBBLE"
-        }
-        val pendingWakeIntent = android.app.PendingIntent.getService(this, 0, wakeIntent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
+        val wakeIntent = Intent(this, com.legendsayantan.adbtools.SoundMasterWakeActivity::class.java)
+        val pendingWakeIntent = android.app.PendingIntent.getActivity(this, 0, wakeIntent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
 
         notiBuilder = NotificationCompat.Builder(this, "notifications")
             .setContentText(
@@ -270,8 +268,20 @@ class SoundMasterService : Service() {
             override fun onPlaybackConfigChanged(configs: MutableList<android.media.AudioPlaybackConfiguration>?) {
                 super.onPlaybackConfigChanged(configs)
                 
-                // configs directly gives us active playback state — no Shizuku needed for detection
-                val isPlaying = configs?.isNotEmpty() == true
+                val activeConfigs = configs?.filter { config ->
+                    try {
+                        config.javaClass.getMethod("isActive").invoke(config) as Boolean
+                    } catch (e: Exception) { true }
+                } ?: emptyList()
+                
+                val immediateUids = activeConfigs.mapNotNull { config ->
+                    try {
+                        val uid = config.javaClass.getMethod("getClientUid").invoke(config) as? Int
+                        if (uid != null && uid > 0) uid else null
+                    } catch (e: Exception) { null }
+                }.distinct()
+                
+                val isPlaying = activeConfigs.isNotEmpty()
                 
                 if (isPlaying) {
                     if (!wasPlaying) {
@@ -281,109 +291,34 @@ class SoundMasterService : Service() {
                         }
                     }
                     
-                    // Resolve UIDs -> packages and apply volume/DSP via Shizuku (async, non-blocking)
+                    if (immediateUids.isNotEmpty()) {
+                        updateActivePackages(immediateUids)
+                    }
+                    
                     val isDspMode = com.legendsayantan.adbtools.lib.SoundMasterPreferences.isAdvancedDspMode(applicationContext)
-                    com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
-                        val uids = service.activeAudioUids ?: return@execute
-                        val pm = packageManager
-                        val activePkgs = uids.toList().mapNotNull { uid ->
-                            try { pm.getPackagesForUid(uid)?.firstOrNull() } catch (e: Exception) { null }
-                        }.distinct()
-                        
-                        val prefs = getSharedPreferences("soundmaster_vols", Context.MODE_PRIVATE)
-                        val currentTime = System.currentTimeMillis()
-                        
-                        // Remove currently playing apps from stop times
-                        activePkgs.forEach { appStopTimes.remove(it) }
-                        
-                        // Add stopped apps with custom volumes to stop times
-                        val stoppedApps = activePackages.filter { it !in activePkgs && it !in appStopTimes.keys }
-                        stoppedApps.forEach { pkg ->
-                            val vol = if (isDspMode) getVolumeOf(com.legendsayantan.adbtools.data.AudioOutputKey(pkg, -1)) else prefs.getFloat(pkg, 1.0f) * 100f
-                            if (vol < 100f) {
-                                appStopTimes[pkg] = currentTime
-                                mainHandler.postDelayed({
-                                    if (appStopTimes.containsKey(pkg) && System.currentTimeMillis() - appStopTimes[pkg]!! >= 30000L) {
-                                        appStopTimes.remove(pkg)
-                                        if (::bubble.isInitialized) bubble.populateSliders()
-                                    }
-                                }, 30000L)
+                    if (!isDspMode || immediateUids.isEmpty()) {
+                        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
+                            val uids = service.activeAudioUids?.toList() ?: return@execute
+                            
+                            if (immediateUids.isEmpty()) {
+                                mainHandler.post { updateActivePackages(uids) }
                             }
-                        }
-                        
-                        // Clean up expired stop times
-                        val expired = appStopTimes.filter { currentTime - it.value >= 30000L }.keys
-                        expired.forEach { appStopTimes.remove(it) }
-                        
-                        // Active packages shown in UI = truly active + preserved stopped apps
-                        activePackages = (activePkgs + appStopTimes.keys).distinct()
-                        
-                        mainHandler.post {
-                            if (::bubble.isInitialized) bubble.updateBubbleAppIcon(uids)
-                            // We need to refresh sliders because activePackages may have changed
-                            if (::bubble.isInitialized) bubble.populateSliders()
-                        }
-                        
-                        if (!isDspMode) {
-                            val prefs = getSharedPreferences("soundmaster_vols", Context.MODE_PRIVATE)
-                            uids.toList().forEach { uid ->
-                                try {
-                                    val pkg = pm.getPackagesForUid(uid)?.firstOrNull() ?: return@forEach
-                                    service.setPlayerVolume(uid, prefs.getFloat(pkg, 1.0f))
-                                } catch (e: Exception) {}
-                            }
-                        } else if (mediaProjection != null) {
-                            activePkgs.forEach { pkg ->
-                                if (!apps.any { it.pkg == pkg }) {
-                                    val base = com.legendsayantan.adbtools.data.AudioOutputBase(pkg, -1, 100f)
-                                    apps.add(base)
-                                    mainHandler.post { onDynamicAttach(base, getAudioDevices().find { it?.id == -1 }) }
+                            
+                            if (!isDspMode) {
+                                val pm = packageManager
+                                val prefs = getSharedPreferences("soundmaster_vols", Context.MODE_PRIVATE)
+                                val uidsToUse = if (immediateUids.isNotEmpty()) immediateUids else uids
+                                uidsToUse.forEach { uid ->
+                                    try {
+                                        val pkg = pm.getPackagesForUid(uid)?.firstOrNull() ?: return@forEach
+                                        service.setPlayerVolume(uid, prefs.getFloat(pkg, 1.0f))
+                                    } catch (e: Exception) {}
                                 }
-                            }
-                            val toRemove = apps.filter { !activePkgs.contains(it.pkg) }
-                            toRemove.forEach { base ->
-                                mainHandler.post { onDynamicDetach(com.legendsayantan.adbtools.data.AudioOutputKey(base.pkg, base.output)) }
                             }
                         }
                     }
                 } else if (wasPlaying) {
-                    val isDspMode = com.legendsayantan.adbtools.lib.SoundMasterPreferences.isAdvancedDspMode(applicationContext)
-                    val prefs = getSharedPreferences("soundmaster_vols", Context.MODE_PRIVATE)
-                    val currentTime = System.currentTimeMillis()
-                    
-                    activePackages.forEach { pkg ->
-                        if (pkg !in appStopTimes.keys) {
-                            val vol = if (isDspMode) getVolumeOf(com.legendsayantan.adbtools.data.AudioOutputKey(pkg, -1)) else prefs.getFloat(pkg, 1.0f) * 100f
-                            if (vol < 100f) {
-                                appStopTimes[pkg] = currentTime
-                                mainHandler.postDelayed({
-                                    if (appStopTimes.containsKey(pkg) && System.currentTimeMillis() - appStopTimes[pkg]!! >= 30000L) {
-                                        appStopTimes.remove(pkg)
-                                        if (::bubble.isInitialized) {
-                                            activePackages = appStopTimes.keys.toList()
-                                            bubble.populateSliders()
-                                        }
-                                    }
-                                }, 30000L)
-                            }
-                        }
-                    }
-                    
-                    val expired = appStopTimes.filter { currentTime - it.value >= 30000L }.keys
-                    expired.forEach { appStopTimes.remove(it) }
-                    
-                    activePackages = appStopTimes.keys.toList()
-                    
-                    mainHandler.post {
-                        if (::bubble.isInitialized) {
-                            bubble.populateSliders()
-                        }
-                    }
-                    if (isDspMode && mediaProjection != null) {
-                        apps.toList().forEach { base ->
-                            mainHandler.post { onDynamicDetach(com.legendsayantan.adbtools.data.AudioOutputKey(base.pkg, base.output)) }
-                        }
-                    }
+                    updateActivePackages(emptyList())
                 }
                 
                 wasPlaying = isPlaying
@@ -392,10 +327,66 @@ class SoundMasterService : Service() {
         audioManager.registerAudioPlaybackCallback(mPlaybackCallback, mainHandler)
     }
 
+    private fun updateActivePackages(uids: List<Int>) {
+        val pm = packageManager
+        val activePkgs = uids.mapNotNull { uid ->
+            try { pm.getPackagesForUid(uid)?.firstOrNull() } catch (e: Exception) { null }
+        }.distinct()
+        
+        val isDspMode = com.legendsayantan.adbtools.lib.SoundMasterPreferences.isAdvancedDspMode(applicationContext)
+        val prefs = getSharedPreferences("soundmaster_vols", Context.MODE_PRIVATE)
+        val currentTime = System.currentTimeMillis()
+        
+        activePkgs.forEach { appStopTimes.remove(it) }
+        val stoppedApps = activePackages.filter { it !in activePkgs && it !in appStopTimes.keys }
+        stoppedApps.forEach { pkg ->
+            appStopTimes[pkg] = currentTime
+            mainHandler.postDelayed({
+                if (appStopTimes.containsKey(pkg) && System.currentTimeMillis() - appStopTimes[pkg]!! >= 45000L) {
+                    appStopTimes.remove(pkg)
+                    activePackages = activePackages.filter { it != pkg }
+                    if (::bubble.isInitialized) bubble.populateSliders()
+                }
+            }, 45000L)
+        }
+        
+        val expired = appStopTimes.filter { currentTime - it.value >= 45000L }.keys
+        expired.forEach { appStopTimes.remove(it) }
+        
+        activePackages = (activePkgs + appStopTimes.keys).distinct()
+        
+        if (isDspMode && mediaProjection != null) {
+            activePackages.forEach { pkg ->
+                if (!apps.any { it.pkg == pkg }) {
+                    val base = com.legendsayantan.adbtools.data.AudioOutputBase(pkg, -1, 100f)
+                    apps.add(base)
+                    mainHandler.post { onDynamicAttach(base, getAudioDevices().find { it?.id == -1 }) }
+                }
+            }
+            val toRemove = apps.filter { !activePackages.contains(it.pkg) }
+            toRemove.forEach { base ->
+                mainHandler.post { onDynamicDetach(com.legendsayantan.adbtools.data.AudioOutputKey(base.pkg, base.output)) }
+                apps.remove(base)
+            }
+        }
+        
+        mainHandler.post {
+            if (::bubble.isInitialized) {
+                bubble.updateBubbleAppIcon(uids.toIntArray())
+                bubble.populateSliders()
+            }
+        }
+    }
+
     private fun wakeBubble() {
-        if (::bubble.isInitialized) {
-            bubble.show(com.legendsayantan.adbtools.views.SoundMasterBubble.State.BUBBLE)
-            extendTimeout()
+        mainHandler.post {
+            if (::bubble.isInitialized) {
+                if (bubble.currentState != com.legendsayantan.adbtools.views.SoundMasterBubble.State.MINI && 
+                    bubble.currentState != com.legendsayantan.adbtools.views.SoundMasterBubble.State.EXPANDED) {
+                    bubble.show(com.legendsayantan.adbtools.views.SoundMasterBubble.State.BUBBLE)
+                }
+                extendTimeout()
+            }
         }
     }
 
@@ -407,6 +398,23 @@ class SoundMasterService : Service() {
             if (timeout > 0) {
                 mainHandler.postDelayed(fadeOutRunnable, timeout)
             }
+        }
+    }
+
+    fun pauseTimeout() {
+        mainHandler.removeCallbacks(fadeOutRunnable)
+    }
+
+    fun extendAppTimeout(pkg: String) {
+        if (appStopTimes.containsKey(pkg)) {
+            appStopTimes[pkg] = System.currentTimeMillis()
+            mainHandler.postDelayed({
+                if (appStopTimes.containsKey(pkg) && System.currentTimeMillis() - appStopTimes[pkg]!! >= 45000L) {
+                    appStopTimes.remove(pkg)
+                    activePackages = activePackages.filter { it != pkg }
+                    if (::bubble.isInitialized) bubble.populateSliders()
+                }
+            }, 45000L)
         }
     }
 

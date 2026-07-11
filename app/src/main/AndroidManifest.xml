@@ -86,6 +86,13 @@
             android:exported="true"
             android:label=""
             android:theme="@style/DialogActivityTheme" />
+            
+        <activity
+            android:name=".SoundMasterWakeActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+            
         <activity
             android:name=".MixedAudioActivity"
             android:exported="false" />

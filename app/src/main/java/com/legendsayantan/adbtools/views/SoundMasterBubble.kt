@@ -9,11 +9,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.SeekBar
-import android.widget.TextView
 import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
@@ -29,31 +27,49 @@ class SoundMasterBubble(private val service: SoundMasterService) {
     
     enum class State { HIDDEN, BUBBLE, MINI, EXPANDED }
     
-    private var currentState = State.HIDDEN
-    private var isAttached = false
+    var currentState = State.HIDDEN
+    private val bubblePaddingPx by lazy {
+        android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 14f, service.resources.displayMetrics).toInt()
+    }
+    private var isBubbleAttached = false
+    private var isMiniAttached = false
+    private var isExpandedAttached = false
     
     private val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val themedContext = android.view.ContextThemeWrapper(service, R.style.Theme_AdbTools)
     private val inflater = LayoutInflater.from(themedContext)
     
-    // Main container added to WindowManager
-    private val container = object : FrameLayout(themedContext) {
+    private val bubbleContainer = object : FrameLayout(themedContext) {
         override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
             service.extendTimeout()
             return super.dispatchTouchEvent(ev)
         }
-    }.apply {
-        layoutTransition = LayoutTransition() // Simple animate layout changes
     }
     
-    private val bubbleView = inflater.inflate(R.layout.overlay_soundmaster_bubble, container, false)
-    private val miniView = inflater.inflate(R.layout.overlay_soundmaster_mini, container, false)
-    private val expandedView = inflater.inflate(R.layout.overlay_soundmaster_expanded, container, false)
+    private val miniContainer = object : FrameLayout(themedContext) {
+        override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+            service.extendTimeout()
+            return super.dispatchTouchEvent(ev)
+        }
+    }.apply { layoutTransition = LayoutTransition() }
+    
+    private val expandedContainer = object : FrameLayout(themedContext) {
+        override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+            service.extendTimeout()
+            return super.dispatchTouchEvent(ev)
+        }
+    }.apply { layoutTransition = LayoutTransition() }
+    
+    private val bubbleView = inflater.inflate(R.layout.overlay_soundmaster_bubble, bubbleContainer, false)
+    private val miniView = inflater.inflate(R.layout.overlay_soundmaster_mini, miniContainer, false)
+    private val expandedView = inflater.inflate(R.layout.overlay_soundmaster_expanded, expandedContainer, false)
     
     private val rmsMeter: RmsMeterView = bubbleView.findViewById(R.id.rms_meter)
     private val switchDsp: MaterialSwitch = expandedView.findViewById(R.id.switch_dsp)
     
-    private var layoutParams: WindowManager.LayoutParams
+    private var bubbleParams: WindowManager.LayoutParams
+    private var miniParams: WindowManager.LayoutParams
+    private var expandedParams: WindowManager.LayoutParams
     
     private var initialX = 0
     private var initialY = 0
@@ -63,14 +79,11 @@ class SoundMasterBubble(private val service: SoundMasterService) {
     private var springX: SpringAnimation? = null
     private var springY: SpringAnimation? = null
     
-    private var anchorX = -1
-    private var anchorY = -1
-    
     private val xProperty = object : FloatPropertyCompat<WindowManager.LayoutParams>("x") {
         override fun getValue(params: WindowManager.LayoutParams): Float = params.x.toFloat()
         override fun setValue(params: WindowManager.LayoutParams, value: Float) {
             params.x = value.toInt()
-            try { windowManager.updateViewLayout(container, params) } catch (e: Exception) {}
+            try { windowManager.updateViewLayout(bubbleContainer, params) } catch (e: Exception) {}
         }
     }
     
@@ -78,72 +91,89 @@ class SoundMasterBubble(private val service: SoundMasterService) {
         override fun getValue(params: WindowManager.LayoutParams): Float = params.y.toFloat()
         override fun setValue(params: WindowManager.LayoutParams, value: Float) {
             params.y = value.toInt()
-            try { windowManager.updateViewLayout(container, params) } catch (e: Exception) {}
+            try { windowManager.updateViewLayout(bubbleContainer, params) } catch (e: Exception) {}
         }
     }
 
     init {
         val savedPos = SoundMasterPreferences.loadBubblePosition(service)
-        layoutParams = WindowManager.LayoutParams(
+        
+        val baseFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        val panelFlags = baseFlags or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+        
+        bubbleParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            baseFlags,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             x = if (savedPos.first != -1) savedPos.first else 9999
             y = if (savedPos.second != -1) savedPos.second else 200
         }
+        
+        miniParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            panelFlags,
+            PixelFormat.TRANSLUCENT
+        ).apply { gravity = Gravity.TOP or Gravity.START }
+        
+        expandedParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            panelFlags,
+            PixelFormat.TRANSLUCENT
+        ).apply { gravity = Gravity.TOP or Gravity.START }
+
+        bubbleContainer.addView(bubbleView)
+        miniContainer.addView(miniView)
+        expandedContainer.addView(expandedView)
 
         setupBubbleTouchListener()
         setupClickListeners()
         setupModeSwitch()
-        setupOutsideTouchListener()
-        
-        container.addView(bubbleView)
-        container.addView(miniView)
-        container.addView(expandedView)
-        
-        hideAll()
+        setupOutsideTouchListeners()
     }
 
-    private fun setupOutsideTouchListener() {
-        container.setOnTouchListener { _, event ->
+    private fun setupOutsideTouchListeners() {
+        miniContainer.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_OUTSIDE) {
-                if (currentState == State.MINI || currentState == State.EXPANDED) {
-                    transitionTo(State.BUBBLE)
-                }
+                transitionTo(State.BUBBLE)
                 true
-            } else {
-                false
-            }
+            } else false
+        }
+        expandedContainer.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_OUTSIDE) {
+                transitionTo(State.BUBBLE)
+                true
+            } else false
         }
     }
 
     fun show(state: State) {
-        if (!isAttached) {
+        if (!isBubbleAttached && state != State.HIDDEN) {
             try {
-                windowManager.addView(container, layoutParams)
-                isAttached = true
+                windowManager.addView(bubbleContainer, bubbleParams)
+                isBubbleAttached = true
             } catch (e: Exception) {
                 e.printStackTrace()
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     android.widget.Toast.makeText(service, "Overlay permission required!", android.widget.Toast.LENGTH_LONG).show()
                 }
-                return // E.g., no SYSTEM_ALERT_WINDOW permission
+                return
             }
         }
         transitionTo(state)
     }
 
     fun hide() {
-        if (isAttached) {
-            try {
-                windowManager.removeView(container)
-                isAttached = false
-            } catch (e: Exception) {}
-        }
+        if (isBubbleAttached) try { windowManager.removeView(bubbleContainer); isBubbleAttached = false } catch (e: Exception) {}
+        if (isMiniAttached) try { windowManager.removeView(miniContainer); isMiniAttached = false } catch (e: Exception) {}
+        if (isExpandedAttached) try { windowManager.removeView(expandedContainer); isExpandedAttached = false } catch (e: Exception) {}
         currentState = State.HIDDEN
     }
 
@@ -154,109 +184,82 @@ class SoundMasterBubble(private val service: SoundMasterService) {
     }
 
     private fun transitionTo(state: State) {
-        if (currentState == State.BUBBLE && state != State.BUBBLE) {
-            anchorX = layoutParams.x
-            anchorY = layoutParams.y
-        }
         currentState = state
-        hideAll()
+        
         when (state) {
             State.BUBBLE -> {
-                if (anchorX != -1) {
-                    layoutParams.x = anchorX
-                    layoutParams.y = anchorY
-                }
-                bubbleView.visibility = View.VISIBLE
-                updateLayoutParamsForState(focusable = false)
+                bubbleContainer.visibility = View.VISIBLE
+                if (isMiniAttached) { try { windowManager.removeView(miniContainer); isMiniAttached = false } catch(e:Exception){} }
+                if (isExpandedAttached) { try { windowManager.removeView(expandedContainer); isExpandedAttached = false } catch(e:Exception){} }
+                
                 bubbleView.post {
                     val metrics = windowManager.currentWindowMetrics.bounds
                     val maxX = metrics.width() - bubbleView.width
                     val maxY = metrics.height() - bubbleView.height
                     if (maxX > 0 && maxY > 0) {
-                        layoutParams.x = layoutParams.x.coerceIn(0, maxX)
-                        layoutParams.y = layoutParams.y.coerceIn(0, maxY)
-                        try { windowManager.updateViewLayout(container, layoutParams) } catch(e:Exception){}
+                        val targetX = if (bubbleParams.x + bubbleView.width / 2 < metrics.width() / 2) -bubblePaddingPx else maxX + bubblePaddingPx
+                        bubbleParams.x = targetX
+                        bubbleParams.y = bubbleParams.y.coerceIn(0, maxY)
+                        if (isBubbleAttached) try { windowManager.updateViewLayout(bubbleContainer, bubbleParams) } catch(e:Exception){}
                     }
                 }
             }
             State.MINI -> {
-                if (anchorX != -1) {
-                    layoutParams.x = anchorX
-                    layoutParams.y = anchorY
-                }
-                miniView.visibility = View.VISIBLE
-                updateLayoutParamsForState(focusable = true)
+                bubbleContainer.visibility = View.GONE
+                if (isExpandedAttached) { try { windowManager.removeView(expandedContainer); isExpandedAttached = false } catch(e:Exception){} }
+                
                 populateSliders()
                 
-                // Fix clipping by measuring and adjusting synchronously
                 val metrics = windowManager.currentWindowMetrics.bounds
-                val maxWidth = metrics.width() - 64 // 32dp margins approx
-                val scrollView = miniView.findViewById<android.widget.HorizontalScrollView>(R.id.mini_scroll_view)
-                val container = miniView.findViewById<LinearLayout>(R.id.mini_sliders_container)
-                
-                // Constrain the horizontal scroll view width to fit on screen
-                container.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
-                val lp = scrollView.layoutParams
-                if (container.measuredWidth > maxWidth) {
-                    lp.width = maxWidth
-                } else {
-                    lp.width = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-                }
-                scrollView.layoutParams = lp
-                scrollView.requestLayout()
+                val screenWidth = metrics.width()
+                val screenHeight = metrics.height()
                 
                 miniView.measure(
-                    View.MeasureSpec.makeMeasureSpec(metrics.width(), View.MeasureSpec.AT_MOST),
-                    View.MeasureSpec.makeMeasureSpec(metrics.height(), View.MeasureSpec.AT_MOST)
+                    View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.AT_MOST),
+                    View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST)
                 )
                 
-                val maxX = metrics.width() - miniView.measuredWidth
-                val maxY = metrics.height() - miniView.measuredHeight
-                if (maxX > 0 && maxY > 0) {
-                    layoutParams.x = layoutParams.x.coerceIn(0, maxX)
-                    layoutParams.y = layoutParams.y.coerceIn(0, maxY)
-                    try { windowManager.updateViewLayout(this.container, layoutParams) } catch(e:Exception){}
+                val panelWidth = miniView.measuredWidth
+                val panelHeight = miniView.measuredHeight
+                
+                val isLeft = bubbleParams.x + bubbleView.width / 2 < screenWidth / 2
+                miniParams.x = if (isLeft) 0 else screenWidth - panelWidth
+                miniParams.y = bubbleParams.y.coerceIn(0, screenHeight - panelHeight)
+                
+                if (!isMiniAttached) {
+                    try { windowManager.addView(miniContainer, miniParams); isMiniAttached = true } catch(e:Exception){}
+                } else {
+                    try { windowManager.updateViewLayout(miniContainer, miniParams) } catch(e:Exception){}
                 }
             }
             State.EXPANDED -> {
-                if (anchorX != -1) {
-                    layoutParams.x = anchorX
-                    layoutParams.y = anchorY
-                }
-                expandedView.visibility = View.VISIBLE
-                updateLayoutParamsForState(focusable = true)
-                expandedView.post {
-                    val metrics = windowManager.currentWindowMetrics.bounds
-                    val maxX = metrics.width() - expandedView.width
-                    val maxY = metrics.height() - expandedView.height
-                    if (maxX > 0 && maxY > 0) {
-                        layoutParams.x = layoutParams.x.coerceIn(0, maxX)
-                        layoutParams.y = layoutParams.y.coerceIn(0, maxY)
-                        try { windowManager.updateViewLayout(container, layoutParams) } catch(e:Exception){}
-                    }
+                bubbleContainer.visibility = View.GONE
+                if (isMiniAttached) { try { windowManager.removeView(miniContainer); isMiniAttached = false } catch(e:Exception){} }
+                
+                val metrics = windowManager.currentWindowMetrics.bounds
+                val screenWidth = metrics.width()
+                val screenHeight = metrics.height()
+                
+                expandedView.measure(
+                    View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.AT_MOST),
+                    View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST)
+                )
+                
+                val panelWidth = expandedView.measuredWidth
+                val panelHeight = expandedView.measuredHeight
+                
+                val isLeft = bubbleParams.x + bubbleView.width / 2 < screenWidth / 2
+                expandedParams.x = if (isLeft) 0 else screenWidth - panelWidth
+                expandedParams.y = bubbleParams.y.coerceIn(0, screenHeight - panelHeight)
+                
+                if (!isExpandedAttached) {
+                    try { windowManager.addView(expandedContainer, expandedParams); isExpandedAttached = true } catch(e:Exception){}
+                } else {
+                    try { windowManager.updateViewLayout(expandedContainer, expandedParams) } catch(e:Exception){}
                 }
             }
             State.HIDDEN -> hide()
         }
-    }
-
-    private fun hideAll() {
-        bubbleView.visibility = View.GONE
-        miniView.visibility = View.GONE
-        expandedView.visibility = View.GONE
-    }
-
-    private fun updateLayoutParamsForState(focusable: Boolean) {
-        if (focusable) {
-            layoutParams.flags = layoutParams.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
-            layoutParams.flags = layoutParams.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
-        } else {
-            layoutParams.flags = layoutParams.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-            layoutParams.flags = layoutParams.flags and WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH.inv()
-        }
-        try {
-            windowManager.updateViewLayout(container, layoutParams)
-        } catch (e: Exception) {}
     }
 
     private fun setupBubbleTouchListener() {
@@ -265,8 +268,8 @@ class SoundMasterBubble(private val service: SoundMasterService) {
                 MotionEvent.ACTION_DOWN -> {
                     springX?.cancel()
                     springY?.cancel()
-                    initialX = layoutParams.x
-                    initialY = layoutParams.y
+                    initialX = bubbleParams.x
+                    initialY = bubbleParams.y
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     true
@@ -275,11 +278,11 @@ class SoundMasterBubble(private val service: SoundMasterService) {
                     val metrics = windowManager.currentWindowMetrics.bounds
                     val maxX = metrics.width() - bubbleView.width
                     val maxY = metrics.height() - bubbleView.height
-                    layoutParams.x = (initialX + (event.rawX - initialTouchX).toInt()).coerceIn(0, maxX)
-                    layoutParams.y = (initialY + (event.rawY - initialTouchY).toInt()).coerceIn(0, maxY)
-                    try {
-                        windowManager.updateViewLayout(container, layoutParams)
-                    } catch (e: Exception) {}
+                    bubbleParams.x = (initialX + (event.rawX - initialTouchX).toInt()).coerceIn(-bubblePaddingPx, maxX + bubblePaddingPx)
+                    bubbleParams.y = (initialY + (event.rawY - initialTouchY).toInt()).coerceIn(0, maxY)
+                    if (isBubbleAttached) {
+                        try { windowManager.updateViewLayout(bubbleContainer, bubbleParams) } catch (e: Exception) {}
+                    }
                     true
                 }
                 MotionEvent.ACTION_UP -> {
@@ -290,23 +293,23 @@ class SoundMasterBubble(private val service: SoundMasterService) {
                         val metrics = windowManager.currentWindowMetrics.bounds
                         val screenWidth = metrics.width()
                         
-                        val targetX = if (layoutParams.x + bubbleView.width / 2 < screenWidth / 2) 0 else screenWidth - bubbleView.width
+                        val targetX = if (bubbleParams.x + bubbleView.width / 2 < screenWidth / 2) -bubblePaddingPx else screenWidth - bubbleView.width + bubblePaddingPx
                         
                         springX?.cancel()
-                        springX = SpringAnimation(layoutParams, xProperty).apply {
+                        springX = SpringAnimation(bubbleParams, xProperty).apply {
                             spring = SpringForce(targetX.toFloat()).apply {
                                 dampingRatio = SpringForce.DAMPING_RATIO_MEDIUM_BOUNCY
                                 stiffness = SpringForce.STIFFNESS_LOW
                             }
                             addEndListener { _, _, _, _ ->
-                                SoundMasterPreferences.saveBubblePosition(service, layoutParams.x, layoutParams.y)
+                                SoundMasterPreferences.saveBubblePosition(service, bubbleParams.x, bubbleParams.y)
                             }
                             start()
                         }
                         
-                        val targetY = layoutParams.y.coerceIn(0, metrics.height() - bubbleView.height)
+                        val targetY = bubbleParams.y.coerceIn(0, metrics.height() - bubbleView.height)
                         springY?.cancel()
-                        springY = SpringAnimation(layoutParams, yProperty).apply {
+                        springY = SpringAnimation(bubbleParams, yProperty).apply {
                             spring = SpringForce(targetY.toFloat()).apply {
                                 dampingRatio = SpringForce.DAMPING_RATIO_NO_BOUNCY
                                 stiffness = SpringForce.STIFFNESS_MEDIUM
@@ -356,7 +359,6 @@ class SoundMasterBubble(private val service: SoundMasterService) {
         switchDsp.setOnCheckedChangeListener { _, isChecked ->
             SoundMasterPreferences.setAdvancedDspMode(service, isChecked)
             updateDspVisibility(isChecked)
-            // Notify service to restart routing logic based on new mode
             service.onModeChanged(isChecked)
         }
     }
@@ -367,7 +369,7 @@ class SoundMasterBubble(private val service: SoundMasterService) {
             switchDsp.setOnCheckedChangeListener(null)
             switchDsp.isChecked = isDsp
             updateDspVisibility(isDsp)
-            setupModeSwitch() // re-attach listener
+            setupModeSwitch()
         }
     }
 
@@ -405,7 +407,6 @@ class SoundMasterBubble(private val service: SoundMasterService) {
         val isDsp = SoundMasterPreferences.isAdvancedDspMode(service)
         val pm = service.packageManager
         
-        // DSP: use the registered apps list. Smart Volume: use the cached active packages from mPlaybackCallback.
         val newPkgs = if (isDsp) {
             SoundMasterService.apps.map { it.pkg }.distinct()
         } else {
@@ -424,7 +425,6 @@ class SoundMasterBubble(private val service: SoundMasterService) {
     }
     
     private fun renderSliders(container: LinearLayout, newPkgs: List<String>, pm: android.content.pm.PackageManager) {
-        // Remove views for packages that are no longer active
         val toRemove = mutableListOf<View>()
         for (i in 0 until container.childCount) {
             val view = container.getChildAt(i)
@@ -435,93 +435,107 @@ class SoundMasterBubble(private val service: SoundMasterService) {
         }
         toRemove.forEach { container.removeView(it) }
         
-        // Add or update views for active packages
         newPkgs.forEach { pkg ->
-                    var itemView = container.findViewWithTag<View>(pkg)
-                    if (itemView == null) {
-                        itemView = inflater.inflate(R.layout.item_mini_slider, container, false)
-                        itemView.tag = pkg
-                        itemView.setTag(R.id.name, pkg)
-                        
-                        val iconView = itemView.findViewById<ImageView>(R.id.app_icon)
-                        val slider = itemView.findViewById<SeekBar>(R.id.volume_slider)
-                        val btnMixedAudio = itemView.findViewById<ImageView>(R.id.btn_mixed_audio)
-                        
-                        try { iconView.setImageDrawable(pm.getApplicationIcon(pkg)) } catch(e:Exception){}
-                        
-                        val prefs = service.getSharedPreferences("soundmaster_vols", Context.MODE_PRIVATE)
-                        val savedVol = prefs.getFloat(pkg, 1.0f)
-                        val initialVol = if (SoundMasterPreferences.isAdvancedDspMode(service)) {
-                            SoundMasterService.getVolumeOf(AudioOutputKey(pkg, -1))
-                        } else {
-                            savedVol * 100f
-                        }
-                        slider.progress = initialVol.toInt()
-                        iconView.alpha = if (slider.progress == 0) 0.4f else 1.0f
-    
-                        iconView.setOnClickListener {
-                            val currentVol = slider.progress
-                            if (currentVol > 0) {
-                                itemView.setTag(R.id.app_icon, currentVol)
-                                slider.progress = 0
-                            } else {
-                                val lastVol = itemView.getTag(R.id.app_icon) as? Int ?: 100
-                                slider.progress = lastVol
-                            }
-                        }
-    
-                        com.legendsayantan.adbtools.lib.ShizukuRunner.command("appops get $pkg TAKE_AUDIO_FOCUS", object : com.legendsayantan.adbtools.lib.ShizukuRunner.CommandResultListener {
-                            override fun onCommandResult(output: String, done: Boolean) {
-                                if (done) {
-                                    val isMixed = output.contains("ignore") || output.contains("deny")
-                                    service.mainHandler.post {
-                                        btnMixedAudio.alpha = 1.0f
-                                        btnMixedAudio.setImageResource(if (isMixed) R.drawable.ic_audio_mixed else R.drawable.baseline_audiotrack_24)
-                                        val color = if (isMixed) service.getColor(R.color.tool_mixed_audio) else android.graphics.Color.WHITE
-                                        btnMixedAudio.imageTintList = android.content.res.ColorStateList.valueOf(color)
-                                        
-                                        val mode = if (isMixed) 0 else 1 // 0=allow, 1=ignore
-                                        btnMixedAudio.setOnClickListener {
-                                            btnMixedAudio.isEnabled = false
-                                            btnMixedAudio.setImageResource(if (!isMixed) R.drawable.ic_audio_mixed else R.drawable.baseline_audiotrack_24)
-                                            val newColor = if (!isMixed) service.getColor(R.color.tool_mixed_audio) else android.graphics.Color.WHITE
-                                            btnMixedAudio.imageTintList = android.content.res.ColorStateList.valueOf(newColor)
-                                            
-                                            com.legendsayantan.adbtools.lib.ShizuToolsController.execute { s ->
-                                                try {
-                                                    val uid = pm.getApplicationInfo(pkg, 0).uid
-                                                    s.setAppOpMode(pkg, uid, 32, mode)
-                                                    service.mainHandler.post { populateSliders() }
-                                                } catch (e: Exception) {}
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            override fun onCommandError(error: String) {}
-                        })
-    
-                        slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                            override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
-                                iconView.alpha = if (p1 == 0) 0.4f else 1.0f
+            var itemView = container.findViewWithTag<View>(pkg)
+            if (itemView == null) {
+                itemView = inflater.inflate(R.layout.item_mini_slider, container, false)
+                itemView.tag = pkg
+                itemView.setTag(R.id.name, pkg)
+                
+                val iconView = itemView.findViewById<ImageView>(R.id.app_icon)
+                val slider = itemView.findViewById<SeekBar>(R.id.volume_slider)
+                val btnMixedAudio = itemView.findViewById<ImageView>(R.id.btn_mixed_audio)
+                
+                try { iconView.setImageDrawable(pm.getApplicationIcon(pkg)) } catch(e:Exception){}
+                
+                val prefs = service.getSharedPreferences("soundmaster_vols", Context.MODE_PRIVATE)
+                val savedVol = prefs.getFloat(pkg, 1.0f)
+                val initialVol = if (SoundMasterPreferences.isAdvancedDspMode(service)) {
+                    val rawAmplitude = SoundMasterService.getVolumeOf(AudioOutputKey(pkg, -1))
+                    // Convert physical amplitude back to slider progress using base e logarithmic mapping
+                    val y = (rawAmplitude / 100f).coerceIn(0f, 1f)
+                    val x = kotlin.math.ln(y * (Math.E - 1.0) + 1.0)
+                    (x * 100.0).toFloat()
+                } else {
+                    savedVol * 100f
+                }
+                slider.progress = initialVol.toInt()
+                iconView.alpha = if (slider.progress == 0) 0.4f else 1.0f
+
+                iconView.setOnClickListener {
+                    val currentVol = slider.progress
+                    if (currentVol > 0) {
+                        itemView.setTag(R.id.app_icon, currentVol)
+                        slider.progress = 0
+                    } else {
+                        val lastVol = itemView.getTag(R.id.app_icon) as? Int ?: 100
+                        slider.progress = lastVol
+                    }
+                }
+
+                com.legendsayantan.adbtools.lib.ShizukuRunner.command("appops get $pkg TAKE_AUDIO_FOCUS", object : com.legendsayantan.adbtools.lib.ShizukuRunner.CommandResultListener {
+                    override fun onCommandResult(output: String, done: Boolean) {
+                        if (done) {
+                            val isMixed = output.contains("ignore") || output.contains("deny")
+                            service.mainHandler.post {
+                                btnMixedAudio.alpha = 1.0f
+                                btnMixedAudio.setImageResource(if (isMixed) R.drawable.ic_audio_mixed else R.drawable.baseline_audiotrack_24)
+                                val color = if (isMixed) service.getColor(R.color.tool_mixed_audio) else android.graphics.Color.WHITE
+                                btnMixedAudio.imageTintList = android.content.res.ColorStateList.valueOf(color)
                                 
-                                if (SoundMasterPreferences.isAdvancedDspMode(service)) {
-                                    SoundMasterService.setVolumeOf(AudioOutputKey(pkg, -1), p1.toFloat())
-                                } else {
-                                    prefs.edit().putFloat(pkg, p1 / 100f).apply()
+                                val mode = if (isMixed) 0 else 1 
+                                btnMixedAudio.setOnClickListener {
+                                    btnMixedAudio.isEnabled = false
+                                    btnMixedAudio.setImageResource(if (!isMixed) R.drawable.ic_audio_mixed else R.drawable.baseline_audiotrack_24)
+                                    val newColor = if (!isMixed) service.getColor(R.color.tool_mixed_audio) else android.graphics.Color.WHITE
+                                    btnMixedAudio.imageTintList = android.content.res.ColorStateList.valueOf(newColor)
+                                    
                                     com.legendsayantan.adbtools.lib.ShizuToolsController.execute { s ->
                                         try {
                                             val uid = pm.getApplicationInfo(pkg, 0).uid
-                                            s.setPlayerVolume(uid, p1 / 100f)
-                                        } catch(e:Exception){}
+                                            s.setAppOpMode(pkg, uid, 32, mode)
+                                            service.mainHandler.post { populateSliders() }
+                                        } catch (e: Exception) {}
                                     }
                                 }
-                                
                             }
-                            override fun onStartTrackingTouch(p0: SeekBar?) {}
-                            override fun onStopTrackingTouch(p0: SeekBar?) {}
-                        })
-            container.addView(itemView)
+                        }
+                    }
+                    override fun onCommandError(error: String) {}
+                })
+
+                slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
+                        service.extendAppTimeout(pkg)
+                        
+                        iconView.alpha = if (p1 == 0) 0.4f else 1.0f
+                        
+                        val linearRatio = p1 / 100f
+                        // Apply mild exponential curve (base e) for balanced sensitivity
+                        val naturalVolume = ((Math.pow(Math.E, linearRatio.toDouble()) - 1.0) / (Math.E - 1.0)).toFloat()
+                        
+                        if (SoundMasterPreferences.isAdvancedDspMode(service)) {
+                            SoundMasterService.setVolumeOf(AudioOutputKey(pkg, -1), naturalVolume * 100f)
+                        } else {
+                            prefs.edit().putFloat(pkg, p1 / 100f).apply()
+                            com.legendsayantan.adbtools.lib.ShizuToolsController.execute { s ->
+                                try {
+                                    val uid = pm.getApplicationInfo(pkg, 0).uid
+                                    s.setPlayerVolume(uid, naturalVolume)
+                                } catch(e:Exception){}
+                            }
+                        }
+                    }
+                    override fun onStartTrackingTouch(p0: SeekBar?) {
+                        service.pauseTimeout()
+                        service.extendAppTimeout(pkg)
+                    }
+                    override fun onStopTrackingTouch(p0: SeekBar?) {
+                        service.extendTimeout()
+                        service.extendAppTimeout(pkg)
+                    }
+                })
+                container.addView(itemView)
             }
         }
 
@@ -539,17 +553,22 @@ class SoundMasterBubble(private val service: SoundMasterService) {
         scrollView.layoutParams = lp
         scrollView.requestLayout()
         
-        miniView.measure(
-            View.MeasureSpec.makeMeasureSpec(metrics.width(), View.MeasureSpec.AT_MOST),
-            View.MeasureSpec.makeMeasureSpec(metrics.height(), View.MeasureSpec.AT_MOST)
-        )
-        
-        val maxX = metrics.width() - miniView.measuredWidth
-        val maxY = metrics.height() - miniView.measuredHeight
-        if (maxX > 0 && maxY > 0) {
-            layoutParams.x = layoutParams.x.coerceIn(0, maxX)
-            layoutParams.y = layoutParams.y.coerceIn(0, maxY)
-            try { windowManager.updateViewLayout(this@SoundMasterBubble.container, layoutParams) } catch(e:Exception){}
+        if (currentState == State.MINI) {
+            miniView.measure(
+                View.MeasureSpec.makeMeasureSpec(metrics.width(), View.MeasureSpec.AT_MOST),
+                View.MeasureSpec.makeMeasureSpec(metrics.height(), View.MeasureSpec.AT_MOST)
+            )
+            
+            val panelWidth = miniView.measuredWidth
+            val panelHeight = miniView.measuredHeight
+            
+            val isLeft = bubbleParams.x + bubbleView.width / 2 < metrics.width() / 2
+            miniParams.x = if (isLeft) 0 else metrics.width() - panelWidth
+            miniParams.y = bubbleParams.y.coerceIn(0, metrics.height() - panelHeight)
+            
+            if (isMiniAttached) {
+                try { windowManager.updateViewLayout(miniContainer, miniParams) } catch(e:Exception){}
+            }
         }
     }
 }
