@@ -85,8 +85,36 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
         }
     }
 
+    /**
+     * Op codes used across this app, mapped to their canonical `appops` CLI names. These
+     * numeric codes are AOSP-stable/append-only across Android versions, but we still prefer
+     * the symbolic name for the CLI path below since it's the same identifier every `appops get`
+     * / `query-op` read call in this app already relies on, and is immune to any doubt about
+     * numeric mapping on unfamiliar OS builds.
+     */
+    private fun opNameFor(opCode: Int): String? = when (opCode) {
+        23 -> "WRITE_SETTINGS"
+        24 -> "SYSTEM_ALERT_WINDOW"
+        27 -> "RECORD_AUDIO"
+        28 -> "PLAY_AUDIO"
+        32 -> "TAKE_AUDIO_FOCUS"
+        46 -> "PROJECT_MEDIA"
+        else -> null
+    }
+
     @SuppressLint("BlockedPrivateApi", "DiscouragedPrivateApi")
     override fun setAppOpMode(pkgName: String, uid: Int, opCode: Int, mode: Int) {
+        // Prefer the `appops` shell CLI: it's maintained by the platform itself for whatever
+        // Android version is actually running, so it stays correct across the app's entire
+        // supported range (minSdk 27 through the newest release) without us having to track
+        // internal AIDL changes. This is the same tool every read path (`appops get`,
+        // `query-op`) in this app already depends on successfully.
+        if (setAppOpModeViaCli(pkgName, opCode, mode)) return
+
+        // Fall back to direct Binder reflection only if the CLI path is unavailable/failed
+        // (e.g. no shell access in this environment). This reflects a hidden/internal AIDL
+        // method whose signature can drift between Android versions, so it's a best-effort
+        // secondary path rather than the primary one.
         try {
             val aos = try {
                 val aoClz = Class.forName("android.app.AppOpsManager")
@@ -100,7 +128,7 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
                     .getMethod("asInterface", android.os.IBinder::class.java)
                     .invoke(null, b)
             } ?: return
-            
+
             val setMode = aos.javaClass.getDeclaredMethod(
                 "setMode",
                 Int::class.javaPrimitiveType,
@@ -108,11 +136,37 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
                 String::class.java,
                 Int::class.javaPrimitiveType
             ).apply { isAccessible = true }
-            
+
             setMode.invoke(aos, opCode, uid, pkgName, mode)
         } catch (e: Exception) {
-            e.printStackTrace()
-            Log.e("ShizuToolsService", "Error setting AppOp: ${e.stackTraceToString()}")
+            Log.e("ShizuToolsService", "Both appops CLI and reflection setMode failed: ${e.stackTraceToString()}")
+        }
+    }
+
+    private fun setAppOpModeViaCli(pkgName: String, opCode: Int, mode: Int): Boolean {
+        return try {
+            val opArg = opNameFor(opCode) ?: opCode.toString()
+            val modeName = when (mode) {
+                0 -> "allow"
+                1 -> "ignore"
+                2 -> "deny"
+                3 -> "default"
+                4 -> "foreground"
+                else -> "allow"
+            }
+            val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", "appops set $pkgName $opArg $modeName"))
+            // Drain both streams before waitFor() to avoid a deadlock if the process writes
+            // more than the pipe buffer holds.
+            val out = process.inputStream.bufferedReader().readText()
+            val err = process.errorStream.bufferedReader().readText()
+            val exit = process.waitFor()
+            if (exit != 0) {
+                Log.w("ShizuToolsService", "appops set $pkgName $opArg $modeName exited $exit: ${err.ifBlank { out }}")
+            }
+            exit == 0
+        } catch (e: Exception) {
+            Log.e("ShizuToolsService", "appops CLI setMode failed: ${e.stackTraceToString()}")
+            false
         }
     }
 

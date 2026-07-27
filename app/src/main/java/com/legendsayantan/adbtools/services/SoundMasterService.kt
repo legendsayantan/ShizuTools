@@ -66,6 +66,7 @@ class SoundMasterService : Service() {
             bubble = com.legendsayantan.adbtools.views.SoundMasterBubble(this)
         }
         setupSmartVisibility()
+        mainHandler.post(rmsUpdateRunnable)
 
         val wakeIntent = Intent(this, com.legendsayantan.adbtools.SoundMasterWakeActivity::class.java)
         val pendingWakeIntent = android.app.PendingIntent.getActivity(this, 0, wakeIntent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
@@ -183,6 +184,14 @@ class SoundMasterService : Service() {
             wakeBubble()
             return START_STICKY
         }
+        if (intent?.action == ACTION_ENABLE_DSP) {
+            onModeChanged(true)
+            return START_STICKY
+        }
+        if (intent?.action == ACTION_DSP_CONSENT_DENIED) {
+            revertDspSwitch("Screen capture permission denied.")
+            return START_STICKY
+        }
         if (intent != null) {
             val pkgs = intent.getStringArrayExtra("packages")?.toMutableList() ?: mutableListOf()
             val devices = intent.getIntArrayExtra("devices")?.toMutableList() ?: mutableListOf()
@@ -193,17 +202,13 @@ class SoundMasterService : Service() {
             if (!running) {
                 running = true
                 startingIntent = intent
-                
+
                 val isDsp = com.legendsayantan.adbtools.lib.SoundMasterPreferences.isAdvancedDspMode(this)
-                
-                if (isDsp) {
-                    mediaProjection = mediaProjectionManager?.getMediaProjection(
-                        Activity.RESULT_OK,
-                        projectionData!!
-                    ) as MediaProjection
-                }
-                
-                val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+
+                // FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION/MEDIA_PLAYBACK have existed since
+                // Android 10 (Q) - gating this at R (Android 11) meant Android 10 devices got
+                // type=0 (none) despite the manifest declaring these types.
+                val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     if (isDsp) {
                         ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
                     } else {
@@ -214,7 +219,7 @@ class SoundMasterService : Service() {
                         }
                     }
                 } else 0
-                
+
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         startForeground(NOTI_ID, notiBuilder.build(), type)
@@ -223,6 +228,13 @@ class SoundMasterService : Service() {
                     }
                 } catch (e: Exception) {
                     startForeground(NOTI_ID, notiBuilder.build())
+                }
+
+                // The FGS must already be active (with the matching type) before the
+                // MediaProjection is put to use - enforced starting Android 14. startForeground()
+                // above now always runs first.
+                if (isDsp) {
+                    mediaProjection = acquireMediaProjection()
                 }
 
                 if (apps.isNotEmpty()) {
@@ -240,6 +252,18 @@ class SoundMasterService : Service() {
     val mainHandler by lazy { Handler(applicationContext.mainLooper) }
     private val fadeOutRunnable = Runnable {
         if (::bubble.isInitialized) bubble.hide()
+    }
+    private val rmsUpdateRunnable = object : Runnable {
+        override fun run() {
+            if (::bubble.isInitialized &&
+                bubble.currentState == com.legendsayantan.adbtools.views.SoundMasterBubble.State.BUBBLE &&
+                packageThreads.isNotEmpty()
+            ) {
+                val avgRms = packageThreads.values.map { it.calculateRMS() }.average().toFloat()
+                bubble.updateRms(avgRms)
+            }
+            mainHandler.postDelayed(this, 120L)
+        }
     }
     private lateinit var bubble: com.legendsayantan.adbtools.views.SoundMasterBubble
     private lateinit var mPlaybackCallback: AudioManager.AudioPlaybackCallback
@@ -420,48 +444,106 @@ class SoundMasterService : Service() {
 
     fun onModeChanged(isDsp: Boolean) {
         if (isDsp) {
-            if (mediaProjection == null && projectionData != null) {
-                try {
-                    mediaProjection = mediaProjectionManager?.getMediaProjection(
-                        Activity.RESULT_OK,
-                        projectionData!!
-                    ) as MediaProjection
-                } catch(e: Exception){}
+            if (mediaProjection == null) {
+                mediaProjection = acquireMediaProjection()
             }
             if (mediaProjection != null) {
-                com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
-                    val pm = packageManager
-                    controller.activeAudioUids?.forEach { uid ->
-                        try {
-                            pm.getPackagesForUid(uid)?.firstOrNull()?.let { pkg ->
-                                if (!apps.any { it.pkg == pkg }) {
-                                    val base = AudioOutputBase(pkg, -1, 100f)
-                                    apps.add(base)
-                                    mainHandler.post {
-                                        onDynamicAttach(base, getAudioDevices().find { it?.id == -1 })
-                                    }
-                                }
-                            }
-                        } catch(e: Exception){}
-                    }
-                }
+                attachActiveAppsToDsp()
             } else {
-                mainHandler.post {
-                    android.widget.Toast.makeText(this, "Screen capture permission required. Please restart from the app.", android.widget.Toast.LENGTH_LONG).show()
-                }
-                com.legendsayantan.adbtools.lib.SoundMasterPreferences.setAdvancedDspMode(this, false)
-                mainHandler.post { if (::bubble.isInitialized) bubble.syncSwitchState() }
+                // No live projection token yet (e.g. engine was started in Smart mode, which
+                // never requests one), or the cached token was already spent (single-use as of
+                // Android 14+). Ask for fresh consent instead of just failing - the switch is
+                // left optimistically on and gets reverted by revertDspSwitch() if the user
+                // denies or grants fail.
+                requestDspConsent()
             }
         } else {
             packageThreads.forEach { it.value.interrupt() }
-            packageThreads.clear()
             packageThreads.clear()
             apps.clear()
         }
     }
 
+    /**
+     * Wraps MediaProjectionManager#getMediaProjection so every acquisition point (initial
+     * start, live mode upgrade) shares the same failure handling and gets a Callback
+     * registered - the system's own screen-share/record "Stop" control can end a projection
+     * at any point across every supported version, and without a callback the app would keep
+     * capturing against a dead session instead of noticing and reverting cleanly.
+     */
+    private fun acquireMediaProjection(): MediaProjection? {
+        val data = projectionData ?: return null
+        return try {
+            val proj = mediaProjectionManager?.getMediaProjection(Activity.RESULT_OK, data)
+            proj?.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    super.onStop()
+                    mainHandler.post { handleProjectionStopped() }
+                }
+            }, mainHandler)
+            proj
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun handleProjectionStopped() {
+        packageThreads.forEach { it.value.interrupt() }
+        packageThreads.clear()
+        apps.clear()
+        mediaProjection = null
+        com.legendsayantan.adbtools.lib.SoundMasterPreferences.setAdvancedDspMode(this, false)
+        if (::bubble.isInitialized) bubble.syncSwitchState()
+    }
+
+    private fun attachActiveAppsToDsp() {
+        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
+            val pm = packageManager
+            controller.activeAudioUids?.forEach { uid ->
+                try {
+                    pm.getPackagesForUid(uid)?.firstOrNull()?.let { pkg ->
+                        if (!apps.any { it.pkg == pkg }) {
+                            val base = AudioOutputBase(pkg, -1, 100f)
+                            apps.add(base)
+                            mainHandler.post {
+                                onDynamicAttach(base, getAudioDevices().find { it?.id == -1 })
+                            }
+                        }
+                    }
+                } catch (e: Exception) {}
+            }
+        }
+    }
+
+    private fun requestDspConsent() {
+        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
+            try {
+                val uid = android.os.Process.myUid()
+                controller.setAppOpMode(packageName, uid, 27, android.app.AppOpsManager.MODE_ALLOWED) // RECORD_AUDIO
+                controller.setAppOpMode(packageName, uid, 46, android.app.AppOpsManager.MODE_ALLOWED) // MEDIA_PROJECTION
+                mainHandler.post {
+                    startActivity(Intent(this, com.legendsayantan.adbtools.SoundMasterProjectionActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        putExtra(EXTRA_LIVE_UPGRADE, true)
+                    })
+                }
+            } catch (e: Exception) {
+                revertDspSwitch("Permission error enabling Advanced DSP.")
+            }
+        }
+    }
+
+    fun revertDspSwitch(message: String) {
+        mainHandler.post {
+            android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_LONG).show()
+            com.legendsayantan.adbtools.lib.SoundMasterPreferences.setAdvancedDspMode(this, false)
+            if (::bubble.isInitialized) bubble.syncSwitchState()
+        }
+    }
+
     override fun onDestroy() {
         running = false
+        mainHandler.removeCallbacks(rmsUpdateRunnable)
         contentResolver.unregisterContentObserver(mVolumeObserver)
         audioManager.unregisterAudioPlaybackCallback(mPlaybackCallback)
         if (::bubble.isInitialized) bubble.hide()
@@ -493,6 +575,9 @@ class SoundMasterService : Service() {
 
         const val NOTI_ID = 1
         const val updateInterval = 30000L
+        const val ACTION_ENABLE_DSP = "ACTION_ENABLE_DSP"
+        const val ACTION_DSP_CONSENT_DENIED = "ACTION_DSP_CONSENT_DENIED"
+        const val EXTRA_LIVE_UPGRADE = "live_upgrade"
 
         lateinit var uiIntent: Intent
 

@@ -138,6 +138,12 @@ class PlayBackThread(
                 "Error",
                 "Initializing Audio Record and Play objects Failed ${e.message} for $pkg"
             )
+            context.log(e.stackTraceToString(), true)
+            // mCapture never got initialized - bail out now instead of falling through to
+            // startRecording(), which would throw on the uninitialized lateinit property and
+            // leave this thread's app silently "controlled" but never actually captured.
+            interrupt()
+            return
         }
         try {
             mCapture.startRecording()
@@ -273,6 +279,7 @@ class PlayBackThread(
     private val rmsShortBuffer = ShortArray(BUF_SIZE / 2)
     private val rmsByteBuffer = ByteBuffer.wrap(dataBuffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
 
+    /** Returns RMS amplitude of the most recently captured buffer, normalized to 0f..1f. */
     fun calculateRMS(): Float {
         rmsByteBuffer.position(0)
         rmsByteBuffer.get(rmsShortBuffer)
@@ -280,7 +287,7 @@ class PlayBackThread(
         for (sample in rmsShortBuffer) {
             sum += (sample * sample).toFloat()
         }
-        return sqrt(sum / rmsShortBuffer.size).toFloat()
+        return (sqrt(sum / rmsShortBuffer.size).toFloat() / Short.MAX_VALUE).coerceIn(0f, 1f)
     }
 
 

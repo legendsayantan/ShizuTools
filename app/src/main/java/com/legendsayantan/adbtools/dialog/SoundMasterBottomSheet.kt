@@ -191,7 +191,7 @@ class SoundMasterBottomSheet : BottomSheetDialogFragment() {
         }
 
         switchNoti.isChecked = prefs.getBoolean("show_notification", false)
-        switchVol.isChecked = prefs.getBoolean("show_on_volume_change", false)
+        switchVol.isChecked = prefs.getBoolean("show_on_volume_change", true)
         switchAutoWakeup.isChecked = prefs.getBoolean("auto_wakeup", true)
 
         val hideOptions = arrayOf("Disabled", "2 Seconds", "5 Seconds", "10 Seconds", "30 Seconds")

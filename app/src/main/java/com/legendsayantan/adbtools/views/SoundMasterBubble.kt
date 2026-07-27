@@ -335,8 +335,9 @@ class SoundMasterBubble(private val service: SoundMasterService) {
             service.stopSelf()
         }
         expandedView.findViewById<View>(R.id.btn_stop_all).setOnClickListener {
+            // "Close Overlay" should only dismiss the floating UI, not kill the audio engine -
+            // that's what "Stop Engine" is for. It can be brought back via wakeBubble().
             hide()
-            service.stopSelf()
         }
         expandedView.findViewById<View>(R.id.dsp_expand_container).setOnClickListener {
             val dspContainer = expandedView.findViewById<View>(R.id.dsp_container)
