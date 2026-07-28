@@ -429,11 +429,15 @@ class DebloatActivity : AppCompatActivity() {
     private fun processBatchAction(actionType: String) {
         if (selectedPackages.isEmpty()) return
         val targets = selectedPackages.toList()
-        
+
+        if (actionType == "uninstall") {
+            processBatchUninstall(targets)
+            return
+        }
+
         ShizuToolsController.execute { service: IShizuToolsService ->
             var successCount = 0
-            val historyManager = HistoryManager(applicationContext)
-            
+
             for (pkg in targets) {
                 val app = cachedApps[pkg] ?: continue
                 try {
@@ -448,30 +452,89 @@ class DebloatActivity : AppCompatActivity() {
                             app.isHidden = true
                             successCount++
                         }
-                        "uninstall" -> {
-                            // Batch uninstalls using intent sender is trickier, 
-                            // we'll just queue them up. We use a sync approach or assume success.
-                            // To be perfectly robust we should track receivers, but for batch UX
-                            // we can fire the uninstalls.
-                            service.uninstallApp(pkg, PendingIntent.getBroadcast(
-                                this, pkg.hashCode(), Intent("null"), PendingIntent.FLAG_IMMUTABLE
-                            ).intentSender)
-                            historyManager.addHistory(pkg, app.name)
-                            successCount++
-                        }
                     }
                 } catch(e:Exception){}
             }
-            
+
             runOnUiThread {
                 showSnackbar("Batch action complete. Processed $successCount apps.")
                 isBatchMode = false
-                if (actionType == "uninstall") {
-                    targets.forEach { t -> apps.remove(t) }
-                }
                 selectedPackages.clear()
                 updateBatchUI()
                 setupAdapter(apps)
+            }
+        }
+    }
+
+    /**
+     * Each package gets its own PendingIntent/BroadcastReceiver pair so the batch actually waits
+     * for PackageInstaller's real result per app - the list is only pruned for packages that
+     * genuinely reported success, instead of assuming every uninstall worked.
+     */
+    private fun processBatchUninstall(targets: List<String>) {
+        val historyManager = HistoryManager(applicationContext)
+        val remaining = java.util.concurrent.atomic.AtomicInteger(targets.size)
+        val succeeded = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val failed = java.util.Collections.synchronizedList(mutableListOf<String>())
+
+        fun finishIfDone() {
+            if (remaining.get() > 0) return
+            runOnUiThread {
+                if (succeeded.isNotEmpty()) {
+                    apps = apps.filterKeys { it !in succeeded } as HashMap<String, AppData>
+                }
+                val msg = if (failed.isEmpty()) {
+                    "Uninstalled ${succeeded.size} apps."
+                } else {
+                    "Uninstalled ${succeeded.size} apps, ${failed.size} failed."
+                }
+                showSnackbar(msg, com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                isBatchMode = false
+                selectedPackages.clear()
+                updateBatchUI()
+                setupAdapter(apps)
+            }
+        }
+
+        showSnackbar("Uninstalling ${targets.size} apps...")
+
+        targets.forEach { pkg ->
+            val app = cachedApps[pkg]
+            val action = "com.legendsayantan.adbtools.BATCH_UNINSTALL_RESULT_${pkg.hashCode()}_${System.currentTimeMillis()}"
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    val status = intent.getIntExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, android.content.pm.PackageInstaller.STATUS_FAILURE)
+                    if (status == android.content.pm.PackageInstaller.STATUS_SUCCESS) {
+                        succeeded.add(pkg)
+                        if (app != null) historyManager.addHistory(pkg, app.name)
+                    } else {
+                        failed.add(pkg)
+                    }
+                    try { unregisterReceiver(this) } catch (e: Exception) {}
+                    remaining.decrementAndGet()
+                    finishIfDone()
+                }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(receiver, IntentFilter(action), Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(receiver, IntentFilter(action))
+            }
+
+            val pendingIntent = PendingIntent.getBroadcast(
+                this, pkg.hashCode(), Intent(action).setPackage(packageName),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            )
+
+            ShizuToolsController.execute { service: IShizuToolsService ->
+                try {
+                    service.uninstallApp(pkg, pendingIntent.intentSender)
+                } catch (e: Exception) {
+                    try { unregisterReceiver(receiver) } catch (e2: Exception) {}
+                    failed.add(pkg)
+                    remaining.decrementAndGet()
+                    runOnUiThread { finishIfDone() }
+                }
             }
         }
     }

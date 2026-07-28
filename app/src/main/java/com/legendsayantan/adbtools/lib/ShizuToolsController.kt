@@ -11,9 +11,12 @@ import rikka.shizuku.Shizuku
 import java.util.concurrent.Executors
 
 object ShizuToolsController {
-    
-    private var service: IShizuToolsService? = null
-    private var connection: ServiceConnection? = null
+
+    // Written from the main thread (ServiceConnection callbacks) and read from arbitrary caller
+    // threads plus the executor pool - @Volatile so a disconnect is visible immediately instead
+    // of racing with in-flight reads on other threads.
+    @Volatile private var service: IShizuToolsService? = null
+    @Volatile private var connection: ServiceConnection? = null
     
     private val handler = Handler(Looper.getMainLooper())
     private var activeClients = 0
@@ -41,15 +44,28 @@ object ShizuToolsController {
             activeClients++
             handler.removeCallbacks(disconnectRunnable)
         }
-        
-        if (service != null && service!!.asBinder().isBinderAlive) {
+
+        val current = service
+        if (current != null && current.asBinder().isBinderAlive) {
             executor.execute {
-                try {
-                    action(service!!)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                } finally {
-                    releaseClient()
+                // Re-snapshot right before use: `service` can be nulled out by
+                // onServiceDisconnected/onBindingDied on the main thread between the check above
+                // and this executor task actually running.
+                val svc = service
+                if (svc == null || !svc.asBinder().isBinderAlive) {
+                    // Died mid-flight (Shizuku daemon restart, idle unbind race, etc.) - re-queue
+                    // through bind() instead of silently dropping the action or crashing on a
+                    // null service. The activeClients slot from this call is only released once,
+                    // whichever path ends up actually running the action.
+                    bind(action)
+                } else {
+                    try {
+                        action(svc)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        releaseClient()
+                    }
                 }
             }
         } else {
@@ -78,7 +94,15 @@ object ShizuToolsController {
                 executor.execute {
                     actionsToRun.forEach { act ->
                         try {
-                            act(service!!)
+                            // Re-check per action rather than trusting the service assigned above -
+                            // if the binder died partway through this batch, later actions in the
+                            // same batch shouldn't blindly run against a dead reference.
+                            val svc = service
+                            if (svc == null || !svc.asBinder().isBinderAlive) {
+                                bind(act)
+                            } else {
+                                act(svc)
+                            }
                         } catch (e: Exception) {
                             e.printStackTrace()
                         } finally {

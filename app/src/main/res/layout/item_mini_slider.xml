@@ -1,39 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card_root"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:gravity="center_horizontal"
-    android:padding="8dp">
+    android:layout_marginHorizontal="5dp"
+    app:cardCornerRadius="20dp"
+    app:cardBackgroundColor="@android:color/transparent"
+    app:strokeColor="#00FFFFFF"
+    app:strokeWidth="1.5dp"
+    app:cardElevation="0dp">
 
-    <ImageView
-        android:id="@+id/app_icon"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:layout_marginBottom="8dp"
-        android:src="@mipmap/ic_launcher" />
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="8dp">
 
-    <FrameLayout
-        android:layout_width="48dp"
-        android:layout_height="150dp">
-        <SeekBar
-            android:id="@+id/volume_slider"
-            android:layout_width="150dp"
-            android:layout_height="48dp"
-            android:layout_gravity="center"
-            android:rotation="270"
-            android:max="100"
-            android:progress="100"
-            android:progressTint="?attr/colorSecondary"
-            android:thumbTint="?attr/colorSecondary"/>
-    </FrameLayout>
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            app:cardCornerRadius="17dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp"
+            android:layout_marginBottom="10dp">
 
-    <ImageView
-        android:id="@+id/btn_mixed_audio"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_marginTop="8dp"
-        android:src="@drawable/ic_audio_mixed"
-        android:alpha="0.4"
-        android:tint="#FFFFFF"/>
-</LinearLayout>
+            <ImageView
+                android:id="@+id/app_icon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@mipmap/ic_launcher" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.legendsayantan.adbtools.views.NativeVolumeBar
+            android:id="@+id/volume_bar"
+            android:layout_width="30dp"
+            android:layout_height="120dp" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="6dp">
+
+            <ImageView
+                android:id="@+id/btn_mixed_audio"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:padding="4dp"
+                android:src="@drawable/baseline_audiotrack_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#80FFFFFF" />
+
+            <ImageView
+                android:id="@+id/select_btn"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:padding="4dp"
+                android:src="@drawable/baseline_expand_more_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:visibility="gone"
+                app:tint="#80FFFFFF" />
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

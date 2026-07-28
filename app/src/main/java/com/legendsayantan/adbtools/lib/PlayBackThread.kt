@@ -45,52 +45,51 @@ class PlayBackThread(
     var mPlayers = (hashMapOf<Int, AudioPlayer>())
     override fun start() {
         val uid = context.packageManager.getPackageInfo(pkg, 0).applicationInfo?.uid ?: -1
-        
-        com.legendsayantan.adbtools.lib.ShizukuRunner.command("appops get $pkg PLAY_AUDIO", object : com.legendsayantan.adbtools.lib.ShizukuRunner.CommandResultListener {
-            override fun onCommandResult(output: String, done: Boolean) {
-                if (done) {
-                    val playAudioMode = if (output.contains("deny")) 1 else if (output.contains("ignore")) 2 else 0
-                    com.legendsayantan.adbtools.lib.ShizukuRunner.command("appops get $pkg TAKE_AUDIO_FOCUS", object : com.legendsayantan.adbtools.lib.ShizukuRunner.CommandResultListener {
-                        override fun onCommandResult(out2: String, d2: Boolean) {
-                            if (d2) {
-                                val focusMode = if (out2.contains("deny")) 1 else if (out2.contains("ignore")) 2 else 0
-                                val prefs = context.getSharedPreferences("sm_recovery", Context.MODE_PRIVATE)
-                                prefs.edit().putString(pkg, "$playAudioMode,$focusMode").apply()
-                                
-                                com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
-                                    try {
-                                        controller.setAppOpMode(pkg, uid, 28, 2)
-                                    } catch (e: Exception) {
-                                        Handler(context.mainLooper).post {
-                                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                                        }
-                                        context.log(e.stackTraceToString())
-                                    }
-                                }
-                            }
-                        }
-                        override fun onCommandError(error: String) {}
-                    })
+
+        // Remember the app's current PLAY_AUDIO/TAKE_AUDIO_FOCUS modes (via the privileged
+        // service's reflection-based getAppOpMode - the raw AppOpsManager.MODE_* int, not a
+        // hand-parsed CLI string) so interrupt() can restore them, then mute the app's own output
+        // BEFORE capture starts - starting capture unconditionally here (outside this callback)
+        // raced the mute call, so the original app could keep playing audibly for however long
+        // Shizuku took to bind/respond.
+        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
+            try {
+                val playAudioMode = controller.getAppOpMode(pkg, uid, AppOps.PLAY_AUDIO)
+                val focusMode = controller.getAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS)
+                val prefs = context.getSharedPreferences("sm_recovery", Context.MODE_PRIVATE)
+                prefs.edit().putString(pkg, "$playAudioMode,$focusMode").apply()
+                val muted = controller.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, AppOps.MODE_ERRORED)
+                if (!muted) {
+                    // The write reported success but the mode never actually changed - a known
+                    // shell-privilege restriction on some Android versions/OEM builds that
+                    // silently no-ops appops writes for other packages. No client-side retry can
+                    // fix this; it needs root-level Shizuku instead of ADB/shell pairing.
+                    Handler(context.mainLooper).post {
+                        Toast.makeText(
+                            context,
+                            "Couldn't mute $pkg's original audio - your Shizuku permission level may not allow this (try enabling Shizuku via root).",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    context.log("PLAY_AUDIO mute for $pkg did not take effect (silently rejected).", true)
                 }
+            } catch (e: Exception) {
+                Handler(context.mainLooper).post {
+                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+                context.log(e.stackTraceToString())
+            } finally {
+                super@PlayBackThread.start()
             }
-            override fun onCommandError(error: String) {}
-        })
-        
-        super.start()
+        }
     }
 
-    fun isDisconnectedFromSystem(callback:(Boolean)->Unit){
-        ShizukuRunner.command("appops get $pkg PLAY_AUDIO", object : ShizukuRunner.CommandResultListener {
-            override fun onCommandResult(output: String, done: Boolean) {
-                if (done) {
-                    if (output.contains("deny")) {
-                        callback(true)
-                    }else{
-                        callback(false)
-                    }
-                }
-            }
-        })
+    fun isDisconnectedFromSystem(callback: (Boolean) -> Unit) {
+        val uid = context.packageManager.getPackageInfo(pkg, 0).applicationInfo?.uid ?: -1
+        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
+            val mode = try { controller.getAppOpMode(pkg, uid, AppOps.PLAY_AUDIO) } catch (e: Exception) { 0 }
+            callback(mode == 2)
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -149,7 +148,7 @@ class PlayBackThread(
             mCapture.startRecording()
             Log.i(LOG_TAG, "Audio Recording started")
             while (playback) {
-                val read = mCapture.read(dataBuffer, 0, BUF_SIZE)
+                val read = synchronized(rmsLock) { mCapture.read(dataBuffer, 0, BUF_SIZE) }
                 if (read > 0) {
                     val players = mPlayers.values.toList()
                     players.forEach {
@@ -229,8 +228,8 @@ class PlayBackThread(
         
         com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
             try {
-                controller.setAppOpMode(pkg, uid, 28, playAudioMode)
-                controller.setAppOpMode(pkg, uid, 32, focusMode)
+                controller.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, playAudioMode)
+                controller.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, focusMode)
             } catch (e: Exception) {
                 Handler(context.mainLooper).post {
                     Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -276,13 +275,19 @@ class PlayBackThread(
         return mPlayers[it.output]?.volume?.times(100f)
     }
 
+    // Guards dataBuffer between the capture thread (writing via mCapture.read) and calculateRMS()
+    // (read from the main thread's rms-meter timer) - without it the two race on the same array,
+    // which can hand the meter a torn mix of old/new samples.
+    private val rmsLock = Any()
     private val rmsShortBuffer = ShortArray(BUF_SIZE / 2)
     private val rmsByteBuffer = ByteBuffer.wrap(dataBuffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
 
     /** Returns RMS amplitude of the most recently captured buffer, normalized to 0f..1f. */
     fun calculateRMS(): Float {
-        rmsByteBuffer.position(0)
-        rmsByteBuffer.get(rmsShortBuffer)
+        synchronized(rmsLock) {
+            rmsByteBuffer.position(0)
+            rmsByteBuffer.get(rmsShortBuffer)
+        }
         var sum = 0.0
         for (sample in rmsShortBuffer) {
             sum += (sample * sample).toFloat()

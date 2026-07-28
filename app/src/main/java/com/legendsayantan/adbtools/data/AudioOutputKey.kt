@@ -7,11 +7,16 @@ open class AudioOutputKey(
     val pkg:String,
     val output:Int=-1
 ){
-    //defining the equals method
+    // Identity is (pkg, output) regardless of subclass - `is AudioOutputKey` (not a javaClass
+    // check) so an AudioOutputBase and a bare AudioOutputKey for the same pair compare equal,
+    // which apps.contains()/remove() rely on when called with either type.
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other == null || javaClass != other.javaClass) return false
-        val key = other as AudioOutputKey
-        return pkg == key.pkg && output == key.output
+        if (other !is AudioOutputKey) return false
+        return pkg == other.pkg && output == other.output
+    }
+
+    override fun hashCode(): Int {
+        return 31 * pkg.hashCode() + output
     }
 }

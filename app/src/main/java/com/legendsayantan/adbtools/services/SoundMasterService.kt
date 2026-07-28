@@ -24,6 +24,7 @@ import com.legendsayantan.adbtools.R
 
 import com.legendsayantan.adbtools.data.AudioOutputBase
 import com.legendsayantan.adbtools.data.AudioOutputKey
+import com.legendsayantan.adbtools.lib.AppOps
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.PlayBackThread
 import com.legendsayantan.adbtools.lib.ShizukuRunner
@@ -57,7 +58,12 @@ class SoundMasterService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        //foreground service
+        // SoundMaster's audio routing is built entirely on per-app playback capture
+        // (AudioPlaybackCallback/AudioPlaybackCapture + MediaProjection), none of which exist
+        // before Android 10 (Q). Skip all setup below that version - onStartCommand() checks
+        // the same condition and stops the service immediately instead of touching any of the
+        // members that are only initialized here, so nothing downstream can crash on a `lateinit`
+        // that was never assigned.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             return
         }
@@ -144,13 +150,22 @@ class SoundMasterService : Service() {
         onDynamicAttach = { key, device ->
             if (!apps.contains(key)) apps.add(AudioOutputBase(key.pkg, key.output, key.volume))
             if (!packageThreads.contains(key.pkg)) {
-                val mThread = PlayBackThread(
-                    applicationContext,
-                    key.pkg,
-                    mediaProjection!!
-                )
-                packageThreads[key.pkg] = mThread
-                mThread.start()
+                // mediaProjection is only acquired in DSP mode. If leftover `apps` entries from a
+                // previous DSP session get reattached after switching to Smart mode (no capture
+                // session), there's nothing to build a PlayBackThread from - skip instead of
+                // crashing on a null projection.
+                val projection = mediaProjection
+                if (projection == null) {
+                    log("Skipping audio attach for ${key.pkg}: no active capture session.")
+                } else {
+                    val mThread = PlayBackThread(
+                        applicationContext,
+                        key.pkg,
+                        projection
+                    )
+                    packageThreads[key.pkg] = mThread
+                    mThread.start()
+                }
             }
             packageThreads[key.pkg]?.createOutput(
                 device,
@@ -180,12 +195,21 @@ class SoundMasterService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            log("SoundMaster requires Android 10 (API 29) or higher; refusing to start.", true)
+            stopSelf()
+            return START_NOT_STICKY
+        }
         if (intent?.action == "ACTION_WAKE_BUBBLE") {
             wakeBubble()
             return START_STICKY
         }
         if (intent?.action == ACTION_ENABLE_DSP) {
             onModeChanged(true)
+            return START_STICKY
+        }
+        if (intent?.action == ACTION_ENABLE_SMART) {
+            onModeChanged(false)
             return START_STICKY
         }
         if (intent?.action == ACTION_DSP_CONSENT_DENIED) {
@@ -292,19 +316,28 @@ class SoundMasterService : Service() {
             override fun onPlaybackConfigChanged(configs: MutableList<android.media.AudioPlaybackConfiguration>?) {
                 super.onPlaybackConfigChanged(configs)
                 
+                // Exclude our own uid from every stage below - when DSP mode is re-playing
+                // captured audio through our own AudioTrack instances, that playback is itself
+                // reported here (it belongs to this app's process), which would otherwise make
+                // SoundMaster attach to and show a slider for itself, and would mask the real
+                // source app actually having stopped (isPlaying would stay true on our own
+                // residual activity alone).
+                val myUid = android.os.Process.myUid()
                 val activeConfigs = configs?.filter { config ->
                     try {
-                        config.javaClass.getMethod("isActive").invoke(config) as Boolean
+                        val isActive = config.javaClass.getMethod("isActive").invoke(config) as Boolean
+                        val uid = try { config.javaClass.getMethod("getClientUid").invoke(config) as? Int } catch (e: Exception) { null }
+                        isActive && uid != myUid
                     } catch (e: Exception) { true }
                 } ?: emptyList()
-                
+
                 val immediateUids = activeConfigs.mapNotNull { config ->
                     try {
                         val uid = config.javaClass.getMethod("getClientUid").invoke(config) as? Int
                         if (uid != null && uid > 0) uid else null
                     } catch (e: Exception) { null }
                 }.distinct()
-                
+
                 val isPlaying = activeConfigs.isNotEmpty()
                 
                 if (isPlaying) {
@@ -322,12 +355,12 @@ class SoundMasterService : Service() {
                     val isDspMode = com.legendsayantan.adbtools.lib.SoundMasterPreferences.isAdvancedDspMode(applicationContext)
                     if (!isDspMode || immediateUids.isEmpty()) {
                         com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
-                            val uids = service.activeAudioUids?.toList() ?: return@execute
-                            
+                            val uids = service.activeAudioUids?.toList()?.filter { it != myUid } ?: return@execute
+
                             if (immediateUids.isEmpty()) {
                                 mainHandler.post { updateActivePackages(uids) }
                             }
-                            
+
                             if (!isDspMode) {
                                 val pm = packageManager
                                 val prefs = getSharedPreferences("soundmaster_vols", Context.MODE_PRIVATE)
@@ -353,7 +386,8 @@ class SoundMasterService : Service() {
 
     private fun updateActivePackages(uids: List<Int>) {
         val pm = packageManager
-        val activePkgs = uids.mapNotNull { uid ->
+        val myUid = android.os.Process.myUid()
+        val activePkgs = uids.filter { it != myUid }.mapNotNull { uid ->
             try { pm.getPackagesForUid(uid)?.firstOrNull() } catch (e: Exception) { null }
         }.distinct()
         
@@ -385,6 +419,13 @@ class SoundMasterService : Service() {
                     val base = com.legendsayantan.adbtools.data.AudioOutputBase(pkg, -1, 100f)
                     apps.add(base)
                     mainHandler.post { onDynamicAttach(base, getAudioDevices().find { it?.id == -1 }) }
+                } else {
+                    // Already attached - this playback-config change likely means the app just
+                    // (re)started a new audio session. AppOpsManager's PLAY_AUDIO=ERRORED can fail
+                    // to retroactively silence a session that was already open when the op was
+                    // first set, so re-assert it every time the app becomes active again rather
+                    // than trusting the one-time mute from attach time.
+                    reassertMute(pkg)
                 }
             }
             val toRemove = apps.filter { !activePackages.contains(it.pkg) }
@@ -399,6 +440,15 @@ class SoundMasterService : Service() {
                 bubble.updateBubbleAppIcon(uids.toIntArray())
                 bubble.populateSliders()
             }
+        }
+    }
+
+    private fun reassertMute(pkg: String) {
+        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
+            try {
+                val uid = packageManager.getApplicationInfo(pkg, 0).uid
+                controller.setAppOpMode(pkg, uid, com.legendsayantan.adbtools.lib.AppOps.PLAY_AUDIO, com.legendsayantan.adbtools.lib.AppOps.MODE_ERRORED)
+            } catch (e: Exception) {}
         }
     }
 
@@ -497,9 +547,10 @@ class SoundMasterService : Service() {
     }
 
     private fun attachActiveAppsToDsp() {
+        val myUid = android.os.Process.myUid()
         com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
             val pm = packageManager
-            controller.activeAudioUids?.forEach { uid ->
+            controller.activeAudioUids?.filter { it != myUid }?.forEach { uid ->
                 try {
                     pm.getPackagesForUid(uid)?.firstOrNull()?.let { pkg ->
                         if (!apps.any { it.pkg == pkg }) {
@@ -519,8 +570,8 @@ class SoundMasterService : Service() {
         com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
             try {
                 val uid = android.os.Process.myUid()
-                controller.setAppOpMode(packageName, uid, 27, android.app.AppOpsManager.MODE_ALLOWED) // RECORD_AUDIO
-                controller.setAppOpMode(packageName, uid, 46, android.app.AppOpsManager.MODE_ALLOWED) // MEDIA_PROJECTION
+                controller.setAppOpMode(packageName, uid, AppOps.RECORD_AUDIO, android.app.AppOpsManager.MODE_ALLOWED)
+                controller.setAppOpMode(packageName, uid, AppOps.PROJECT_MEDIA, android.app.AppOpsManager.MODE_ALLOWED)
                 mainHandler.post {
                     startActivity(Intent(this, com.legendsayantan.adbtools.SoundMasterProjectionActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -544,12 +595,23 @@ class SoundMasterService : Service() {
     override fun onDestroy() {
         running = false
         mainHandler.removeCallbacks(rmsUpdateRunnable)
-        contentResolver.unregisterContentObserver(mVolumeObserver)
-        audioManager.unregisterAudioPlaybackCallback(mPlaybackCallback)
+        // mVolumeObserver/mPlaybackCallback are only assigned past the Q version-gate in onCreate,
+        // so a service that starts and immediately stops on an unsupported version (or dies before
+        // reaching setupSmartVisibility) must not blindly touch them here.
+        if (::mVolumeObserver.isInitialized) contentResolver.unregisterContentObserver(mVolumeObserver)
+        if (::mPlaybackCallback.isInitialized) audioManager.unregisterAudioPlaybackCallback(mPlaybackCallback)
         if (::bubble.isInitialized) bubble.hide()
         latencyUpdateTimer.cancel()
         packageThreads.forEach { it.value.interrupt() }
+        // Clear all static/companion state so a fresh start (possibly in a different mode) never
+        // reattaches stale entries left over from this session - see onDynamicAttach's null-projection
+        // guard above for what happens if this ever gets missed.
+        packageThreads.clear()
+        apps.clear()
+        activePackages = listOf()
+        appStopTimes.clear()
         mediaProjection?.stop()
+        mediaProjection = null
         super.onDestroy()
     }
 
@@ -576,10 +638,70 @@ class SoundMasterService : Service() {
         const val NOTI_ID = 1
         const val updateInterval = 30000L
         const val ACTION_ENABLE_DSP = "ACTION_ENABLE_DSP"
+        const val ACTION_ENABLE_SMART = "ACTION_ENABLE_SMART"
         const val ACTION_DSP_CONSENT_DENIED = "ACTION_DSP_CONSENT_DENIED"
         const val EXTRA_LIVE_UPGRADE = "live_upgrade"
 
         lateinit var uiIntent: Intent
+
+        /**
+         * Single reusable "start the engine" flow - overlay-permission silent grant, then either
+         * the Smart (headless) or Advanced DSP (needs one-time on-screen MediaProjection consent,
+         * an unavoidable OS constraint) path. Shared by SoundMasterBottomSheet's button and the
+         * app-command dispatcher so there's exactly one implementation of this flow.
+         */
+        fun startEngine(context: Context, isDsp: Boolean, onResult: (success: Boolean, message: String) -> Unit) {
+            fun startEngineLogic() {
+                if (isDsp) {
+                    com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
+                        try {
+                            val uid = android.os.Process.myUid()
+                            val pkg = context.packageName
+                            service.setAppOpMode(pkg, uid, com.legendsayantan.adbtools.lib.AppOps.RECORD_AUDIO, android.app.AppOpsManager.MODE_ALLOWED)
+                            service.setAppOpMode(pkg, uid, com.legendsayantan.adbtools.lib.AppOps.PROJECT_MEDIA, android.app.AppOpsManager.MODE_ALLOWED)
+                            Handler(context.mainLooper).post {
+                                context.startActivity(Intent(context, com.legendsayantan.adbtools.SoundMasterProjectionActivity::class.java).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                })
+                                onResult(true, "Advanced DSP requires one-time on-screen consent - permission prompt shown.")
+                            }
+                        } catch (e: Exception) {
+                            Handler(context.mainLooper).post {
+                                context.log(e.stackTraceToString(), true)
+                                onResult(false, "Permission error enabling Advanced DSP: ${e.message}")
+                            }
+                        }
+                    }
+                } else {
+                    projectionData = null
+                    context.startService(Intent(context, SoundMasterService::class.java))
+                    Handler(context.mainLooper).post {
+                        onResult(true, "Smart Volume Engine started.")
+                    }
+                }
+            }
+
+            if (!android.provider.Settings.canDrawOverlays(context)) {
+                com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
+                    try {
+                        service.setAppOpMode(context.packageName, android.os.Process.myUid(), com.legendsayantan.adbtools.lib.AppOps.SYSTEM_ALERT_WINDOW, android.app.AppOpsManager.MODE_ALLOWED)
+                        Handler(context.mainLooper).post { startEngineLogic() }
+                    } catch (e: Exception) {
+                        Handler(context.mainLooper).post {
+                            onResult(false, "Overlay permission required for SoundMaster.")
+                            context.startActivity(
+                                Intent(
+                                    android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    android.net.Uri.parse("package:${context.packageName}")
+                                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }
+                    }
+                }
+            } else {
+                startEngineLogic()
+            }
+        }
 
         fun Context.prepareGetAudioDevices() {
             if (getAudioDevices().isEmpty())

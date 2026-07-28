@@ -22,10 +22,10 @@
     <com.google.android.material.card.MaterialCardView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="16dp"
+        app:cardCornerRadius="28dp"
         app:strokeWidth="1dp"
         app:strokeColor="#4DFFFFFF"
-        app:cardBackgroundColor="#CC202020"
+        app:cardBackgroundColor="#CC161622"
         app:cardElevation="8dp"
         android:layout_margin="8dp"
         android:clipChildren="false">
@@ -34,26 +34,239 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:gravity="center_horizontal"
-            android:clipChildren="false"
-            android:padding="8dp">
+            android:animateLayoutChanges="true"
+            android:padding="12dp">
 
-            <!-- Compact Container for dynamic vertical sliders (1 per app) -->
-            <!-- It will contain item_mini_slider layouts dynamically injected -->
+            <!-- Row of native-style vertical volume bars, one per app - scrolls horizontally
+                 if there are more than fit on screen, matching a native multi-stream volume
+                 panel. -->
             <HorizontalScrollView
                 android:id="@+id/mini_scroll_view"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:scrollbars="none">
-                
+
                 <LinearLayout
                     android:id="@+id/mini_sliders_container"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical"/>
+                    android:gravity="center_vertical" />
             </HorizontalScrollView>
 
+            <!-- Shared DSP detail panel: shows balance/EQ/output controls for whichever app's
+                 bar was last tapped, right below the compact row rather than a separate screen. -->
+            <LinearLayout
+                android:id="@+id/shared_dsp_detail"
+                android:layout_width="@dimen/soundmaster_panel_width"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:paddingTop="12dp">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginBottom="10dp"
+                    android:background="#1FFFFFFF" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="10dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        app:cardCornerRadius="13dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="0dp">
+
+                        <ImageView
+                            android:id="@+id/detail_app_icon"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:id="@+id/detail_app_name"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
+
+                    <ImageView
+                        android:id="@+id/btn_close_detail"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:padding="4dp"
+                        android:src="@android:drawable/ic_menu_close_clear_cancel"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        app:tint="#80FFFFFF" />
+                </LinearLayout>
+
+                <com.legendsayantan.adbtools.views.EqCurveView
+                    android:id="@+id/eq_curve"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:layout_marginBottom="8dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:baselineAligned="false">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center_horizontal">
+                        <TextView
+                            android:text="LOW"
+                            android:textColor="#80FFFFFF"
+                            android:textSize="9sp"
+                            android:textStyle="bold"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/band_low"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:valueFrom="0" android:valueTo="100" android:value="50"
+                            app:trackHeight="5dp" app:thumbRadius="6dp"
+                            app:thumbColor="?attr/colorSecondary"
+                            app:trackColorActive="?attr/colorSecondary"
+                            app:trackColorInactive="#33FFFFFF"
+                            app:labelBehavior="gone" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center_horizontal">
+                        <TextView
+                            android:text="MID"
+                            android:textColor="#80FFFFFF"
+                            android:textSize="9sp"
+                            android:textStyle="bold"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/band_mid"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:valueFrom="0" android:valueTo="100" android:value="50"
+                            app:trackHeight="5dp" app:thumbRadius="6dp"
+                            app:thumbColor="?attr/colorSecondary"
+                            app:trackColorActive="?attr/colorSecondary"
+                            app:trackColorInactive="#33FFFFFF"
+                            app:labelBehavior="gone" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center_horizontal">
+                        <TextView
+                            android:text="HIGH"
+                            android:textColor="#80FFFFFF"
+                            android:textSize="9sp"
+                            android:textStyle="bold"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/band_high"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:valueFrom="0" android:valueTo="100" android:value="50"
+                            app:trackHeight="5dp" app:thumbRadius="6dp"
+                            app:thumbColor="?attr/colorSecondary"
+                            app:trackColorActive="?attr/colorSecondary"
+                            app:trackColorInactive="#33FFFFFF"
+                            app:labelBehavior="gone" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="6dp">
+
+                    <TextView
+                        android:text="L"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/balance_slider"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="6dp"
+                        android:valueFrom="-100" android:valueTo="100" android:value="0"
+                        app:trackHeight="5dp" app:thumbRadius="6dp"
+                        app:thumbColor="?attr/colorSecondary"
+                        app:trackColorActive="?attr/colorSecondary"
+                        app:trackColorInactive="#33FFFFFF"
+                        app:labelBehavior="gone" />
+
+                    <TextView
+                        android:text="R"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/reset_eq"
+                        android:text="@string/reset"
+                        android:textColor="?attr/colorSecondary"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:padding="6dp"
+                        android:layout_marginStart="8dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <TextView
+                    android:text="@string/outputs"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/output_chips"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    app:chipSpacingHorizontal="6dp"
+                    app:chipSpacingVertical="4dp" />
+            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 </LinearLayout>

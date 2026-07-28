@@ -2,13 +2,16 @@ package com.legendsayantan.adbtools
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -18,7 +21,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.legendsayantan.adbtools.adapters.StandbyBucketAdapter
+import com.legendsayantan.adbtools.data.StandbyBuckets
 import com.legendsayantan.adbtools.lib.ShizuToolsController
+import com.legendsayantan.adbtools.lib.Utils.Companion.androidVersionName
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 
@@ -58,28 +63,22 @@ class StandbyBucketActivity : AppCompatActivity() {
 
         recyclerView.layoutManager = LinearLayoutManager(this)
         
-        adapter = StandbyBucketAdapter(displayAppList, 
+        adapter = StandbyBucketAdapter(displayAppList,
             onBucketChanged = { app, bucket ->
                 setBucket(app.packageName, bucket)
                 if (app.isLocked) {
                     prefs.edit().putInt(app.packageName, bucket).apply()
-                    ShizuToolsController.execute { service ->
-                        try { service.setBucketLock(app.packageName, bucket, true) } catch (e: Exception) {}
-                    }
+                    setBucketLockRemote(app.packageName, bucket, true)
                 }
             },
             onLockToggled = { app, isLocked ->
                 if (isLocked) {
                     prefs.edit().putInt(app.packageName, app.bucket).apply()
-                    ShizuToolsController.execute { service ->
-                        try { service.setBucketLock(app.packageName, app.bucket, true) } catch (e: Exception) {}
-                    }
+                    setBucketLockRemote(app.packageName, app.bucket, true)
                     recyclerView.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                 } else {
                     prefs.edit().remove(app.packageName).apply()
-                    ShizuToolsController.execute { service ->
-                        try { service.setBucketLock(app.packageName, app.bucket, false) } catch (e: Exception) {}
-                    }
+                    setBucketLockRemote(app.packageName, app.bucket, false)
                     recyclerView.performHapticFeedback(android.view.HapticFeedbackConstants.REJECT)
                 }
             }
@@ -94,7 +93,27 @@ class StandbyBucketActivity : AppCompatActivity() {
             }
         })
         
-        loadApps()
+        if (!isBucketApiSupported()) {
+            showUnsupportedState()
+        } else {
+            loadApps()
+        }
+    }
+
+    /** App Standby Buckets (UsageStatsManager#getAppStandbyBucket / setAppStandbyBucket) don't exist before Android 9 (API 28). */
+    private fun isBucketApiSupported() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+
+    private fun showUnsupportedState() {
+        progressBar.visibility = View.GONE
+        recyclerView.visibility = View.GONE
+        searchInput.isEnabled = false
+        emptyState.visibility = View.VISIBLE
+        findViewById<ImageView>(R.id.empty_state_icon)?.setImageResource(R.drawable.outline_info_24)
+        findViewById<TextView>(R.id.empty_state_text)?.text = getString(
+            R.string.standby_bucket_unsupported,
+            androidVersionName(Build.VERSION_CODES.P),
+            androidVersionName(Build.VERSION.SDK_INT)
+        )
     }
 
     private fun loadApps() {
@@ -103,19 +122,20 @@ class StandbyBucketActivity : AppCompatActivity() {
         emptyState.visibility = View.GONE
         
         ShizuToolsController.execute { service ->
-            
+
             // Sync all locked buckets to service on load
             val allPrefs = prefs.all
+            var lockSyncFailures = 0
             for ((pkg, value) in allPrefs) {
                 if (value is Int) {
-                    try { service.setBucketLock(pkg, value, true) } catch(e:Exception){}
+                    try { service.setBucketLock(pkg, value, true) } catch (e: Exception) { lockSyncFailures++ }
                 }
             }
-            
+
             val pm = packageManager
             val apps = pm.getAllInstalledApps()
             val tempAppList = mutableListOf<AppItem>()
-            val userId = android.os.Process.myUserHandle().hashCode()
+            val userId = StandbyBuckets.currentUserId()
             
             for (appInfo in apps) {
                 // Ensure the app can be launched so we don't list weird system overlays
@@ -143,6 +163,28 @@ class StandbyBucketActivity : AppCompatActivity() {
                 
                 recyclerView.layoutAnimation = android.view.animation.AnimationUtils.loadLayoutAnimation(this@StandbyBucketActivity, R.anim.layout_animation_stagger)
                 recyclerView.scheduleLayoutAnimation()
+
+                if (lockSyncFailures > 0) {
+                    Snackbar.make(findViewById(R.id.root_layout), "Failed to sync $lockSyncFailures locked bucket(s).", Snackbar.LENGTH_LONG)
+                        .setBackgroundTint(getColor(R.color.colorError))
+                        .setTextColor(getColor(R.color.colorOnPrimary))
+                        .show()
+                }
+            }
+        }
+    }
+
+    private fun setBucketLockRemote(pkg: String, bucket: Int, locked: Boolean) {
+        ShizuToolsController.execute { service ->
+            try {
+                service.setBucketLock(pkg, bucket, locked)
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Snackbar.make(findViewById(R.id.root_layout), "Failed to ${if (locked) "lock" else "unlock"} $pkg: ${e.message}", Snackbar.LENGTH_LONG)
+                        .setBackgroundTint(getColor(R.color.colorError))
+                        .setTextColor(getColor(R.color.colorOnPrimary))
+                        .show()
+                }
             }
         }
     }
@@ -171,7 +213,7 @@ class StandbyBucketActivity : AppCompatActivity() {
     private fun setBucket(packageName: String, bucket: Int) {
         ShizuToolsController.execute { service ->
             try {
-                service.setAppStandbyBucket(packageName, bucket, android.os.Process.myUserHandle().hashCode())
+                service.setAppStandbyBucket(packageName, bucket, StandbyBuckets.currentUserId())
             } catch (e: Exception) {
                 runOnUiThread {
                     Snackbar.make(findViewById(R.id.root_layout), "Failed to set bucket: ${e.message}", Snackbar.LENGTH_LONG)

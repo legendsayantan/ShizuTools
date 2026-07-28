@@ -8,7 +8,7 @@ import android.view.WindowManager
 import androidx.recyclerview.widget.RecyclerView
 import com.legendsayantan.adbtools.R
 import com.legendsayantan.adbtools.adapters.SimpleAdapter
-import com.legendsayantan.adbtools.adapters.VolumeBarAdapter
+import com.legendsayantan.adbtools.lib.AudioOutputMap
 
 /**
  * @author legendsayantan
@@ -31,7 +31,7 @@ class OutputSelectionDialog(
     override fun show() {
         super.show()
         val list = findViewById<RecyclerView>(R.id.outputs)
-        val data = devices.map { VolumeBarAdapter.formatDevice(it) }
+        val data = devices.map { AudioOutputMap.formatDevice(it) }
         val adapter = SimpleAdapter(data) {
             dismiss()
             onDeviceSelected(devices[it])

@@ -27,14 +27,14 @@ class GradleUpdate(val context: Context, private val gradleFileUrl: String, priv
         GlobalScope.launch {
             try {
                 val url = URL(gradleFileUrl)
-                val connection = withContext(Dispatchers.IO) {
-                    url.openConnection()
+                val contents = withContext(Dispatchers.IO) {
+                    val connection = url.openConnection()
+                    // A stalled/captive-portal network otherwise hangs this coroutine forever -
+                    // GlobalScope means nothing else would ever cancel it.
+                    connection.connectTimeout = 10000
+                    connection.readTimeout = 10000
+                    BufferedReader(InputStreamReader(connection.getInputStream())).use { it.readText() }
                 }
-                val bufferedReader =
-                    BufferedReader(InputStreamReader(withContext(Dispatchers.IO) {
-                        connection.getInputStream()
-                    }))
-                val contents = bufferedReader.use { it.readText() }
                 contents.let {
                     val match = Regex("versionName \".*?\"").find(it)
                     if (match != null) {

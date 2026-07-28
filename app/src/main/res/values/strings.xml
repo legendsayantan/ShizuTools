@@ -39,6 +39,10 @@
     <string name="high_bands">High Bands</string>
     <string name="command_getevent">getevent -q</string>
     <string name="switch_output_device">Switch Output Device:</string>
+    <string name="add_output_device">Add Output Device:</string>
+    <string name="reset">Reset</string>
+    <string name="outputs">Outputs</string>
+    <string name="no_additional_outputs_available">No additional output devices available.</string>
     <string name="default_">Default</string>
     <string name="run">Run</string>
     <string name="enter_command">Enter Command…</string>
@@ -57,6 +61,8 @@
     <string name="url_uad_lists">https://cdn.jsdelivr.net/gh/Universal-Debloater-Alliance/universal-android-debloater-next-generation@main/resources/assets/uad_lists.json</string>
     <string name="none">None</string>
     <string name="permission_error">Permission error! Open the shizuku app to learn more.</string>
+    <string name="tool_unsupported_version">%1$s requires Android %2$s or higher. This device is on Android %3$s.</string>
+    <string name="standby_bucket_unsupported">Standby Buckets require Android %1$s or higher.\nThis device is on Android %2$s.</string>
     <string name="shizuku_error">Shizuku Error!</string>
     <string name="universalpip">UniversalPip</string>
     <string name="desc_universalpip">Switch apps to picture-in-picture mode even if they don\'t allow it. May not support some launchers.</string>

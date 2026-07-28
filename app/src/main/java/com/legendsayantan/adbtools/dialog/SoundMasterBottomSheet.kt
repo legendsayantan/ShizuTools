@@ -21,7 +21,7 @@ import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.legendsayantan.adbtools.R
-import com.legendsayantan.adbtools.SoundMasterProjectionActivity
+import com.legendsayantan.adbtools.lib.AppOps
 import com.legendsayantan.adbtools.lib.SoundMasterPreferences
 import com.legendsayantan.adbtools.lib.Utils.Companion.showSnackbar
 import com.legendsayantan.adbtools.services.SoundMasterService
@@ -54,18 +54,53 @@ class SoundMasterBottomSheet : BottomSheetDialogFragment() {
         val btnImage = view.findViewById<ImageView>(R.id.playPauseButton)
         val btnText = view.findViewById<TextView>(R.id.toggleText)
         val btnCard = view.findViewById<MaterialCardView>(R.id.newSlider)
+        val modeToggleGroup = view.findViewById<MaterialButtonToggleGroup>(R.id.modeToggleGroup)
+        val textModeDescription = view.findViewById<TextView>(R.id.textModeDescription)
+        val btnRepairAudio = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnRepairAudio)
+
+        // Per-app audio routing needs playback capture APIs that only exist from Android 10 (Q)
+        // onward. Everything else in this sheet (auto-hide timeout, notification toggle, etc.)
+        // is just local preference and stays fully usable - only the engine start/mode controls
+        // are disabled here.
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+            btnImage.setImageResource(R.drawable.outline_info_24)
+            btnText.text = "Unavailable"
+            btnCard.isEnabled = false
+            btnCard.alpha = 0.5f
+            btnCard.setOnClickListener {
+                requireActivity().showSnackbar(
+                    getString(
+                        R.string.tool_unsupported_version,
+                        getString(R.string.soundmaster),
+                        com.legendsayantan.adbtools.lib.Utils.androidVersionName(android.os.Build.VERSION_CODES.Q),
+                        com.legendsayantan.adbtools.lib.Utils.androidVersionName(android.os.Build.VERSION.SDK_INT)
+                    ),
+                    com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+                )
+            }
+            modeToggleGroup.isEnabled = false
+            for (i in 0 until modeToggleGroup.childCount) modeToggleGroup.getChildAt(i).isEnabled = false
+            textModeDescription.text = getString(
+                R.string.tool_unsupported_version,
+                getString(R.string.soundmaster),
+                com.legendsayantan.adbtools.lib.Utils.androidVersionName(android.os.Build.VERSION_CODES.Q),
+                com.legendsayantan.adbtools.lib.Utils.androidVersionName(android.os.Build.VERSION.SDK_INT)
+            )
+            btnRepairAudio.visibility = View.GONE
+            return
+        }
 
         val isRunning = SoundMasterService.running
         btnImage.setImageResource(if (isRunning) R.drawable.baseline_stop_24 else R.drawable.baseline_play_arrow_24)
         btnText.text = if (isRunning) "Stop Engine" else "Start Engine"
+        btnCard.isEnabled = true
+        btnCard.alpha = 1f
 
-        val modeToggleGroup = view.findViewById<MaterialButtonToggleGroup>(R.id.modeToggleGroup)
         modeToggleGroup.isEnabled = !isRunning
         for (i in 0 until modeToggleGroup.childCount) {
             modeToggleGroup.getChildAt(i).isEnabled = !isRunning
         }
-        
-        val btnRepairAudio = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnRepairAudio)
+
         val prefs = requireContext().getSharedPreferences("sm_recovery", Context.MODE_PRIVATE)
         val strandedApps = prefs.all.keys
         
@@ -83,8 +118,8 @@ class SoundMasterBottomSheet : BottomSheetDialogFragment() {
                             val playAudioMode = modes.getOrElse(0) { 0 }
                             val focusMode = modes.getOrElse(1) { 0 }
                             
-                            controller.setAppOpMode(pkg, uid, 28, playAudioMode)
-                            controller.setAppOpMode(pkg, uid, 32, focusMode)
+                            controller.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, playAudioMode)
+                            controller.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, focusMode)
                         } catch (e: Exception) {}
                     }
                     prefs.edit().clear().apply()
@@ -103,52 +138,17 @@ class SoundMasterBottomSheet : BottomSheetDialogFragment() {
                 requireContext().stopService(Intent(requireContext(), SoundMasterService::class.java))
                 Handler(Looper.getMainLooper()).postDelayed({ view.let { updateBtnState(it) } }, 500)
             } else {
-                val startEngineLogic = {
-                    val isDspMode = SoundMasterPreferences.isAdvancedDspMode(requireContext())
-                    if (isDspMode) {
-                        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
-                            try {
-                                val uid = android.os.Process.myUid()
-                                val pkg = requireContext().packageName
-                                service.setAppOpMode(pkg, uid, 27, android.app.AppOpsManager.MODE_ALLOWED) // RECORD_AUDIO
-                                service.setAppOpMode(pkg, uid, 46, android.app.AppOpsManager.MODE_ALLOWED) // MEDIA_PROJECTION
-                                Handler(Looper.getMainLooper()).post {
-                                    requireContext().startActivity(Intent(requireContext(), SoundMasterProjectionActivity::class.java).apply {
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    })
-                                    dismiss()
-                                }
-                            } catch(e: Exception) {
-                                Handler(Looper.getMainLooper()).post {
-                                    requireActivity().showSnackbar(getString(R.string.permission_error), com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
-                                    requireContext().applicationContext.log(e.stackTraceToString(), true)
-                                }
-                            }
-                        }
-                    } else {
-                        requireActivity().showSnackbar("Smart Volume Engine Started", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
-                        SoundMasterService.projectionData = null
-                        requireContext().startService(Intent(requireContext(), SoundMasterService::class.java))
-                        Handler(Looper.getMainLooper()).postDelayed({ view.let { updateBtnState(it) } }, 500)
-                    }
-                }
-
-                if (!android.provider.Settings.canDrawOverlays(requireContext())) {
-                    com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
-                        try {
-                            service.setAppOpMode(requireContext().packageName, android.os.Process.myUid(), 24, android.app.AppOpsManager.MODE_ALLOWED)
-                            Handler(Looper.getMainLooper()).post {
-                                startEngineLogic()
-                            }
-                        } catch(e: Exception) {
-                            Handler(Looper.getMainLooper()).post {
-                                requireActivity().showSnackbar("Overlay permission required for SoundMaster.", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
-                                requireContext().startActivity(Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${requireContext().packageName}")))
-                            }
+                val isDspMode = SoundMasterPreferences.isAdvancedDspMode(requireContext())
+                SoundMasterService.startEngine(requireContext().applicationContext, isDspMode) { success, message ->
+                    Handler(Looper.getMainLooper()).post {
+                        if (!isAdded) return@post
+                        requireActivity().showSnackbar(message, com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                        if (success && isDspMode) {
+                            dismiss()
+                        } else if (success) {
+                            view.let { updateBtnState(it) }
                         }
                     }
-                } else {
-                    startEngineLogic()
                 }
             }
         }

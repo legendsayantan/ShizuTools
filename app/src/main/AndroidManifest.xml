@@ -49,7 +49,7 @@
         <receiver
             android:name=".receivers.PipReceiver"
             android:enabled="true"
-            android:exported="true" />
+            android:exported="false" />
 
         <activity
             android:name=".PipStarterActivity"

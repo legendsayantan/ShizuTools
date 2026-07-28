@@ -101,6 +101,7 @@
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <ImageView
+            android:id="@+id/empty_state_icon"
             android:layout_width="64dp"
             android:layout_height="64dp"
             android:alpha="0.5"
@@ -108,10 +109,13 @@
             app:tint="?attr/colorOnSurface" />
 
         <TextView
+            android:id="@+id/empty_state_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:layout_marginHorizontal="32dp"
             android:alpha="0.7"
+            android:gravity="center"
             android:text="No apps found"
             android:textColor="?attr/colorOnSurface"
             android:textSize="16sp" />

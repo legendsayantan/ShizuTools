@@ -20,6 +20,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
 import com.legendsayantan.adbtools.R
+import com.legendsayantan.adbtools.lib.AppCommands
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import java.text.SimpleDateFormat
@@ -72,7 +73,12 @@ class LocalShellBottomSheet(context: Context) : BottomSheetDialog(context, R.sty
             "Get Prop" to "getprop ",
             "Dumpsys Battery" to "dumpsys battery",
             "Screen Size" to "wm size",
-            "Screen Density" to "wm density"
+            "Screen Density" to "wm density",
+            "SoundMaster: Status" to "soundmaster status",
+            "SoundMaster: Start Smart" to "soundmaster start smart",
+            "Governor: Set Rare" to "governor set ",
+            "MixedAudio: Mute" to "mixedaudio mute ",
+            "App Commands Help" to "help"
         )
         templates.forEach { (label, cmd) ->
             val chip = Chip(context).apply {
@@ -141,37 +147,52 @@ class LocalShellBottomSheet(context: Context) : BottomSheetDialog(context, R.sty
             
             updateOutputView(commandOut, currentHeader, true)
             btnRun.isEnabled = false
-            
-            com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
-                service.runCommand(cmd, object : com.legendsayantan.adbtools.services.ICommandCallback.Stub() {
-                    override fun onCommandResult(output: String, done: Boolean) {
-                        commandOut.post {
-                            if (done) {
+
+            if (AppCommands.isAppCommand(cmd)) {
+                AppCommands.dispatch(context.applicationContext, cmd) { success, message ->
+                    commandOut.post {
+                        historyBuffer.append(currentHeader)
+                        historyBuffer.append(message)
+                        if (message.isNotEmpty() && !message.endsWith("\n")) historyBuffer.append("\n")
+                        historyBuffer.append("[$time] ${if (success) "✓" else "✗"}\n")
+                        saveAndRefreshOutput(commandOut)
+                        btnRun.isEnabled = true
+                        editText.requestFocus() // UX 9.7
+                    }
+                    if (!success) context.applicationContext.log(message)
+                }
+            } else {
+                com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
+                    service.runCommand(cmd, object : com.legendsayantan.adbtools.services.ICommandCallback.Stub() {
+                        override fun onCommandResult(output: String, done: Boolean) {
+                            commandOut.post {
+                                if (done) {
+                                    historyBuffer.append(currentHeader)
+                                    historyBuffer.append(output)
+                                    if (output.isNotEmpty() && !output.endsWith("\n")) historyBuffer.append("\n")
+                                    historyBuffer.append("[$time] ✓\n")
+                                    saveAndRefreshOutput(commandOut)
+                                    btnRun.isEnabled = true
+                                    editText.requestFocus() // UX 9.7
+                                } else {
+                                    updateOutputView(commandOut, currentHeader + output, true)
+                                }
+                            }
+                        }
+
+                        override fun onCommandError(error: String) {
+                            commandOut.post {
                                 historyBuffer.append(currentHeader)
-                                historyBuffer.append(output)
-                                if (output.isNotEmpty() && !output.endsWith("\n")) historyBuffer.append("\n")
-                                historyBuffer.append("[$time] ✓\n")
+                                historyBuffer.append("Error: $error\n")
+                                historyBuffer.append("[$time] ✗\n")
                                 saveAndRefreshOutput(commandOut)
                                 btnRun.isEnabled = true
                                 editText.requestFocus() // UX 9.7
-                            } else {
-                                updateOutputView(commandOut, currentHeader + output, true)
                             }
+                            context.applicationContext.log(error)
                         }
-                    }
-                    
-                    override fun onCommandError(error: String) {
-                        commandOut.post {
-                            historyBuffer.append(currentHeader)
-                            historyBuffer.append("Error: $error\n")
-                            historyBuffer.append("[$time] ✗\n")
-                            saveAndRefreshOutput(commandOut)
-                            btnRun.isEnabled = true
-                            editText.requestFocus() // UX 9.7
-                        }
-                        context.applicationContext.log(error)
-                    }
-                }, 50)
+                    }, 50)
+                }
             }
             editText.selectAll()
             editText.requestFocus()

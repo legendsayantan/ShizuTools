@@ -86,11 +86,11 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
     }
 
     /**
-     * Op codes used across this app, mapped to their canonical `appops` CLI names. These
-     * numeric codes are AOSP-stable/append-only across Android versions, but we still prefer
-     * the symbolic name for the CLI path below since it's the same identifier every `appops get`
-     * / `query-op` read call in this app already relies on, and is immune to any doubt about
-     * numeric mapping on unfamiliar OS builds.
+     * Op codes used across this app, mapped to their canonical `AppOpsManager`/`appops` CLI
+     * names. The literal ints passed in from callers (setAppOpMode/getAppOpMode/queryAppOpStates)
+     * are only ever used as lookup keys into this table now - resolveOpCode()/opStrFor() below
+     * turn the name back into whatever the actual on-device op index or op-string is, so a
+     * renumbered op table on some OEM build doesn't matter as long as the name still exists.
      */
     private fun opNameFor(opCode: Int): String? = when (opCode) {
         23 -> "WRITE_SETTINGS"
@@ -102,20 +102,56 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
         else -> null
     }
 
-    @SuppressLint("BlockedPrivateApi", "DiscouragedPrivateApi")
-    override fun setAppOpMode(pkgName: String, uid: Int, opCode: Int, mode: Int) {
-        // Prefer the `appops` shell CLI: it's maintained by the platform itself for whatever
-        // Android version is actually running, so it stays correct across the app's entire
-        // supported range (minSdk 27 through the newest release) without us having to track
-        // internal AIDL changes. This is the same tool every read path (`appops get`,
-        // `query-op`) in this app already depends on successfully.
-        if (setAppOpModeViaCli(pkgName, opCode, mode)) return
+    // ---- AppOps: reflection is the primary path for all of set/get/query below. It runs inside
+    // Shizuku's own spawned process (not a normal Zygote-forked app process), so it isn't subject
+    // to the hidden-API enforcement that would normally block this - the same reason the rest of
+    // this service already leans on hidden APIs elsewhere. The `appops` CLI is kept only as an
+    // automatic fallback for the rare case a specific hidden method/field is missing entirely on
+    // some OEM build.
 
-        // Fall back to direct Binder reflection only if the CLI path is unavailable/failed
-        // (e.g. no shell access in this environment). This reflects a hidden/internal AIDL
-        // method whose signature can drift between Android versions, so it's a best-effort
-        // secondary path rather than the primary one.
-        try {
+    /** Resolves a legacy literal opCode to whatever this device's real AppOpsManager.OP_* value
+     *  is, by name - immune to OEM op-table renumbering as long as the field name still exists. */
+    private fun resolveOpCode(opCode: Int): Int {
+        val name = opNameFor(opCode) ?: return opCode
+        return try {
+            android.app.AppOpsManager::class.java.getDeclaredField("OP_$name")
+                .apply { isAccessible = true }.getInt(null)
+        } catch (e: Exception) {
+            opCode
+        }
+    }
+
+    /** AOSP's OPSTR_* naming convention is "android:" + the OP_* suffix lowercased - true for
+     *  every op this app uses (verified against the symbolic names already used by the CLI path). */
+    private fun opStrFor(opCode: Int): String? = opNameFor(opCode)?.let { "android:${it.lowercase()}" }
+
+    private fun getAppOpsManager(): android.app.AppOpsManager? = try {
+        context.getSystemService(android.content.Context.APP_OPS_SERVICE) as? android.app.AppOpsManager
+    } catch (e: Exception) { null }
+
+    private fun invokeGetter(target: Any, name: String): Any? = target.javaClass.getMethod(name).invoke(target)
+
+    @SuppressLint("BlockedPrivateApi", "DiscouragedPrivateApi")
+    override fun setAppOpMode(pkgName: String, uid: Int, opCode: Int, mode: Int): Boolean {
+        val wroteWithoutThrowing = setAppOpModeViaReflection(pkgName, uid, resolveOpCode(opCode), mode)
+                || setAppOpModeViaCli(pkgName, opCode, mode)
+        if (!wroteWithoutThrowing) {
+            Log.e("ShizuToolsService", "Both reflection and appops CLI setMode failed for $pkgName op $opCode")
+            return false
+        }
+        // Some Android versions/OEM builds silently no-op an appops write for another package
+        // from shell-level privilege (confirmed directly via `adb shell cmd appops set` on one
+        // such device: it reports success but the mode never actually changes) - reading it
+        // back is the only way to tell a real write from a silently-ignored one.
+        return try {
+            getAppOpMode(pkgName, uid, opCode) == mode
+        } catch (e: Exception) {
+            true // can't verify - assume the write succeeded rather than reporting a false negative
+        }
+    }
+
+    private fun setAppOpModeViaReflection(pkgName: String, uid: Int, opCode: Int, mode: Int): Boolean {
+        return try {
             val aos = try {
                 val aoClz = Class.forName("android.app.AppOpsManager")
                 val getAos = aoClz.getDeclaredMethod("getService").apply { isAccessible = true }
@@ -127,7 +163,7 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
                 Class.forName("com.android.internal.app.IAppOpsService\$Stub")
                     .getMethod("asInterface", android.os.IBinder::class.java)
                     .invoke(null, b)
-            } ?: return
+            } ?: return false
 
             val setMode = aos.javaClass.getDeclaredMethod(
                 "setMode",
@@ -138,8 +174,10 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
             ).apply { isAccessible = true }
 
             setMode.invoke(aos, opCode, uid, pkgName, mode)
+            true
         } catch (e: Exception) {
-            Log.e("ShizuToolsService", "Both appops CLI and reflection setMode failed: ${e.stackTraceToString()}")
+            Log.w("ShizuToolsService", "Reflection setMode failed for $pkgName op $opCode: ${e.message}")
+            false
         }
     }
 
@@ -168,6 +206,132 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
             Log.e("ShizuToolsService", "appops CLI setMode failed: ${e.stackTraceToString()}")
             false
         }
+    }
+
+    override fun getAppOpMode(pkgName: String, uid: Int, opCode: Int): Int {
+        getAppOpModeViaReflection(pkgName, uid, opCode)?.let { return it }
+        return try {
+            getAppOpModeViaCli(pkgName, opCode)
+        } catch (e: Exception) {
+            Log.e("ShizuToolsService", "Both reflection and appops CLI getMode failed for $pkgName op $opCode")
+            0 // MODE_ALLOWED - the op's own default when nothing else could be determined
+        }
+    }
+
+    private fun getAppOpModeViaReflection(pkgName: String, uid: Int, opCode: Int): Int? {
+        val aom = getAppOpsManager() ?: return null
+        val resolved = resolveOpCode(opCode)
+        val opStr = opStrFor(opCode)
+        val candidates = try {
+            aom.javaClass.methods.filter { it.name == "getOpsForPackage" && it.parameterTypes.size == 3 }
+        } catch (e: Exception) {
+            return null
+        }
+        for (m in candidates) {
+            try {
+                val arg2: Any = when (m.parameterTypes[2]) {
+                    IntArray::class.java -> intArrayOf(resolved)
+                    Array<String>::class.java -> {
+                        if (opStr == null) continue
+                        arrayOf(opStr)
+                    }
+                    else -> continue
+                }
+                m.isAccessible = true
+                @Suppress("UNCHECKED_CAST")
+                val result = m.invoke(aom, uid, pkgName, arg2) as? List<Any> ?: continue
+                val packageOps = result.firstOrNull() ?: return 0 // no entry at all = untouched default
+                val ops = invokeGetter(packageOps, "getOps") as? List<*> ?: return 0
+                val entry = ops.firstOrNull { it != null && (invokeGetter(it, "getOp") as? Int) == resolved }
+                return if (entry != null) (invokeGetter(entry, "getMode") as? Int) ?: 0 else 0
+            } catch (e: Exception) {
+                // Try the next candidate signature this OS version/OEM might expose instead.
+            }
+        }
+        return null
+    }
+
+    private fun getAppOpModeViaCli(pkgName: String, opCode: Int): Int {
+        val opArg = opNameFor(opCode) ?: opCode.toString()
+        val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", "appops get $pkgName $opArg"))
+        val out = process.inputStream.bufferedReader().readText()
+        process.errorStream.bufferedReader().readText()
+        process.waitFor()
+        return when {
+            out.contains("deny", true) -> 2
+            out.contains("ignore", true) -> 1
+            out.contains("foreground", true) -> 4
+            out.contains("default", true) -> 3
+            else -> 0
+        }
+    }
+
+    override fun queryAppOpStates(opCodes: IntArray): String {
+        queryAppOpStatesViaReflection(opCodes)?.let { return it }
+        return try {
+            queryAppOpStatesViaCli(opCodes)
+        } catch (e: Exception) {
+            Log.e("ShizuToolsService", "Both reflection and appops CLI bulk query failed: ${e.stackTraceToString()}")
+            ""
+        }
+    }
+
+    private fun queryAppOpStatesViaReflection(opCodes: IntArray): String? {
+        val aom = getAppOpsManager() ?: return null
+        val resolvedCodes = opCodes.map { resolveOpCode(it) }.toIntArray()
+        val candidates = try {
+            aom.javaClass.methods.filter { it.name == "getPackagesForOps" && it.parameterTypes.size == 1 }
+        } catch (e: Exception) {
+            return null
+        }
+        for (m in candidates) {
+            try {
+                val arg: Any = when (m.parameterTypes[0]) {
+                    IntArray::class.java -> resolvedCodes
+                    Array<String>::class.java -> opCodes.toList().mapNotNull { opStrFor(it) }.toTypedArray()
+                    else -> continue
+                }
+                m.isAccessible = true
+                @Suppress("UNCHECKED_CAST")
+                val result = m.invoke(aom, arg) as? List<Any> ?: continue
+                val sb = StringBuilder()
+                for (packageOps in result) {
+                    val pkgName = invokeGetter(packageOps, "getPackageName") as? String ?: continue
+                    val ops = invokeGetter(packageOps, "getOps") as? List<*> ?: continue
+                    for (entry in ops) {
+                        if (entry == null) continue
+                        val op = invokeGetter(entry, "getOp") as? Int ?: continue
+                        val mode = invokeGetter(entry, "getMode") as? Int ?: continue
+                        sb.append(pkgName).append('|').append(op).append('|').append(mode).append('\n')
+                    }
+                }
+                return sb.toString()
+            } catch (e: Exception) {
+                // Try the next candidate signature this OS version/OEM might expose instead.
+            }
+        }
+        return null
+    }
+
+    private fun queryAppOpStatesViaCli(opCodes: IntArray): String {
+        val sb = StringBuilder()
+        for (opCode in opCodes) {
+            val opArg = opNameFor(opCode) ?: opCode.toString()
+            for ((modeName, mode) in listOf("allow" to 0, "ignore" to 1, "deny" to 2, "foreground" to 4)) {
+                try {
+                    val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", "appops query-op $opArg $modeName"))
+                    val out = process.inputStream.bufferedReader().readText()
+                    process.errorStream.bufferedReader().readText()
+                    process.waitFor()
+                    out.split("\n").forEach { pkg ->
+                        if (pkg.isNotBlank()) sb.append(pkg.trim()).append('|').append(opCode).append('|').append(mode).append('\n')
+                    }
+                } catch (e: Exception) {
+                    Log.w("ShizuToolsService", "appops query-op $opArg $modeName failed: ${e.message}")
+                }
+            }
+        }
+        return sb.toString()
     }
 
     override fun runCommand(command: String, callback: ICommandCallback, lineBundle: Int) {
@@ -211,10 +375,12 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
             // Wait, we can map dontKill in the UI to an arbitrary flag bit and handle it here.
             // Let's reserve 0x40000000 for DONT_KILL_APP
             if ((flags and 0x40000000) != 0) {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION.SDK_INT) {
-                    // It's a public method added in API 34, wait, setDontKillApp is API 34.
-                    // For older devices, this is only available via reflection on installFlags (INSTALL_DONT_KILL_APP = 0x00001000)
-                    val dontKillFlag = 0x00001000
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    // Public API added in Android 14 (API 34).
+                    params.setDontKillApp(true)
+                } else {
+                    // No public API before API 34 - fall back to setting the hidden installFlags bit.
+                    val dontKillFlag = 0x00001000 // INSTALL_DONT_KILL_APP
                     try {
                         val installFlagsField = params.javaClass.getDeclaredField("installFlags")
                         installFlagsField.isAccessible = true
@@ -430,6 +596,34 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
         }
     }
 
+    override fun putSetting(table: String, key: String, value: String) {
+        try {
+            val v = if (value.equals("null", ignoreCase = true)) null else value
+            // Plain public ContentResolver-backed Settings.* API - no reflection needed. This
+            // works here (where a `settings put` shell spawn was previously used) only because
+            // this process itself already runs with shell/root's WRITE_SECURE_SETTINGS-equivalent
+            // access; an ordinary app process calling this directly would be denied.
+            when (table.lowercase()) {
+                "system" -> android.provider.Settings.System.putString(context.contentResolver, key, v)
+                "secure" -> android.provider.Settings.Secure.putString(context.contentResolver, key, v)
+                "global" -> android.provider.Settings.Global.putString(context.contentResolver, key, v)
+                else -> Log.w("ShizuToolsService", "putSetting: unknown table '$table'")
+            }
+        } catch (e: Exception) {
+            Log.e("ShizuToolsService", "Error putting $table setting $key: ${e.message}")
+        }
+    }
+
+    override fun forceStopPackage(pkgName: String) {
+        try {
+            val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val method = am.javaClass.getMethod("forceStopPackage", String::class.java)
+            method.invoke(am, pkgName)
+        } catch (e: Exception) {
+            Log.e("ShizuToolsService", "Error force-stopping $pkgName: ${e.message}")
+        }
+    }
+
     override fun injectKeyEvent(displayId: Int, keyCode: Int) {
         try {
             val im = context.getSystemService(android.content.Context.INPUT_SERVICE) as android.hardware.input.InputManager
@@ -597,6 +791,20 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
         } catch (e: Exception) {
             e.printStackTrace()
             false
+        }
+    }
+
+    override fun statDocument(absolutePath: String): LongArray? {
+        return try {
+            val file = java.io.File(absolutePath)
+            if (!file.exists()) {
+                longArrayOf(0L, 0L, 0L, 0L)
+            } else {
+                longArrayOf(1L, if (file.isDirectory) 1L else 0L, file.length(), file.lastModified())
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 

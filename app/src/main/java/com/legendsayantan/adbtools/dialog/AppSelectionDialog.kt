@@ -48,9 +48,12 @@ class AppSelectionDialog(
                     Toast.makeText(context, "${packageList.size} apps found", Toast.LENGTH_LONG)
                         .show()
                 }
+                // Resolve every label once (still off the main thread here) instead of re-querying
+                // PackageManager for the whole list on every keystroke - filtering below then just
+                // scans this already-resolved in-memory list.
+                val resolvedApps = packageList.map { it to Utils.getAppNameFromPackage(context, it) }
                 val reloadApps: (String) -> Unit = { filter ->
-                    val filteredMap = packageList.map { it to Utils.getAppNameFromPackage(context, it) }
-                        .filter { filter.isBlank() || it.second.contains(filter, true) }
+                    val filteredMap = resolvedApps.filter { filter.isBlank() || it.second.contains(filter, true) }
                     val adapter = SimpleAdapter(filteredMap.map { it.second }) { selectionIndex ->
                         dismiss()
                         onSelection(filteredMap[selectionIndex].first)

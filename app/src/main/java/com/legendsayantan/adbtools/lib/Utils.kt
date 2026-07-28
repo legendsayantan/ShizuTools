@@ -105,10 +105,15 @@ class Utils {
         }
 
         fun Context.getNotiPerms(){
-            try{
-                ShizukuRunner.command("pm grant $packageName android.permission.POST_NOTIFICATIONS",
-                    object : ShizukuRunner.CommandResultListener { })
-            }catch (_:Exception){}
+            try {
+                // grantPermission() already goes through PackageManager.grantRuntimePermission()
+                // via reflection in the privileged process - no need to spawn a `pm grant` shell.
+                ShizuToolsController.execute { service ->
+                    try {
+                        service.grantPermission(packageName, Manifest.permission.POST_NOTIFICATIONS)
+                    } catch (_: Exception) {}
+                }
+            } catch (_: Exception) {}
         }
 
         fun loadApps(specifyUser:Int=-1,callback: (List<String>) -> Unit,errorCallback:(String)->Unit={}) {
@@ -142,5 +147,19 @@ class Utils {
         }
 
         fun Float.toFixed(digits: Int) = "%.${digits}f".format(this)
+
+        /** Human-readable Android version for a given SDK_INT, for "requires Android X+" messaging. */
+        fun androidVersionName(sdkInt: Int): String = when (sdkInt) {
+            android.os.Build.VERSION_CODES.O -> "8.0"
+            android.os.Build.VERSION_CODES.O_MR1 -> "8.1"
+            android.os.Build.VERSION_CODES.P -> "9"
+            android.os.Build.VERSION_CODES.Q -> "10"
+            android.os.Build.VERSION_CODES.R -> "11"
+            android.os.Build.VERSION_CODES.S -> "12"
+            android.os.Build.VERSION_CODES.S_V2 -> "12L"
+            android.os.Build.VERSION_CODES.TIRAMISU -> "13"
+            android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> "14"
+            else -> "API $sdkInt"
+        }
     }
 }

@@ -18,7 +18,12 @@ import java.util.concurrent.CountDownLatch
 class VirtualMountProvider : DocumentsProvider() {
 
     private val DEFAULT_ROOT_ID = "shizutools_virtual_mount"
-    private val DEFAULT_DOCUMENT_ID = "/storage/emulated/0/Android/data"
+
+    // AOSP's UID numbering is userId*100000 + appId - used instead of the app's own user handle
+    // hashCode() (an implementation detail, not a documented contract) so this defaults to the
+    // profile actually running the app rather than always user 0 on multi-user/work-profile devices.
+    private val currentUserId get() = android.os.Process.myUid() / 100000
+    private val DEFAULT_DOCUMENT_ID get() = "/storage/emulated/$currentUserId/Android/data"
 
     private val rootProjection = arrayOf(
         Root.COLUMN_ROOT_ID,
@@ -64,10 +69,27 @@ class VirtualMountProvider : DocumentsProvider() {
 
     override fun queryDocument(documentId: String, projection: Array<String>?): Cursor {
         val result = MatrixCursor(projection ?: documentProjection)
-        val file = File(documentId)
-        val isDir = file.isDirectory
-        val size = if (isDir) 0 else file.length()
-        includeFile(result, documentId, file.name, size, file.lastModified(), isDir)
+
+        // Stat through the privileged Shizuku service like every other operation here - a plain
+        // File() call runs as this app's own (unprivileged, scoped-storage-restricted) process and
+        // silently reports non-existent/zero-size for paths this app can't see directly, which is
+        // exactly the paths this whole feature exists to expose on Android 11+.
+        val latch = CountDownLatch(1)
+        var stat: LongArray? = null
+        ShizuToolsController.execute { service ->
+            stat = service.statDocument(documentId)
+            latch.countDown()
+        }
+        latch.await(3, java.util.concurrent.TimeUnit.SECONDS)
+
+        val exists = stat?.getOrNull(0) == 1L
+        if (stat == null || !exists) {
+            throw java.io.FileNotFoundException("Failed to stat $documentId")
+        }
+        val isDir = stat!![1] == 1L
+        val size = stat!![2]
+        val lastModified = stat!![3]
+        includeFile(result, documentId, File(documentId).name, size, lastModified, isDir)
         return result
     }
 

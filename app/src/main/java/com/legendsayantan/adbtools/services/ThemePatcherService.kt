@@ -11,7 +11,6 @@ import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import com.legendsayantan.adbtools.R
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
-import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.getAllInstalledApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.postNotification
 
@@ -33,9 +32,9 @@ class ThemePatcherService : Service() {
         Pair("persist.sys.oppo.live_wp_uuid", "default_live_wp_package_name")
     )
     private var intent: Intent? = null
-    override fun onBind(intent: Intent): IBinder {
+    override fun onBind(intent: Intent): IBinder? {
         this.intent = intent
-        return null!!
+        return null
     }
 
     private val handler by lazy { Handler(mainLooper) }
@@ -71,10 +70,6 @@ class ThemePatcherService : Service() {
             )
         }
 
-//        ShizukuRunner.command("pm grant $packageName android.permission.WRITE_SETTINGS",
-//            object : ShizukuRunner.CommandResultListener { })
-//        ShizukuRunner.command("pm grant $packageName android.permission.WRITE_SECURE_SETTINGS",
-//            object : ShizukuRunner.CommandResultListener { })
         var themeStores =
             packageManager.getAllInstalledApps().filter {
                 it.packageName.contains("theme") || it.loadLabel(packageManager).contains("theme")
@@ -163,50 +158,35 @@ class ThemePatcherService : Service() {
 
     private fun killStores(storepackages: List<ApplicationInfo>) {
         if (storepackages.isNotEmpty()) {
-            storepackages.forEach { sPackage ->
-                ShizukuRunner.command(
-                    "am force-stop ${sPackage.packageName}",
-                    object : ShizukuRunner.CommandResultListener {})
+            com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
+                storepackages.forEach { sPackage ->
+                    try { service.forceStopPackage(sPackage.packageName) } catch (e: Exception) {}
+                }
             }
         }
     }
 
     private fun patchAll(done: (String) -> Unit) {
         if (trialItems()[3].isNotEmpty()) {
-            //patch
-            val tables = listOf("system", "secure")
-            tables.forEachIndexed { index, table ->
-                zeroByDefault.forEach {
-                    ShizukuRunner.command(
-                        "settings put $table $it 0",
-                        object : ShizukuRunner.CommandResultListener {
-                            override fun onCommandError(error: String) {
-                                log(error)
-                            }
-                        })
+            // All writes go through one privileged call instead of spawning a `settings put`
+            // shell process per key/table - also replaces the old completion signal (which only
+            // fired off the *last* table's otherDefaults callback, a timing coincidence rather
+            // than an actual "everything finished" check) with a real one.
+            com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
+                val errors = mutableListOf<String>()
+                val tables = listOf("system", "secure")
+                tables.forEach { table ->
+                    zeroByDefault.forEach { key ->
+                        try { service.putSetting(table, key, "0") } catch (e: Exception) { errors.add("$table/$key: ${e.message}") }
+                    }
+                    negativeOneByDefault.forEach { key ->
+                        try { service.putSetting(table, key, "-1") } catch (e: Exception) { errors.add("$table/$key: ${e.message}") }
+                    }
+                    otherDefaults.forEach { (key, value) ->
+                        try { service.putSetting(table, key, value) } catch (e: Exception) { errors.add("$table/$key: ${e.message}") }
+                    }
                 }
-                negativeOneByDefault.forEach {
-                    ShizukuRunner.command(
-                        "settings put $table $it -1",
-                        object : ShizukuRunner.CommandResultListener {
-                            override fun onCommandError(error: String) {
-                                log(error)
-                            }
-                        })
-                }
-                otherDefaults.forEach {
-                    ShizukuRunner.command(
-                        "settings put $table ${it.key} ${it.value}",
-                        object : ShizukuRunner.CommandResultListener {
-                            override fun onCommandResult(output: String, done: Boolean) {
-                                if (index == tables.size - 1) handler.post { done(output) }
-                            }
-
-                            override fun onCommandError(error: String) {
-                                log(error)
-                            }
-                        })
-                }
+                handler.post { done(errors.joinToString("; ")) }
             }
         }
     }

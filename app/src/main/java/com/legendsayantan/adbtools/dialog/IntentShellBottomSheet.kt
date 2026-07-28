@@ -14,6 +14,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import com.legendsayantan.adbtools.R
+import com.legendsayantan.adbtools.lib.AppCommands
 import java.util.UUID
 
 class IntentShellBottomSheet(context: Context) : BottomSheetDialog(context, R.style.SheetDialogTheme) {
@@ -60,6 +61,15 @@ class IntentShellBottomSheet(context: Context) : BottomSheetDialog(context, R.st
             dialog.show()
             dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)?.setTextColor(context.getColor(R.color.colorSecondary))
             dialog.getButton(android.content.DialogInterface.BUTTON_NEGATIVE)?.setTextColor(context.getColor(R.color.colorSecondary))
+        }
+
+        val toggleCommandsRef = view.findViewById<TextView>(R.id.toggle_commands_ref)
+        val commandsRefText = view.findViewById<TextView>(R.id.commands_ref_text)
+        commandsRefText.text = AppCommands.fullHelp()
+        toggleCommandsRef.setOnClickListener {
+            val expanded = commandsRefText.visibility == android.view.View.VISIBLE
+            commandsRefText.visibility = if (expanded) android.view.View.GONE else android.view.View.VISIBLE
+            toggleCommandsRef.text = if (expanded) "▸ App Commands Reference" else "▾ App Commands Reference"
         }
 
         val textIntentLog = view.findViewById<TextView>(R.id.text_intent_log)

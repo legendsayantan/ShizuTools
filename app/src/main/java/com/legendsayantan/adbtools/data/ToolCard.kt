@@ -12,5 +12,7 @@ data class ToolCard(
     @ColorRes val accentColorRes: Int,
     val activityClass: Class<*>?,
     val onClickOverride: (() -> Unit)? = null,
-    val isServiceActive: () -> Boolean = { false }
+    val isServiceActive: () -> Boolean = { false },
+    /** Minimum SDK_INT this tool works on at all. 0 = supported on every version this app installs on. */
+    val minSdk: Int = 0
 )

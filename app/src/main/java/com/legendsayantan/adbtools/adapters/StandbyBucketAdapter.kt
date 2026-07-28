@@ -18,6 +18,7 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import com.legendsayantan.adbtools.AppItem
 import com.legendsayantan.adbtools.R
+import com.legendsayantan.adbtools.data.StandbyBuckets
 
 class StandbyBucketAdapter(
     private val appList: List<AppItem>,
@@ -25,8 +26,10 @@ class StandbyBucketAdapter(
     private val onLockToggled: (AppItem, Boolean) -> Unit
 ) : RecyclerView.Adapter<StandbyBucketAdapter.ViewHolder>() {
 
-    private val bucketValues = intArrayOf(5, 10, 20, 30, 40, 45, 50)
-    private val bucketNames = arrayOf("Fully Exempted", "Always Active", "Working Set", "Frequently Used", "Rarely Used", "Strictly Restricted", "Never Used")
+    // Values/names filtered to what this device's API level actually supports - dropped from the
+    // picker on older devices so the user can't select a bucket the running OS doesn't understand.
+    private val bucketValues: IntArray = StandbyBuckets.supportedValues()
+    private val bucketNames: Array<String> = StandbyBuckets.supportedDisplayNames()
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val appIcon: ImageView = view.findViewById(R.id.app_icon)

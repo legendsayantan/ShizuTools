@@ -3,6 +3,7 @@ package com.legendsayantan.adbtools.receivers
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.legendsayantan.adbtools.lib.AppCommands
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.postNotification
@@ -47,6 +48,25 @@ class IntentReceiver : BroadcastReceiver() {
         historyList.add(logEntry)
         if (historyList.size > 5) historyList.removeAt(0)
         prefs.edit().putString("intent_history", historyList.joinToString("|||")).apply()
+
+        val commandStr = command.toString()
+        if (AppCommands.isAppCommand(commandStr)) {
+            // Structured app-control command (soundmaster/mixedaudio/governor) - never falls
+            // through to the raw shell path below, even on a parse/usage error.
+            AppCommands.dispatch(context.applicationContext, commandStr) { success, message ->
+                if (responseAction != null) {
+                    context.sendBroadcast(Intent(responseAction).apply {
+                        putExtra("response", message)
+                        putExtra("command", commandStr)
+                    })
+                }
+                if (!success) {
+                    context.postNotification("Command Execution Error", message, false)
+                    context.log(message)
+                }
+            }
+            return
+        }
 
         com.legendsayantan.adbtools.lib.ShizuToolsController.execute { service ->
             service.runCommand(command.toString(), listener, 50)

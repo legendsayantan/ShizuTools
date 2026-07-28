@@ -11,14 +11,24 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.SeekBar
+import android.widget.PopupMenu
+import android.widget.TextView
+import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.slider.Slider
 import com.legendsayantan.adbtools.R
 import com.legendsayantan.adbtools.data.AudioOutputBase
 import com.legendsayantan.adbtools.data.AudioOutputKey
+import com.legendsayantan.adbtools.lib.AppOps
+import com.legendsayantan.adbtools.lib.AudioOutputMap
+import com.legendsayantan.adbtools.lib.ShizuToolsController
 import com.legendsayantan.adbtools.lib.SoundMasterPreferences
 import com.legendsayantan.adbtools.services.SoundMasterService
 import kotlin.math.abs
@@ -34,6 +44,10 @@ class SoundMasterBubble(private val service: SoundMasterService) {
     private var isBubbleAttached = false
     private var isMiniAttached = false
     private var isExpandedAttached = false
+
+    /** Which app's balance/EQ/output controls are shown in the shared detail panel below the
+     *  row of volume bars (DSP mode only) - null when nothing is selected/expanded. */
+    private var selectedDspPkg: String? = null
     
     private val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val themedContext = android.view.ContextThemeWrapper(service, R.style.Theme_AdbTools)
@@ -66,7 +80,7 @@ class SoundMasterBubble(private val service: SoundMasterService) {
     
     private val rmsMeter: RmsMeterView = bubbleView.findViewById(R.id.rms_meter)
     private val switchDsp: MaterialSwitch = expandedView.findViewById(R.id.switch_dsp)
-    
+
     private var bubbleParams: WindowManager.LayoutParams
     private var miniParams: WindowManager.LayoutParams
     private var expandedParams: WindowManager.LayoutParams
@@ -328,6 +342,10 @@ class SoundMasterBubble(private val service: SoundMasterService) {
         miniView.findViewById<View>(R.id.btn_more).setOnClickListener {
             transitionTo(State.EXPANDED)
         }
+        miniView.findViewById<View>(R.id.btn_close_detail).setOnClickListener {
+            selectedDspPkg = null
+            populateSliders()
+        }
         expandedView.findViewById<View>(R.id.btn_exp_close).setOnClickListener {
             transitionTo(State.BUBBLE)
         }
@@ -338,17 +356,6 @@ class SoundMasterBubble(private val service: SoundMasterService) {
             // "Close Overlay" should only dismiss the floating UI, not kill the audio engine -
             // that's what "Stop Engine" is for. It can be brought back via wakeBubble().
             hide()
-        }
-        expandedView.findViewById<View>(R.id.dsp_expand_container).setOnClickListener {
-            val dspContainer = expandedView.findViewById<View>(R.id.dsp_container)
-            val icon = expandedView.findViewById<ImageView>(R.id.dsp_expand_icon)
-            if (dspContainer.visibility == View.VISIBLE) {
-                dspContainer.visibility = View.GONE
-                icon.animate().rotation(0f).setDuration(200).start()
-            } else {
-                dspContainer.visibility = View.VISIBLE
-                icon.animate().rotation(180f).setDuration(200).start()
-            }
         }
     }
 
@@ -375,16 +382,7 @@ class SoundMasterBubble(private val service: SoundMasterService) {
     }
 
     private fun updateDspVisibility(isDsp: Boolean) {
-        val dspExpandContainer = expandedView.findViewById<View>(R.id.dsp_expand_container)
-        val dspContainer = expandedView.findViewById<View>(R.id.dsp_container)
-        if (isDsp) {
-            dspExpandContainer.visibility = View.VISIBLE
-            dspContainer.visibility = View.GONE
-            expandedView.findViewById<ImageView>(R.id.dsp_expand_icon).rotation = 0f
-        } else {
-            dspExpandContainer.visibility = View.GONE
-            dspContainer.visibility = View.GONE
-        }
+        expandedView.findViewById<View>(R.id.dsp_hint).visibility = if (isDsp) View.VISIBLE else View.GONE
     }
     
     fun updateBubbleAppIcon(uids: IntArray?) {
@@ -407,15 +405,15 @@ class SoundMasterBubble(private val service: SoundMasterService) {
     fun populateSliders() {
         val isDsp = SoundMasterPreferences.isAdvancedDspMode(service)
         val pm = service.packageManager
-        
+
         val newPkgs = if (isDsp) {
             SoundMasterService.apps.map { it.pkg }.distinct()
         } else {
             SoundMasterService.activePackages
         }
-        
+
         val container = miniView.findViewById<LinearLayout>(R.id.mini_sliders_container)
-        
+
         if (newPkgs.isEmpty()) {
             container.removeAllViews()
             transitionTo(State.BUBBLE)
@@ -426,6 +424,8 @@ class SoundMasterBubble(private val service: SoundMasterService) {
     }
     
     private fun renderSliders(container: LinearLayout, newPkgs: List<String>, pm: android.content.pm.PackageManager) {
+        val isDsp = SoundMasterPreferences.isAdvancedDspMode(service)
+
         val toRemove = mutableListOf<View>()
         for (i in 0 until container.childCount) {
             val view = container.getChildAt(i)
@@ -435,141 +435,294 @@ class SoundMasterBubble(private val service: SoundMasterService) {
             }
         }
         toRemove.forEach { container.removeView(it) }
-        
+
         newPkgs.forEach { pkg ->
             var itemView = container.findViewWithTag<View>(pkg)
             if (itemView == null) {
                 itemView = inflater.inflate(R.layout.item_mini_slider, container, false)
                 itemView.tag = pkg
                 itemView.setTag(R.id.name, pkg)
-                
-                val iconView = itemView.findViewById<ImageView>(R.id.app_icon)
-                val slider = itemView.findViewById<SeekBar>(R.id.volume_slider)
-                val btnMixedAudio = itemView.findViewById<ImageView>(R.id.btn_mixed_audio)
-                
-                try { iconView.setImageDrawable(pm.getApplicationIcon(pkg)) } catch(e:Exception){}
-                
-                val prefs = service.getSharedPreferences("soundmaster_vols", Context.MODE_PRIVATE)
-                val savedVol = prefs.getFloat(pkg, 1.0f)
-                val initialVol = if (SoundMasterPreferences.isAdvancedDspMode(service)) {
-                    val rawAmplitude = SoundMasterService.getVolumeOf(AudioOutputKey(pkg, -1))
-                    // Convert physical amplitude back to slider progress using base e logarithmic mapping
-                    val y = (rawAmplitude / 100f).coerceIn(0f, 1f)
-                    val x = kotlin.math.ln(y * (Math.E - 1.0) + 1.0)
-                    (x * 100.0).toFloat()
-                } else {
-                    savedVol * 100f
-                }
-                slider.progress = initialVol.toInt()
-                iconView.alpha = if (slider.progress == 0) 0.4f else 1.0f
-
-                iconView.setOnClickListener {
-                    val currentVol = slider.progress
-                    if (currentVol > 0) {
-                        itemView.setTag(R.id.app_icon, currentVol)
-                        slider.progress = 0
-                    } else {
-                        val lastVol = itemView.getTag(R.id.app_icon) as? Int ?: 100
-                        slider.progress = lastVol
-                    }
-                }
-
-                com.legendsayantan.adbtools.lib.ShizukuRunner.command("appops get $pkg TAKE_AUDIO_FOCUS", object : com.legendsayantan.adbtools.lib.ShizukuRunner.CommandResultListener {
-                    override fun onCommandResult(output: String, done: Boolean) {
-                        if (done) {
-                            val isMixed = output.contains("ignore") || output.contains("deny")
-                            service.mainHandler.post {
-                                btnMixedAudio.alpha = 1.0f
-                                btnMixedAudio.setImageResource(if (isMixed) R.drawable.ic_audio_mixed else R.drawable.baseline_audiotrack_24)
-                                val color = if (isMixed) service.getColor(R.color.tool_mixed_audio) else android.graphics.Color.WHITE
-                                btnMixedAudio.imageTintList = android.content.res.ColorStateList.valueOf(color)
-                                
-                                val mode = if (isMixed) 0 else 1 
-                                btnMixedAudio.setOnClickListener {
-                                    btnMixedAudio.isEnabled = false
-                                    btnMixedAudio.setImageResource(if (!isMixed) R.drawable.ic_audio_mixed else R.drawable.baseline_audiotrack_24)
-                                    val newColor = if (!isMixed) service.getColor(R.color.tool_mixed_audio) else android.graphics.Color.WHITE
-                                    btnMixedAudio.imageTintList = android.content.res.ColorStateList.valueOf(newColor)
-                                    
-                                    com.legendsayantan.adbtools.lib.ShizuToolsController.execute { s ->
-                                        try {
-                                            val uid = pm.getApplicationInfo(pkg, 0).uid
-                                            s.setAppOpMode(pkg, uid, 32, mode)
-                                            service.mainHandler.post { populateSliders() }
-                                        } catch (e: Exception) {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    override fun onCommandError(error: String) {}
-                })
-
-                slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
-                        service.extendAppTimeout(pkg)
-                        
-                        iconView.alpha = if (p1 == 0) 0.4f else 1.0f
-                        
-                        val linearRatio = p1 / 100f
-                        // Apply mild exponential curve (base e) for balanced sensitivity
-                        val naturalVolume = ((Math.pow(Math.E, linearRatio.toDouble()) - 1.0) / (Math.E - 1.0)).toFloat()
-                        
-                        if (SoundMasterPreferences.isAdvancedDspMode(service)) {
-                            SoundMasterService.setVolumeOf(AudioOutputKey(pkg, -1), naturalVolume * 100f)
-                        } else {
-                            prefs.edit().putFloat(pkg, p1 / 100f).apply()
-                            com.legendsayantan.adbtools.lib.ShizuToolsController.execute { s ->
-                                try {
-                                    val uid = pm.getApplicationInfo(pkg, 0).uid
-                                    s.setPlayerVolume(uid, naturalVolume)
-                                } catch(e:Exception){}
-                            }
-                        }
-                    }
-                    override fun onStartTrackingTouch(p0: SeekBar?) {
-                        service.pauseTimeout()
-                        service.extendAppTimeout(pkg)
-                    }
-                    override fun onStopTrackingTouch(p0: SeekBar?) {
-                        service.extendTimeout()
-                        service.extendAppTimeout(pkg)
-                    }
-                })
                 container.addView(itemView)
             }
+            bindCard(itemView, pkg, isDsp, pm)
         }
 
+        if (!isDsp) {
+            selectedDspPkg = null
+            miniView.findViewById<View>(R.id.shared_dsp_detail).visibility = View.GONE
+        } else {
+            updateSharedDetail(pm)
+        }
+
+        // Native volume-panel rows can outgrow the screen width once there are enough apps -
+        // clamp the scroll strip the same way the panel itself is clamped below.
         val metrics = windowManager.currentWindowMetrics.bounds
         val maxWidth = metrics.width() - 64
         val scrollView = miniView.findViewById<android.widget.HorizontalScrollView>(R.id.mini_scroll_view)
-        
         container.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
-        val lp = scrollView.layoutParams
-        if (container.measuredWidth > maxWidth) {
-            lp.width = maxWidth
-        } else {
-            lp.width = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-        }
-        scrollView.layoutParams = lp
+        val scrollLp = scrollView.layoutParams
+        scrollLp.width = if (container.measuredWidth > maxWidth) maxWidth else android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        scrollView.layoutParams = scrollLp
         scrollView.requestLayout()
-        
+
         if (currentState == State.MINI) {
             miniView.measure(
                 View.MeasureSpec.makeMeasureSpec(metrics.width(), View.MeasureSpec.AT_MOST),
                 View.MeasureSpec.makeMeasureSpec(metrics.height(), View.MeasureSpec.AT_MOST)
             )
-            
+
             val panelWidth = miniView.measuredWidth
             val panelHeight = miniView.measuredHeight
-            
+
             val isLeft = bubbleParams.x + bubbleView.width / 2 < metrics.width() / 2
             miniParams.x = if (isLeft) 0 else metrics.width() - panelWidth
             miniParams.y = bubbleParams.y.coerceIn(0, metrics.height() - panelHeight)
-            
+
             if (isMiniAttached) {
                 try { windowManager.updateViewLayout(miniContainer, miniParams) } catch(e:Exception){}
             }
         }
+    }
+
+    private fun applyVolume(pkg: String, isDsp: Boolean, value: Float, pm: android.content.pm.PackageManager) {
+        if (isDsp) {
+            SoundMasterService.apps.filter { it.pkg == pkg }.forEach { SoundMasterService.setVolumeOf(AudioOutputKey(pkg, it.output), value) }
+        } else {
+            val prefs = service.getSharedPreferences("soundmaster_vols", Context.MODE_PRIVATE)
+            prefs.edit().putFloat(pkg, value / 100f).apply()
+            val linearRatio = value / 100f
+            // Apply mild exponential curve (base e) for balanced sensitivity
+            val naturalVolume = ((Math.pow(Math.E, linearRatio.toDouble()) - 1.0) / (Math.E - 1.0)).toFloat()
+            ShizuToolsController.execute { s ->
+                try {
+                    val uid = pm.getApplicationInfo(pkg, 0).uid
+                    s.setPlayerVolume(uid, naturalVolume)
+                } catch (e: Exception) {}
+            }
+        }
+    }
+
+    /** The always-visible compact control: app icon (tap to mute) and a native-style vertical
+     *  volume bar. A package's volume applies uniformly across all of its current outputs, if
+     *  it has more than one attached. DSP mode adds a select button that opens/closes this
+     *  app's balance/EQ/output controls in the shared detail panel below the row. */
+    private fun bindCard(itemView: View, pkg: String, isDsp: Boolean, pm: android.content.pm.PackageManager) {
+        val iconView = itemView.findViewById<ImageView>(R.id.app_icon)
+        val bar = itemView.findViewById<NativeVolumeBar>(R.id.volume_bar)
+        val selectBtn = itemView.findViewById<ImageView>(R.id.select_btn)
+        val cardRoot = itemView.findViewById<MaterialCardView>(R.id.card_root)
+
+        try { iconView.setImageDrawable(pm.getApplicationIcon(pkg)) } catch (e: Exception) {}
+
+        val prefs = service.getSharedPreferences("soundmaster_vols", Context.MODE_PRIVATE)
+        val savedVol = prefs.getFloat(pkg, 1.0f)
+        val initialVol = if (isDsp) {
+            val rawAmplitude = SoundMasterService.apps.firstOrNull { it.pkg == pkg }
+                ?.let { SoundMasterService.getVolumeOf(AudioOutputKey(pkg, it.output)) } ?: 100f
+            // Convert physical amplitude back to bar position using base e logarithmic mapping
+            val y = (rawAmplitude / 100f).coerceIn(0f, 1f)
+            val x = kotlin.math.ln(y * (Math.E - 1.0) + 1.0)
+            (x * 100.0).toFloat()
+        } else {
+            savedVol * 100f
+        }
+        bar.value = initialVol.coerceIn(0f, 150f)
+        iconView.alpha = if (bar.value <= 0f) 0.4f else 1.0f
+
+        iconView.setOnClickListener {
+            val currentVol = bar.value
+            val newVol = if (currentVol > 0f) {
+                itemView.setTag(R.id.app_icon, currentVol)
+                0f
+            } else {
+                itemView.getTag(R.id.app_icon) as? Float ?: 100f
+            }
+            bar.value = newVol
+            iconView.alpha = if (newVol <= 0f) 0.4f else 1.0f
+            applyVolume(pkg, isDsp, newVol, pm)
+        }
+
+        bar.onTrackingStart = { service.pauseTimeout(); service.extendAppTimeout(pkg) }
+        bar.onTrackingStop = { service.extendTimeout(); service.extendAppTimeout(pkg) }
+        bar.onValueChange = { value, fromUser ->
+            service.extendAppTimeout(pkg)
+            iconView.alpha = if (value <= 0f) 0.4f else 1.0f
+            if (fromUser) applyVolume(pkg, isDsp, value, pm)
+        }
+
+        if (isDsp) {
+            selectBtn.visibility = View.VISIBLE
+            val isSelected = selectedDspPkg == pkg
+            cardRoot.strokeColor = if (isSelected) ContextCompat.getColor(itemView.context, R.color.colorSecondary) else android.graphics.Color.TRANSPARENT
+            selectBtn.rotation = if (isSelected) 180f else 0f
+            selectBtn.setOnClickListener {
+                selectedDspPkg = if (selectedDspPkg == pkg) null else pkg
+                populateSliders()
+            }
+        } else {
+            selectBtn.visibility = View.GONE
+            cardRoot.strokeColor = android.graphics.Color.TRANSPARENT
+        }
+
+        val btnMixedAudio = itemView.findViewById<ImageView>(R.id.btn_mixed_audio)
+        bindMixedAudioToggle(btnMixedAudio, pkg, pm)
+    }
+
+    /** Quick access to this app's TAKE_AUDIO_FOCUS state, cycling default -> ignore (quiet
+     *  mixing) -> deny (fully forced) -> default on each tap, independent of Smart/DSP mode -
+     *  this is the same "MixedAudio" concept as the dedicated MixedAudio tool, just reachable
+     *  directly from the compact overlay instead of opening a separate screen. */
+    private fun bindMixedAudioToggle(btn: ImageView, pkg: String, pm: android.content.pm.PackageManager) {
+        val uid = try { pm.getApplicationInfo(pkg, 0).uid } catch (e: Exception) { -1 }
+        if (uid == -1) {
+            btn.visibility = View.GONE
+            return
+        }
+        btn.visibility = View.VISIBLE
+        ShizuToolsController.execute { s ->
+            val initialMode = try { s.getAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS) } catch (e: Exception) { AppOps.MODE_ALLOWED }
+            service.mainHandler.post {
+                var currentMode = initialMode
+                updateMixedAudioIcon(btn, currentMode)
+                btn.setOnClickListener {
+                    val nextMode = when (currentMode) {
+                        AppOps.MODE_ALLOWED -> AppOps.MODE_IGNORED
+                        AppOps.MODE_IGNORED -> AppOps.MODE_ERRORED
+                        else -> AppOps.MODE_ALLOWED
+                    }
+                    btn.isEnabled = false
+                    ShizuToolsController.execute { s2 ->
+                        val applied = try { s2.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, nextMode) } catch (e: Exception) { false }
+                        service.mainHandler.post {
+                            btn.isEnabled = true
+                            if (applied) {
+                                currentMode = nextMode
+                                updateMixedAudioIcon(btn, currentMode)
+                            } else {
+                                Toast.makeText(
+                                    btn.context,
+                                    "Couldn't change $pkg's mixing mode - your Shizuku permission level may not allow this.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateMixedAudioIcon(btn: ImageView, mode: Int) {
+        val active = mode == AppOps.MODE_IGNORED || mode == AppOps.MODE_ERRORED
+        btn.setImageResource(if (active) R.drawable.ic_audio_mixed else R.drawable.baseline_audiotrack_24)
+        val color = if (active) ContextCompat.getColor(btn.context, R.color.tool_mixed_audio) else android.graphics.Color.parseColor("#80FFFFFF")
+        btn.imageTintList = android.content.res.ColorStateList.valueOf(color)
+    }
+
+    /** Balance, 3-band EQ (with a live curve preview), and output-device chips for whichever
+     *  app is currently selected - one shared panel below the row of bars rather than a
+     *  per-card section, so expanding one app's controls never disrupts the compact row. */
+    private fun updateSharedDetail(pm: android.content.pm.PackageManager) {
+        val sharedDetail = miniView.findViewById<LinearLayout>(R.id.shared_dsp_detail)
+        val pkg = selectedDspPkg
+        if (pkg == null || SoundMasterService.apps.none { it.pkg == pkg }) {
+            selectedDspPkg = null
+            sharedDetail.visibility = View.GONE
+            return
+        }
+        sharedDetail.visibility = View.VISIBLE
+
+        val context = miniView.context
+        val iconView = miniView.findViewById<ImageView>(R.id.detail_app_icon)
+        val nameView = miniView.findViewById<TextView>(R.id.detail_app_name)
+        try { iconView.setImageDrawable(pm.getApplicationIcon(pkg)) } catch (e: Exception) {}
+        try { nameView.text = pm.getApplicationInfo(pkg, 0).loadLabel(pm) } catch (e: Exception) { nameView.text = pkg }
+
+        val eqCurve = miniView.findViewById<EqCurveView>(R.id.eq_curve)
+        val bandLow = miniView.findViewById<Slider>(R.id.band_low)
+        val bandMid = miniView.findViewById<Slider>(R.id.band_mid)
+        val bandHigh = miniView.findViewById<Slider>(R.id.band_high)
+        val balanceSlider = miniView.findViewById<Slider>(R.id.balance_slider)
+        val resetBtn = miniView.findViewById<TextView>(R.id.reset_eq)
+        val outputChips = miniView.findViewById<ChipGroup>(R.id.output_chips)
+
+        fun outputsFor() = SoundMasterService.apps.filter { it.pkg == pkg }
+        fun primaryKey() = outputsFor().firstOrNull()?.let { AudioOutputKey(pkg, it.output) } ?: AudioOutputKey(pkg, -1)
+
+        fun updateCurve() {
+            eqCurve.setBands(
+                floatArrayOf(60f, 910f, 14000f),
+                floatArrayOf((bandLow.value - 50f) * 0.24f, (bandMid.value - 50f) * 0.24f, (bandHigh.value - 50f) * 0.24f)
+            )
+        }
+
+        val key = primaryKey()
+        bandLow.value = SoundMasterService.getBandValueOf(key, 0) ?: 50f
+        bandMid.value = SoundMasterService.getBandValueOf(key, 1) ?: 50f
+        bandHigh.value = SoundMasterService.getBandValueOf(key, 2) ?: 50f
+        balanceSlider.value = SoundMasterService.getBalanceOf(key) ?: 0f
+        updateCurve()
+
+        listOf(bandLow to 0, bandMid to 1, bandHigh to 2).forEach { (bandSlider, bandIndex) ->
+            bandSlider.clearOnChangeListeners()
+            bandSlider.addOnChangeListener { _, value, _ ->
+                service.extendTimeout(); service.extendAppTimeout(pkg)
+                outputsFor().forEach { SoundMasterService.setBandValueOf(AudioOutputKey(pkg, it.output), bandIndex, value) }
+                updateCurve()
+            }
+        }
+        balanceSlider.clearOnChangeListeners()
+        balanceSlider.addOnChangeListener { _, value, _ ->
+            service.extendTimeout(); service.extendAppTimeout(pkg)
+            outputsFor().forEach { SoundMasterService.setBalanceOf(AudioOutputKey(pkg, it.output), value) }
+        }
+
+        resetBtn.setOnClickListener {
+            bandLow.value = 50f; bandMid.value = 50f; bandHigh.value = 50f; balanceSlider.value = 0f
+        }
+
+        // Output chips: current outputs shown as removable chips (closeIcon hidden if it's the
+        // only one, so a package is never left with zero outputs by accident), plus a trailing
+        // "+" chip that lists devices not yet used by this app - tapping one adds it as an
+        // additional simultaneous output. Switching a device is just remove-then-add.
+        outputChips.removeAllViews()
+        val devices = SoundMasterService.getAudioDevices()
+        val currentOutputs = outputsFor()
+        currentOutputs.forEach { base ->
+            val device = devices.find { it?.id == base.output }
+            val chip = Chip(context)
+            chip.text = AudioOutputMap.formatDevice(device)
+            chip.isCloseIconVisible = currentOutputs.size > 1
+            chip.setOnCloseIconClickListener {
+                SoundMasterService.onDynamicDetach(AudioOutputKey(pkg, base.output))
+                service.mainHandler.post { populateSliders() }
+            }
+            outputChips.addView(chip)
+        }
+        val addChip = Chip(context)
+        addChip.text = context.getString(R.string.add_output_device).removeSuffix(":")
+        addChip.chipIcon = ContextCompat.getDrawable(context, R.drawable.baseline_add_24)
+        addChip.isChipIconVisible = true
+        addChip.setOnClickListener {
+            val used = currentOutputs.map { it.output }
+            val candidates = devices.filter { (it?.id ?: -1) !in used }
+            if (candidates.isEmpty()) {
+                Toast.makeText(context, context.getString(R.string.no_additional_outputs_available), Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val popup = PopupMenu(context, addChip)
+            candidates.forEachIndexed { i, d -> popup.menu.add(0, i, i, AudioOutputMap.formatDevice(d)) }
+            popup.setOnMenuItemClickListener { item ->
+                val device = candidates.getOrNull(item.itemId)
+                val newKey = AudioOutputKey(pkg, device?.id ?: -1)
+                if (SoundMasterService.isAttachable(newKey)) {
+                    SoundMasterService.onDynamicAttach(AudioOutputBase(pkg, device?.id ?: -1, 100f), device)
+                    service.mainHandler.post { populateSliders() }
+                }
+                true
+            }
+            popup.show()
+        }
+        outputChips.addView(addChip)
     }
 }

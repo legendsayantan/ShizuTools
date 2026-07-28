@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_gravity="bottom"
-    app:cardCornerRadius="24dp"
+    app:cardCornerRadius="28dp"
     app:cardElevation="16dp"
     app:cardBackgroundColor="#F21C1E2E"
     app:strokeColor="#33FFFFFF"
@@ -86,51 +86,17 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content" />
             </LinearLayout>
-            
-            <!-- DSP Dropdown (hidden in smart volume mode) -->
-            <LinearLayout
-                android:id="@+id/dsp_expand_container"
+
+            <!-- Per-app volume/balance/EQ/output controls now live inline in the compact
+                 per-app cards (item_mini_slider) themselves - expand a card there instead. -->
+            <TextView
+                android:id="@+id/dsp_hint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone"
-                android:layout_marginTop="16dp">
-                
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="DSP Settings"
-                        android:textColor="#FFFFFF"
-                        android:textSize="14sp" />
-                    <ImageView
-                        android:id="@+id/dsp_expand_icon"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@android:drawable/arrow_down_float"
-                        app:tint="#FFFFFF"/>
-                </LinearLayout>
-                
-                <LinearLayout
-                    android:id="@+id/dsp_container"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone"
-                    android:layout_marginTop="12dp">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Equalizer controls coming soon..."
-                        android:textColor="#B3FFFFFF"
-                        android:textSize="14sp" />
-                </LinearLayout>
-            </LinearLayout>
+                android:layout_marginTop="12dp"
+                android:text="Tap the expand arrow on an app's volume card for balance, EQ, and output controls."
+                android:textColor="#80FFFFFF"
+                android:textSize="12sp" />
 
         </LinearLayout>
         

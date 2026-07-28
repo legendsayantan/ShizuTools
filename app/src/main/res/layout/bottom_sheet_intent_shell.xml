@@ -52,6 +52,30 @@
             style="@style/AppTonalButton" />
 
     <TextView
+        android:id="@+id/toggle_commands_ref"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:padding="4dp"
+        android:text="▸ App Commands Reference"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="?attr/colorSecondary"/>
+
+    <TextView
+        android:id="@+id/commands_ref_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_paper_card"
+        android:padding="8dp"
+        android:textIsSelectable="true"
+        android:typeface="monospace"
+        android:textSize="12sp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"/>
+
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"

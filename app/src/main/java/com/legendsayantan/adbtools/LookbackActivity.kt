@@ -108,6 +108,17 @@ class LookbackActivity : AppCompatActivity() {
         loadHistory()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        // If the activity is torn down (rotation, backgrounding, low memory) while an install is
+        // still in flight, installReceiver would otherwise stay registered against this dead
+        // context until the process dies.
+        if (installReceiverRegistered) {
+            try { unregisterReceiver(installReceiver) } catch (e: Exception) {}
+            installReceiverRegistered = false
+        }
+    }
+
     private fun initViews() {
         cardSelect = findViewById(R.id.card_select)
         cardProgress = findViewById(R.id.card_progress)
@@ -473,6 +484,7 @@ class LookbackActivity : AppCompatActivity() {
     }
 
     private var currentInstallingGroup: AppGroup? = null
+    private var installReceiverRegistered = false
 
     private val installReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -494,7 +506,8 @@ class LookbackActivity : AppCompatActivity() {
             try {
                 unregisterReceiver(this)
             } catch(e:Exception){}
-            
+            installReceiverRegistered = false
+
             currentInstallingGroup = null
             loadHistory()
             
@@ -526,8 +539,12 @@ class LookbackActivity : AppCompatActivity() {
         val paths = group.files.map { it.absolutePath }
         
         val action = "com.legendsayantan.adbtools.INSTALL_RESULT_${System.currentTimeMillis()}"
+        // Only ever triggered by this app's own PendingIntent (passed to PackageInstaller as the
+        // status receiver), which the system delivers using this app's identity regardless of
+        // export state - no other app has a legitimate reason to send this broadcast.
+        installReceiverRegistered = true
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(installReceiver, IntentFilter(action), Context.RECEIVER_EXPORTED)
+            registerReceiver(installReceiver, IntentFilter(action), Context.RECEIVER_NOT_EXPORTED)
         } else {
             registerReceiver(installReceiver, IntentFilter(action))
         }
@@ -549,6 +566,7 @@ class LookbackActivity : AppCompatActivity() {
                         group.status = InstallStatus.FAILED
                         updateAppStatus(group.packageName, "Failed: ${e.message}", R.color.red)
                         try { unregisterReceiver(installReceiver) } catch(e:Exception){}
+                        installReceiverRegistered = false
                         processInstallQueue()
                     }
                 }
@@ -556,11 +574,16 @@ class LookbackActivity : AppCompatActivity() {
         }.start()
     }
 
+    /** appName comes from loadLabel() (app/OEM controlled) and can contain "|" or newlines, which
+     *  would otherwise shift every column of this pipe-delimited format. */
+    private fun encodeHistoryField(s: String) = s.replace("|", "%7C").replace("\n", "%0A")
+    private fun decodeHistoryField(s: String) = s.replace("%7C", "|").replace("%0A", "\n")
+
     private fun saveHistory(pkg: String, version: String, appName: String) {
         try {
             val file = File(filesDir, "lookback_history.txt")
             val date = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
-            val entry = "$pkg|$version|$date|$appName\n"
+            val entry = "${encodeHistoryField(pkg)}|${encodeHistoryField(version)}|${encodeHistoryField(date)}|${encodeHistoryField(appName)}\n"
             file.appendText(entry)
         } catch (e: Exception) {
             applicationContext.log(e.stackTraceToString(), true)
@@ -612,7 +635,7 @@ class LookbackActivity : AppCompatActivity() {
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val parts = items[position].split("|")
+            val parts = items[position].split("|").map { decodeHistoryField(it) }
             if (parts.size >= 4) {
                 val pkg = parts[0]
                 val ver = parts[1]

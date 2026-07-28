@@ -29,6 +29,7 @@ import com.legendsayantan.adbtools.dialog.LogBottomSheetDialog
 import com.legendsayantan.adbtools.dialog.UniversalPipDialog
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.Utils.Companion.getNotiPerms
+import com.legendsayantan.adbtools.lib.Utils.Companion.showSnackbar
 import com.legendsayantan.adbtools.receivers.PipReceiver
 import com.legendsayantan.adbtools.services.SoundMasterService
 import androidx.core.content.pm.ShortcutInfoCompat
@@ -124,7 +125,8 @@ class MainActivity : AppCompatActivity() {
             descRes = R.string.desc_standby_bucket,
             iconRes = R.drawable.ic_standby_bucket,
             accentColorRes = R.color.tool_standby_bucket,
-            activityClass = StandbyBucketActivity::class.java
+            activityClass = StandbyBucketActivity::class.java,
+            minSdk = Build.VERSION_CODES.P // App Standby Buckets don't exist before Android 9
         ))
         tools.add(ToolCard(
             id = "themepatcher",
@@ -151,7 +153,8 @@ class MainActivity : AppCompatActivity() {
             accentColorRes = R.color.tool_sound_master,
             activityClass = null,
             onClickOverride = { com.legendsayantan.adbtools.dialog.SoundMasterBottomSheet().show(supportFragmentManager, "SoundMaster") },
-            isServiceActive = { SoundMasterService.running }
+            isServiceActive = { SoundMasterService.running },
+            minSdk = Build.VERSION_CODES.Q // relies on per-app audio playback capture, only available from Android 10
         ))
         tools.add(ToolCard(
             id = "mixedaudio",
@@ -216,7 +219,17 @@ class MainActivity : AppCompatActivity() {
         }
         recycler.layoutManager = gridLayoutManager
         toolAdapter = ToolCardAdapter(tools) { tool ->
-            if (tool.onClickOverride != null) {
+            if (tool.minSdk > 0 && Build.VERSION.SDK_INT < tool.minSdk) {
+                showSnackbar(
+                    getString(
+                        R.string.tool_unsupported_version,
+                        getString(tool.nameRes),
+                        com.legendsayantan.adbtools.lib.Utils.androidVersionName(tool.minSdk),
+                        com.legendsayantan.adbtools.lib.Utils.androidVersionName(Build.VERSION.SDK_INT)
+                    ),
+                    com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+                )
+            } else if (tool.onClickOverride != null) {
                 tool.onClickOverride.invoke()
             } else if (tool.activityClass != null) {
                 startActivity(Intent(applicationContext, tool.activityClass))

@@ -25,14 +25,15 @@ import com.legendsayantan.adbtools.adapters.AudioStateAdapter
 import com.legendsayantan.adbtools.bottomsheets.AudioStateBottomSheet
 import com.legendsayantan.adbtools.data.AudioState
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
-import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
 import com.legendsayantan.adbtools.lib.Utils.Companion.loadApps
 import com.legendsayantan.adbtools.lib.Utils.Companion.showSnackbar
+import com.legendsayantan.adbtools.lib.AppOps
 import com.legendsayantan.adbtools.lib.Utils.Companion.setupEdgeToEdgeInsets
 import com.legendsayantan.adbtools.services.SoundMasterService
 
 class MixedAudioActivity : AppCompatActivity() {
+
     val muteMap = HashMap<String, Boolean>()
     val focusMap = HashMap<String, AudioState>()
 
@@ -98,86 +99,65 @@ class MixedAudioActivity : AppCompatActivity() {
     }
 
     private fun reloadApps() {
-        setProgressText("Reading muted apps...")
+        setProgressText("Reading app-op states...")
         muteMap.clear()
         focusMap.clear()
-        ShizukuRunner.command("appops query-op PLAY_AUDIO deny",
-            object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {
-                    if (done) {
-                        output.split("\n").forEach { muteMap.putIfAbsent(it, true) }
-                        ShizukuRunner.command("appops query-op PLAY_AUDIO allow",
-                            object : ShizukuRunner.CommandResultListener {
-                                override fun onCommandResult(out2: String, done2: Boolean) {
-                                    if (done2) {
-                                        setProgressText("Reading focus states...")
-                                        out2.split("\n").forEach { muteMap.putIfAbsent(it, false) }
-                                    }
-                                    
-                                    ShizukuRunner.command("appops query-op TAKE_AUDIO_FOCUS ignore ",
-                                        object : ShizukuRunner.CommandResultListener {
-                                            override fun onCommandResult(out3: String, done3: Boolean) {
-                                                if (done3) {
-                                                    out3.split("\n").forEach {
-                                                        if (it.isNotBlank())
-                                                            focusMap.putIfAbsent(it, AudioState(getAppName(it), muteMap[it] ?: false, AudioState.Focus.IGNORED))
-                                                    }
-                                                    ShizukuRunner.command("appops query-op TAKE_AUDIO_FOCUS deny ",
-                                                        object : ShizukuRunner.CommandResultListener {
-                                                            override fun onCommandResult(out4: String, done4: Boolean) {
-                                                                if (done4) {
-                                                                    out4.split("\n").forEach {
-                                                                        if (it.isNotBlank())
-                                                                            focusMap.putIfAbsent(it, AudioState(getAppName(it), muteMap[it] ?: false, AudioState.Focus.DENIED))
-                                                                    }
-                                                                    ShizukuRunner.command("appops query-op TAKE_AUDIO_FOCUS allow ",
-                                                                        object : ShizukuRunner.CommandResultListener {
-                                                                            override fun onCommandResult(out5: String, done5: Boolean) {
-                                                                                if (done5) {
-                                                                                    setProgressText("Loading all apps...")
-                                                                                    out5.split("\n").forEach {
-                                                                                        if (it.isNotBlank())
-                                                                                            focusMap.putIfAbsent(it, AudioState(getAppName(it), muteMap[it] ?: false, AudioState.Focus.ALLOWED))
-                                                                                    }
 
-                                                                                    loadApps (callback = { installed ->
-                                                                                        installed.forEach { pkg ->
-                                                                                            focusMap.putIfAbsent(pkg, AudioState(getAppName(pkg), muteMap[pkg] ?: false, AudioState.Focus.ALLOWED))
-                                                                                        }
-                                                                                        focusMap.remove("")
-                                                                                        
-                                                                                        runOnUiThread {
-                                                                                            hideProgress()
-                                                                                            val searchBar = findViewById<android.widget.EditText>(R.id.search_bar)
-                                                                                            val filterBy = searchBar.text.toString().lowercase()
-                                                                                            val filteredMap = focusMap.filter { it.key.lowercase().contains(filterBy) || it.value.name.lowercase().contains(filterBy)}
-                                                                                            val sortedFocusMap = filteredMap.entries.sortedWith(compareBy { it.value.name }).associate { it.key to it.value } as HashMap<String, AudioState>
-                                                                                            recyclerView.adapter = AudioStateAdapter(this@MixedAudioActivity, sortedFocusMap) { position, pkg, state, action ->
-                                                                                                handleQuickAction(position, pkg, state, action)
-                                                                                            }
-                                                                                            recyclerView.layoutAnimation = AnimationUtils.loadLayoutAnimation(this@MixedAudioActivity, R.anim.layout_animation_stagger)
-                                                                                            recyclerView.scheduleLayoutAnimation()
-                                                                                        }
-                                                                                    }, errorCallback = { err -> onShizukuError(err) })
-                                                                                }
-                                                                            }
-                                                                            override fun onCommandError(error: String) { onShizukuError(error) }
-                                                                        })
-                                                                }
-                                                            }
-                                                            override fun onCommandError(error: String) { onShizukuError(error) }
-                                                        })
-                                                }
-                                            }
-                                            override fun onCommandError(error: String) { onShizukuError(error) }
-                                        })
-                                }
-                                override fun onCommandError(error: String) { onShizukuError(error) }
-                            })
+        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
+            val entries = try {
+                controller.queryAppOpStates(intArrayOf(AppOps.PLAY_AUDIO, AppOps.TAKE_AUDIO_FOCUS))
+                    .split("\n")
+                    .mapNotNull { line ->
+                        if (line.isBlank()) return@mapNotNull null
+                        val parts = line.split("|")
+                        if (parts.size < 3) return@mapNotNull null
+                        val pkg = parts[0]
+                        val op = parts[1].toIntOrNull() ?: return@mapNotNull null
+                        val mode = parts[2].toIntOrNull() ?: return@mapNotNull null
+                        Triple(pkg, op, mode)
                     }
+            } catch (e: Exception) {
+                onShizukuError(e.message ?: "Failed to query app-op states")
+                return@execute
+            }
+
+            // Two passes: muteMap must be fully populated before building focusMap entries,
+            // since a package's TAKE_AUDIO_FOCUS line can appear before its PLAY_AUDIO line.
+            entries.filter { it.second == AppOps.PLAY_AUDIO }.forEach { (pkg, _, mode) ->
+                muteMap[pkg] = (mode == 2)
+            }
+            entries.filter { it.second == AppOps.TAKE_AUDIO_FOCUS }.forEach { (pkg, _, mode) ->
+                focusMap[pkg] = AudioState(
+                    getAppName(pkg), muteMap[pkg] ?: false,
+                    when (mode) {
+                        1 -> AudioState.Focus.IGNORED
+                        2 -> AudioState.Focus.DENIED
+                        else -> AudioState.Focus.ALLOWED
+                    }
+                )
+            }
+
+            setProgressText("Loading all apps...")
+            loadApps(callback = { installed ->
+                installed.forEach { pkg ->
+                    focusMap.putIfAbsent(pkg, AudioState(getAppName(pkg), muteMap[pkg] ?: false, AudioState.Focus.ALLOWED))
                 }
-                override fun onCommandError(error: String) { onShizukuError(error) }
-            })
+                focusMap.remove("")
+
+                runOnUiThread {
+                    hideProgress()
+                    val searchBar = findViewById<android.widget.EditText>(R.id.search_bar)
+                    val filterBy = searchBar.text.toString().lowercase()
+                    val filteredMap = focusMap.filter { it.key.lowercase().contains(filterBy) || it.value.name.lowercase().contains(filterBy) }
+                    val sortedFocusMap = filteredMap.entries.sortedWith(compareBy { it.value.name }).associate { it.key to it.value } as HashMap<String, AudioState>
+                    recyclerView.adapter = AudioStateAdapter(this@MixedAudioActivity, sortedFocusMap) { position, pkg, state, action ->
+                        handleQuickAction(position, pkg, state, action)
+                    }
+                    recyclerView.layoutAnimation = AnimationUtils.loadLayoutAnimation(this@MixedAudioActivity, R.anim.layout_animation_stagger)
+                    recyclerView.scheduleLayoutAnimation()
+                }
+            }, errorCallback = { err -> onShizukuError(err) })
+        }
     }
 
     private fun getAppName(pkg: String): String {
@@ -221,12 +201,16 @@ class MixedAudioActivity : AppCompatActivity() {
                     recycler.visibility = View.VISIBLE
                     btnRestoreAll.visibility = View.VISIBLE
                     recycler.adapter = RestoreAdapter(modifiedApps) { pkg ->
+                        val uid = getUidOrNull(pkg)
+                        if (uid == null) {
+                            showSnackbar("$pkg is no longer installed.", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                            return@RestoreAdapter
+                        }
                         setProgressText("Restoring $pkg...")
-                        val uid = packageManager.getPackageInfo(pkg, 0).applicationInfo?.uid ?: -1
-                        com.legendsayantan.adbtools.lib.ShizuToolsController.execute { 
-                            it.setAppOpMode(pkg, uid, 28, 0) // Mute op
-                            it.setAppOpMode(pkg, uid, 32, 0) // Focus op
-                            runOnUiThread { 
+                        com.legendsayantan.adbtools.lib.ShizuToolsController.execute {
+                            it.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, 0)
+                            it.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, 0)
+                            runOnUiThread {
                                 showSnackbar("Restored $pkg", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
                                 reloadApps()
                                 dialog.dismiss()
@@ -239,9 +223,9 @@ class MixedAudioActivity : AppCompatActivity() {
                         setProgressText("Restoring all apps...")
                         com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
                             modifiedApps.forEach { (t, _) ->
-                                val uid = packageManager.getPackageInfo(t, 0).applicationInfo?.uid ?: -1
-                                controller.setAppOpMode(t, uid, 28, 0)
-                                controller.setAppOpMode(t, uid, 32, 0)
+                                val uid = getUidOrNull(t) ?: return@forEach
+                                controller.setAppOpMode(t, uid, AppOps.PLAY_AUDIO, 0)
+                                controller.setAppOpMode(t, uid, AppOps.TAKE_AUDIO_FOCUS, 0)
                             }
                             runOnUiThread { reloadApps() }
                         }
@@ -254,12 +238,16 @@ class MixedAudioActivity : AppCompatActivity() {
     }
 
     private fun handleQuickAction(position: Int, pkg: String, state: AudioState, action: String) {
+        val uid = getUidOrNull(pkg)
+        if (uid == null) {
+            showSnackbar("$pkg is no longer installed.", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+            return
+        }
         setProgressText("Applying changes...")
-        val uid = packageManager.getPackageInfo(pkg, 0).applicationInfo?.uid ?: -1
         if (action == "MUTE_TOGGLE") {
             val mode = if (state.muted) 0 else 2 // 0=allow, 2=deny
             com.legendsayantan.adbtools.lib.ShizuToolsController.execute { 
-                it.setAppOpMode(pkg, uid, 28, mode)
+                it.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, mode)
                 runOnUiThread { 
                     state.muted = !state.muted
                     showSnackbar(if (state.muted) "Muted ${state.name}" else "Unmuted ${state.name}", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
@@ -273,9 +261,9 @@ class MixedAudioActivity : AppCompatActivity() {
                 AudioState.Focus.IGNORED -> 2 // 2=deny (forced)
                 AudioState.Focus.DENIED -> 0 // 0=allow (default)
             }
-            com.legendsayantan.adbtools.lib.ShizuToolsController.execute { 
-                it.setAppOpMode(pkg, uid, 32, mode)
-                runOnUiThread { 
+            com.legendsayantan.adbtools.lib.ShizuToolsController.execute {
+                it.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, mode)
+                runOnUiThread {
                     state.focus = when (state.focus) {
                         AudioState.Focus.ALLOWED -> AudioState.Focus.IGNORED
                         AudioState.Focus.IGNORED -> AudioState.Focus.DENIED
@@ -296,7 +284,19 @@ class MixedAudioActivity : AppCompatActivity() {
     
     private fun onShizukuError(err: String) {
         applicationContext.log(err)
-        runOnUiThread { showSnackbar("Error loading apps : $err", com.google.android.material.snackbar.Snackbar.LENGTH_LONG) }
+        runOnUiThread {
+            hideProgress()
+            showSnackbar("Error loading apps : $err", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+        }
+    }
+
+    /** Apps can be uninstalled between list load and a tap on them; treat "gone" as a soft failure, not a crash. */
+    private fun getUidOrNull(pkg: String): Int? {
+        return try {
+            packageManager.getPackageInfo(pkg, 0).applicationInfo?.uid
+        } catch (e: PackageManager.NameNotFoundException) {
+            null
+        }
     }
 
     inner class RestoreAdapter(

@@ -71,15 +71,35 @@ class ToolCardAdapter(
             holder.icon.imageTintList = ColorStateList.valueOf(accentColor)
 
 
-            if (item.id == "pip") {
+            val unsupported = item.minSdk > 0 && android.os.Build.VERSION.SDK_INT < item.minSdk
+            if (unsupported) {
                 holder.betaChip.visibility = View.VISIBLE
+                holder.betaChip.text = "ANDROID ${com.legendsayantan.adbtools.lib.Utils.androidVersionName(item.minSdk)}+"
+            } else if (item.id == "pip") {
+                holder.betaChip.visibility = View.VISIBLE
+                holder.betaChip.text = "BETA"
             } else {
                 holder.betaChip.visibility = View.GONE
             }
 
+            val alpha = if (unsupported) 0.4f else 1f
+            holder.icon.alpha = alpha
+            holder.name.alpha = alpha
+            holder.desc.alpha = alpha
+            holder.accentStripe.alpha = alpha
+
+            // Tapping a version-gated card still fires onClick - the host is expected to show
+            // an explanation (e.g. a snackbar) rather than silently doing nothing, so it's not
+            // mistaken for a broken/unresponsive card.
             holder.root.setOnClickListener { onClick(item) }
 
-            updateActiveState(holder, item)
+            if (unsupported) {
+                holder.activeDot.visibility = View.GONE
+                animators[item.id]?.cancel()
+                animators.remove(item.id)
+            } else {
+                updateActiveState(holder, item)
+            }
         }
     }
 

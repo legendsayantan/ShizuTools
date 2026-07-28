@@ -11,4 +11,5 @@
     <dimen name="elevation_card">2dp</dimen>
     <dimen name="elevation_sheet">4dp</dimen>
     <dimen name="header_padding_top_extra">14dp</dimen>
+    <dimen name="soundmaster_panel_width">290dp</dimen>
 </resources>

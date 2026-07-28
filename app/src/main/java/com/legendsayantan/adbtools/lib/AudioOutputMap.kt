@@ -35,6 +35,8 @@ class AudioOutputMap {
             }
         }
 
-
+        fun formatDevice(d: AudioDeviceInfo?): String {
+            return if (d == null) "Default" else "${d.productName} (${getName(d.type)})"
+        }
     }
 }
