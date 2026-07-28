@@ -228,21 +228,7 @@ class SoundMasterService : Service() {
                 startingIntent = intent
 
                 val isDsp = com.legendsayantan.adbtools.lib.SoundMasterPreferences.isAdvancedDspMode(this)
-
-                // FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION/MEDIA_PLAYBACK have existed since
-                // Android 10 (Q) - gating this at R (Android 11) meant Android 10 devices got
-                // type=0 (none) despite the manifest declaring these types.
-                val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    if (isDsp) {
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-                    } else {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-                        } else {
-                            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-                        }
-                    }
-                } else 0
+                val type = computeForegroundServiceType(isDsp)
 
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -492,25 +478,68 @@ class SoundMasterService : Service() {
         }
     }
 
+    // FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION/MEDIA_PLAYBACK have existed since Android 10 (Q) -
+    // gating this at R (Android 11) meant Android 10 devices got type=0 (none) despite the
+    // manifest declaring these types.
+    private fun computeForegroundServiceType(isDsp: Boolean): Int {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (isDsp) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                } else {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+                }
+            }
+        } else 0
+    }
+
+    // Android 14+ enforces that the hosting foreground service already declares the
+    // mediaProjection type *before* MediaProjectionManager#getMediaProjection() is called - an
+    // engine started in Smart mode only declares specialUse, so live-switching to DSP without
+    // re-declaring here makes getMediaProjection() throw every time, acquireMediaProjection()
+    // swallow it, and onModeChanged() re-request consent forever (visible as the capture-consent
+    // screen reopening in a loop, stacking a new task each time and starving back navigation).
+    private fun promoteForegroundServiceType(isDsp: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || !::notiBuilder.isInitialized) return
+        try {
+            startForeground(NOTI_ID, notiBuilder.build(), computeForegroundServiceType(isDsp))
+        } catch (e: Exception) {
+            log(e.stackTraceToString(), true)
+        }
+    }
+
+    private var dspConsentAttempted = false
+
     fun onModeChanged(isDsp: Boolean) {
         if (isDsp) {
             if (mediaProjection == null) {
+                promoteForegroundServiceType(true)
                 mediaProjection = acquireMediaProjection()
             }
             if (mediaProjection != null) {
+                dspConsentAttempted = false
                 attachActiveAppsToDsp()
-            } else {
+            } else if (!dspConsentAttempted) {
                 // No live projection token yet (e.g. engine was started in Smart mode, which
                 // never requests one), or the cached token was already spent (single-use as of
                 // Android 14+). Ask for fresh consent instead of just failing - the switch is
                 // left optimistically on and gets reverted by revertDspSwitch() if the user
-                // denies or grants fail.
+                // denies or grants fail. Bounded to a single retry so a persistent acquisition
+                // failure reverts cleanly instead of re-requesting consent forever.
+                dspConsentAttempted = true
                 requestDspConsent()
+            } else {
+                dspConsentAttempted = false
+                revertDspSwitch("Couldn't start Advanced DSP capture on this device.")
             }
         } else {
+            dspConsentAttempted = false
             packageThreads.forEach { it.value.interrupt() }
             packageThreads.clear()
             apps.clear()
+            promoteForegroundServiceType(false)
         }
     }
 
