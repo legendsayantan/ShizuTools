@@ -232,10 +232,14 @@ class ThemePatcherService : Service() {
     }
 
     private fun extractNameFor(isFont: Boolean): String {
+        // Settings.System.getString returns null when the OEM key isn't set on this device -
+        // this runs on a bare background Thread (startPatcher's Thread{} has no try/catch), so an
+        // NPE here would kill the whole process instead of just failing this one lookup.
         return if (isFont) {
-            Settings.System.getString(contentResolver, "current_typeface_name")
+            Settings.System.getString(contentResolver, "current_typeface_name") ?: ""
         } else {
-            Settings.System.getString(contentResolver, "current_wallpaper_name").split(";")[0]
+            (Settings.System.getString(contentResolver, "current_wallpaper_name") ?: "")
+                .split(";")[0]
                 .replace("InnerTheme:", "")
         }.trim()
     }

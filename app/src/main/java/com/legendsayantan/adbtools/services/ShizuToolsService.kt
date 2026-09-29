@@ -8,6 +8,11 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
     
     private val lockedBuckets = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private val uidLastActive = mutableMapOf<Int, Long>()
+    // Whether ShizuProcessObserver actually got registered with ActivityManager below - if this
+    // stayed false (reflection failed on some OEM/Android build), setBucketLock() below silently
+    // storing into lockedBuckets would never be enforced, since the foreground-change callback
+    // that reads it would never fire. Callers use this to warn instead of claiming success.
+    private var processObserverRegistered = false
 
     init {
         try {
@@ -26,20 +31,22 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
                 } catch (e2: Exception) {}
             }
 
-            if (registerCode != -1) {
+            val observer = ShizuProcessObserver()
+            if (registerCode != -1 && observer.codeFgAct != -1) {
                 val data = android.os.Parcel.obtain()
                 val reply = android.os.Parcel.obtain()
                 try {
                     data.writeInterfaceToken("android.app.IActivityManager")
-                    data.writeStrongBinder(ShizuProcessObserver())
+                    data.writeStrongBinder(observer)
                     amBinder.transact(registerCode, data, reply, 0)
                     reply.readException()
+                    processObserverRegistered = true
                 } finally {
                     data.recycle()
                     reply.recycle()
                 }
             } else {
-                Log.e("ShizuToolsService", "Could not find registerProcessObserver transaction code")
+                Log.e("ShizuToolsService", "Could not find registerProcessObserver or onForegroundActivitiesChanged transaction code")
             }
         } catch (e: Exception) {
             Log.e("ShizuToolsService", "Error registering process observer: ${e.message}")
@@ -47,13 +54,19 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
     }
 
     inner class ShizuProcessObserver : android.os.Binder() {
-        private var codeFgAct = -1
-        
+        var codeFgAct = -1
+            private set
+
         init {
             try {
                 val stubClass = Class.forName("android.app.IProcessObserver\$Stub")
                 codeFgAct = stubClass.getDeclaredField("TRANSACTION_onForegroundActivitiesChanged").getInt(null)
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                try {
+                    val observerClass = Class.forName("android.app.IProcessObserver")
+                    codeFgAct = observerClass.getDeclaredField("ON_FOREGROUND_ACTIVITIES_CHANGED_TRANSACTION").getInt(null)
+                } catch (e2: Exception) {}
+            }
         }
 
         override fun onTransact(code: Int, data: android.os.Parcel, reply: android.os.Parcel?, flags: Int): Boolean {
@@ -355,9 +368,23 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
                 while (err.readLine().also { line = it } != null) {
                     errordata.append(line).append("\n")
                 }
-                if (errordata.isNotBlank()) callback.onCommandError(errordata.toString())
-                else callback.onCommandResult(output.toString(), true)
-                process.waitFor()
+                // Whether a command succeeded is what its exit code says, not whether it wrote
+                // anything to stderr - plenty of commands (pm install, warnings, etc.) write
+                // informational text to stderr while still fully succeeding. Deciding on stderr
+                // presence alone discarded valid stdout output on success and, for IntentReceiver's
+                // automation callers, meant onCommandResult(done=true) never fired at all - the
+                // caller's response broadcast was silently never sent.
+                val exitCode = process.waitFor()
+                if (exitCode == 0) {
+                    // Keep any stderr text visible instead of silently dropping it now that it no
+                    // longer determines success/failure on its own.
+                    if (errordata.isNotBlank()) output.append(errordata)
+                    callback.onCommandResult(output.toString(), true)
+                } else {
+                    callback.onCommandError(
+                        if (errordata.isNotBlank()) errordata.toString() else "Command exited with code $exitCode"
+                    )
+                }
             } catch (e: Exception) {
                 callback.onCommandError(e.message ?: "Execution failed")
             }
@@ -365,6 +392,13 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
     }
     
     override fun installApks(apkPaths: List<String>, flags: Int, statusReceiver: android.content.IntentSender) {
+        // Set right before session.commit(statusReceiver) - once that call is made, the system may
+        // already own notifying statusReceiver even if commit() itself then throws, so a synthetic
+        // failure sent after that point risks double-delivering a status for this install (or, once
+        // this receiver is reused for the next queued install, misattributing a stray old status to
+        // a completely different install). Everything before commit() (session/file prep) has no
+        // such ambiguity - a throw there always means the system was never involved.
+        var handedOffToSystem = false
         try {
             val packageInstaller = context.packageManager.packageInstaller
             val params = android.content.pm.PackageInstaller.SessionParams(
@@ -417,10 +451,32 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
                 }
             }
             
+            handedOffToSystem = true
             session.commit(statusReceiver)
         } catch (e: Exception) {
             e.printStackTrace()
             Log.e("ShizuToolsService", "Error installing apks: ${e.stackTraceToString()}")
+            // Anything that fails before commit() (bad APK, storage full, createSession/openWrite
+            // IOException, etc.) means PackageInstaller never sends its own status broadcast -
+            // without this, the caller's receiver (registered before this call, expecting exactly
+            // one status broadcast) never fires and its UI is stuck on "Installing..." forever with
+            // no timeout anywhere to recover it. Synthesize the same failure signal PackageInstaller
+            // itself would have sent on commit failure, using the same extras contract - but only
+            // when we're sure the system was never handed the receiver in the first place.
+            if (!handedOffToSystem) {
+                try {
+                    statusReceiver.sendIntent(
+                        context, 0,
+                        android.content.Intent().apply {
+                            putExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, android.content.pm.PackageInstaller.STATUS_FAILURE)
+                            putExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE, e.message ?: "Install preparation failed")
+                        },
+                        null, null
+                    )
+                } catch (sendException: Exception) {
+                    sendException.printStackTrace()
+                }
+            }
         }
     }
 
@@ -456,6 +512,23 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
             context.packageManager.packageInstaller.uninstall(pkgName, statusReceiver)
         } catch (e: Exception) {
             Log.e("ShizuToolsService", "Error uninstalling app: ${e.message}")
+            // uninstall() can throw before the system ever gets a chance to invoke statusReceiver
+            // itself (e.g. package doesn't exist, SecurityException) - this exception never crosses
+            // the AIDL boundary (it's caught right here), so the caller's own try/catch around this
+            // call can't save it either. Without this, the caller's registered receiver never fires
+            // and its UI is stuck on "Uninstalling..." forever.
+            try {
+                statusReceiver.sendIntent(
+                    context, 0,
+                    android.content.Intent().apply {
+                        putExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, android.content.pm.PackageInstaller.STATUS_FAILURE)
+                        putExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE, e.message ?: "Uninstall failed")
+                    },
+                    null, null
+                )
+            } catch (sendException: Exception) {
+                sendException.printStackTrace()
+            }
         }
     }
 
@@ -504,6 +577,20 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
             }
         } catch (e: Exception) {
             Log.e("ShizuToolsService", "Error restoring uninstalled app: ${e.message}")
+            // Same reasoning as uninstallApp/installApks above - if every reflection attempt threw
+            // before reaching a statusReceiver.sendIntent() call, the caller never hears back at all.
+            try {
+                statusReceiver.sendIntent(
+                    context, 0,
+                    android.content.Intent().apply {
+                        putExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, android.content.pm.PackageInstaller.STATUS_FAILURE)
+                        putExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE, e.message ?: "Restore failed")
+                    },
+                    null, null
+                )
+            } catch (sendException: Exception) {
+                sendException.printStackTrace()
+            }
         }
     }
 
@@ -717,12 +804,15 @@ class ShizuToolsService(private val context: android.content.Context) : IShizuTo
         return -1
     }
 
-    override fun setBucketLock(packageName: String, bucket: Int, locked: Boolean) {
+    override fun setBucketLock(packageName: String, bucket: Int, locked: Boolean): Boolean {
         if (locked) {
             lockedBuckets[packageName] = bucket
         } else {
             lockedBuckets.remove(packageName)
         }
+        // Locking only actually takes effect once the process observer is watching foreground
+        // changes - report that back so the caller can warn instead of claiming success.
+        return !locked || processObserverRegistered
     }
     
     // Virtual Mount Filesystem Operations

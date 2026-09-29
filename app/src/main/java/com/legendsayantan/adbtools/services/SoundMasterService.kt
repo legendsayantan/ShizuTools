@@ -27,7 +27,6 @@ import com.legendsayantan.adbtools.data.AudioOutputKey
 import com.legendsayantan.adbtools.lib.AppOps
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.PlayBackThread
-import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.toFixed
 import java.util.Timer
 import kotlin.Boolean
@@ -217,12 +216,6 @@ class SoundMasterService : Service() {
             return START_STICKY
         }
         if (intent != null) {
-            val pkgs = intent.getStringArrayExtra("packages")?.toMutableList() ?: mutableListOf()
-            val devices = intent.getIntArrayExtra("devices")?.toMutableList() ?: mutableListOf()
-            val volumes = intent.getFloatArrayExtra("volumes")?.toMutableList() ?: mutableListOf()
-            pkgs.forEachIndexed { index, s ->
-                apps.add(AudioOutputBase(s, devices[index], volumes[index]))
-            }
             if (!running) {
                 running = true
                 startingIntent = intent

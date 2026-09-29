@@ -83,51 +83,72 @@ object ShizuToolsController {
     }
 
     private fun bind(action: (IShizuToolsService) -> Unit) {
-        pendingActions.add(action)
-        if (connection != null) return // Already binding
-        
-        connection = object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-                service = IShizuToolsService.Stub.asInterface(binder)
-                val actionsToRun = pendingActions.toList()
-                pendingActions.clear()
-                executor.execute {
-                    actionsToRun.forEach { act ->
-                        try {
-                            // Re-check per action rather than trusting the service assigned above -
-                            // if the binder died partway through this batch, later actions in the
-                            // same batch shouldn't blindly run against a dead reference.
-                            val svc = service
-                            if (svc == null || !svc.asBinder().isBinderAlive) {
-                                bind(act)
-                            } else {
-                                act(svc)
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        } finally {
-                            releaseClient()
+        // pendingActions/connection are read-then-written by whichever thread gets here first
+        // (execute() can call bind() from the calling thread or from executor threads) - without
+        // this lock, two threads can both observe connection==null, both proceed to construct a
+        // ServiceConnection and both call Shizuku.bindUserService, and a concurrent add() landing
+        // between onServiceConnected's toList()/clear() below can be silently dropped.
+        val shouldBind: Boolean
+        synchronized(pendingActions) {
+            pendingActions.add(action)
+            shouldBind = connection == null
+            if (shouldBind) {
+                connection = object : ServiceConnection {
+                    override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+                        service = IShizuToolsService.Stub.asInterface(binder)
+                        val actionsToRun = synchronized(pendingActions) {
+                            pendingActions.toList().also { pendingActions.clear() }
                         }
+                        executor.execute {
+                            actionsToRun.forEach { act ->
+                                try {
+                                    // Re-check per action rather than trusting the service assigned
+                                    // above - if the binder died partway through this batch, later
+                                    // actions in the same batch shouldn't blindly run against a dead
+                                    // reference.
+                                    val svc = service
+                                    if (svc == null || !svc.asBinder().isBinderAlive) {
+                                        bind(act)
+                                    } else {
+                                        act(svc)
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                } finally {
+                                    releaseClient()
+                                }
+                            }
+                        }
+                    }
+
+                    override fun onServiceDisconnected(name: ComponentName?) {
+                        service = null
+                        connection = null
+                    }
+
+                    override fun onBindingDied(name: ComponentName?) {
+                        service = null
+                        connection = null
                     }
                 }
             }
-
-            override fun onServiceDisconnected(name: ComponentName?) {
-                service = null
-                connection = null
-            }
-            
-            override fun onBindingDied(name: ComponentName?) {
-                service = null
-                connection = null
-            }
         }
-        
+
+        if (!shouldBind) return // A bind is already in flight - this action rides along with it.
+
         try {
             Shizuku.bindUserService(getArgs(), connection!!)
         } catch (e: Exception) {
             e.printStackTrace()
-            connection = null
+            // The bind attempt itself failed synchronously, so onServiceConnected will never fire
+            // for it - every action currently waiting on this connection attempt (not just the one
+            // passed in above) needs to be released now instead of sitting in pendingActions to be
+            // silently replayed against some unrelated later bind.
+            val strandedActions = synchronized(pendingActions) {
+                connection = null
+                pendingActions.toList().also { pendingActions.clear() }
+            }
+            strandedActions.forEach { releaseClient() }
         }
     }
 

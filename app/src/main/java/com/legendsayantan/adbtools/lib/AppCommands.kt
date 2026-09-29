@@ -317,8 +317,15 @@ object AppCommands {
                 requirePkg(context, pkg, callback) { uid ->
                     ShizuToolsController.execute { service ->
                         try {
-                            service.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, mode)
-                            callback(true, "Set audio-focus mode for $pkg to $modeArg.")
+                            // setAppOpMode's return says whether the write actually took effect -
+                            // some OEM builds silently no-op an appops write for another package
+                            // while still reporting success at the shell level.
+                            val applied = service.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, mode)
+                            if (applied) {
+                                callback(true, "Set audio-focus mode for $pkg to $modeArg.")
+                            } else {
+                                callback(false, "$pkg's audio-focus mode was not changed - your Shizuku permission level may not allow this.")
+                            }
                         } catch (e: Exception) {
                             callback(false, "Failed: ${e.message}")
                         }
@@ -334,9 +341,13 @@ object AppCommands {
                 requirePkg(context, pkg, callback) { uid ->
                     ShizuToolsController.execute { service ->
                         try {
-                            service.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, AppOps.MODE_ALLOWED)
-                            service.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, AppOps.MODE_ALLOWED)
-                            callback(true, "Restored $pkg to default.")
+                            val restoredPlay = service.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, AppOps.MODE_ALLOWED)
+                            val restoredFocus = service.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, AppOps.MODE_ALLOWED)
+                            if (restoredPlay && restoredFocus) {
+                                callback(true, "Restored $pkg to default.")
+                            } else {
+                                callback(false, "$pkg was not fully restored - your Shizuku permission level may not allow this.")
+                            }
                         } catch (e: Exception) {
                             callback(false, "Failed: ${e.message}")
                         }
@@ -351,16 +362,19 @@ object AppCommands {
                             .mapNotNull { line -> line.split("|").getOrNull(0)?.takeIf { it.isNotBlank() } }
                             .distinct()
                         var count = 0
+                        var failures = 0
                         pkgs.forEach { pkg ->
                             val uid = resolveUid(context, pkg) ?: return@forEach
                             try {
-                                service.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, AppOps.MODE_ALLOWED)
-                                service.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, AppOps.MODE_ALLOWED)
-                                count++
+                                val ok1 = service.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, AppOps.MODE_ALLOWED)
+                                val ok2 = service.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, AppOps.MODE_ALLOWED)
+                                if (ok1 && ok2) count++ else failures++
                             } catch (e: Exception) {
+                                failures++
                             }
                         }
-                        callback(true, "Restored $count app(s) to default.")
+                        val suffix = if (failures > 0) " ($failures failed to apply)" else ""
+                        callback(true, "Restored $count app(s) to default.$suffix")
                     } catch (e: Exception) {
                         callback(false, "Failed to query app-op states: ${e.message}")
                     }
@@ -402,8 +416,12 @@ object AppCommands {
         requirePkg(context, pkg, callback) { uid ->
             ShizuToolsController.execute { service ->
                 try {
-                    service.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, if (mute) AppOps.MODE_ERRORED else AppOps.MODE_ALLOWED)
-                    callback(true, "${if (mute) "Muted" else "Unmuted"} $pkg.")
+                    val applied = service.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, if (mute) AppOps.MODE_ERRORED else AppOps.MODE_ALLOWED)
+                    if (applied) {
+                        callback(true, "${if (mute) "Muted" else "Unmuted"} $pkg.")
+                    } else {
+                        callback(false, "$pkg's mute state was not changed - your Shizuku permission level may not allow this.")
+                    }
                 } catch (e: Exception) {
                     callback(false, "Failed: ${e.message}")
                 }
@@ -463,9 +481,10 @@ object AppCommands {
                     ShizuToolsController.execute { service ->
                         try {
                             val bucket = service.getAppStandbyBucket(pkg, StandbyBuckets.currentUserId())
-                            service.setBucketLock(pkg, bucket, locked)
+                            val enforced = service.setBucketLock(pkg, bucket, locked)
                             if (locked) prefs.edit().putInt(pkg, bucket).apply() else prefs.edit().remove(pkg).apply()
-                            callback(true, "${if (locked) "Locked" else "Unlocked"} $pkg at ${StandbyBuckets.commandNameFor(bucket)}.")
+                            val suffix = if (locked && !enforced) " (warning: enforcement observer isn't registered, lock won't take effect)" else ""
+                            callback(true, "${if (locked) "Locked" else "Unlocked"} $pkg at ${StandbyBuckets.commandNameFor(bucket)}.$suffix")
                         } catch (e: Exception) {
                             callback(false, "Failed: ${e.message}")
                         }

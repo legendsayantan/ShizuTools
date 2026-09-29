@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import com.legendsayantan.adbtools.lib.AppCommands
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
-import com.legendsayantan.adbtools.lib.ShizukuRunner
 import com.legendsayantan.adbtools.lib.Utils.Companion.postNotification
 
 /**

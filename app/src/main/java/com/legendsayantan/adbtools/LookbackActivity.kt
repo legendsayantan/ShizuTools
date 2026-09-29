@@ -147,9 +147,19 @@ class LookbackActivity : AppCompatActivity() {
         }
         
         btnInstallAll.setOnClickListener {
-            installQueue.clear()
-            installQueue.addAll(appGroups.filter { it.status == InstallStatus.PENDING || it.status == InstallStatus.FAILED })
-            processInstallQueue()
+            val toInstall = appGroups.filter { it.status == InstallStatus.PENDING || it.status == InstallStatus.FAILED }
+            if (currentInstallingGroup != null) {
+                // An install is already in flight - queue behind it instead of clearing the queue
+                // and calling processInstallQueue() again, which would register installReceiver a
+                // second time on top of the in-flight registration; whichever install's broadcast
+                // arrives first then unregisters the receiver entirely, silently stranding the
+                // other install on "Installing..." forever.
+                toInstall.forEach { if (!installQueue.contains(it)) installQueue.add(it) }
+            } else {
+                installQueue.clear()
+                installQueue.addAll(toInstall)
+                processInstallQueue()
+            }
         }
         
         findViewById<ImageButton>(R.id.btn_settings).setOnClickListener {
@@ -422,9 +432,15 @@ class LookbackActivity : AppCompatActivity() {
             
             btnInstallSingle.setOnClickListener {
                 if (group.status != InstallStatus.INSTALLING) {
-                    installQueue.clear()
-                    installQueue.add(group)
-                    processInstallQueue()
+                    if (currentInstallingGroup != null) {
+                        // Same reasoning as btnInstallAll - don't clear the queue and re-enter
+                        // processInstallQueue() while another install is already in flight.
+                        if (!installQueue.contains(group)) installQueue.add(group)
+                    } else {
+                        installQueue.clear()
+                        installQueue.add(group)
+                        processInstallQueue()
+                    }
                 }
             }
             

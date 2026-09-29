@@ -22,7 +22,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.legendsayantan.adbtools.adapters.AudioStateAdapter
-import com.legendsayantan.adbtools.bottomsheets.AudioStateBottomSheet
 import com.legendsayantan.adbtools.data.AudioState
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
 import com.legendsayantan.adbtools.lib.Utils.Companion.initialiseStatusBar
@@ -34,8 +33,12 @@ import com.legendsayantan.adbtools.services.SoundMasterService
 
 class MixedAudioActivity : AppCompatActivity() {
 
-    val muteMap = HashMap<String, Boolean>()
-    val focusMap = HashMap<String, AudioState>()
+    // ConcurrentHashMap, not HashMap: reloadApps() mutates both from a background executor thread
+    // (via ShizuToolsController.execute) while the search bar's afterTextChanged reads focusMap on
+    // the main thread - a plain HashMap iterated on one thread while mutated on another risks
+    // ConcurrentModificationException or a corrupted read.
+    val muteMap = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+    val focusMap = java.util.concurrent.ConcurrentHashMap<String, AudioState>()
 
     lateinit var recyclerView: RecyclerView
 
@@ -208,26 +211,53 @@ class MixedAudioActivity : AppCompatActivity() {
                         }
                         setProgressText("Restoring $pkg...")
                         com.legendsayantan.adbtools.lib.ShizuToolsController.execute {
-                            it.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, 0)
-                            it.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, 0)
+                            val restoredPlay = try { it.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, 0) } catch (e: Exception) { false }
+                            val restoredFocus = try { it.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, 0) } catch (e: Exception) { false }
                             runOnUiThread {
-                                showSnackbar("Restored $pkg", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                                if (restoredPlay && restoredFocus) {
+                                    showSnackbar("Restored $pkg", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                                } else {
+                                    showSnackbar("Couldn't fully restore $pkg - your Shizuku permission level may not allow this.", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                                }
+                                // Re-sync from the actual server-side app-op state regardless of
+                                // outcome, so the list behind this dialog reflects what really
+                                // happened rather than what we hoped happened.
                                 reloadApps()
                                 dialog.dismiss()
                             }
                         }
                     }
-                    
+
                     btnRestoreAll.setOnClickListener {
                         dialog.dismiss()
                         setProgressText("Restoring all apps...")
                         com.legendsayantan.adbtools.lib.ShizuToolsController.execute { controller ->
+                            // Track successes/failures/skips separately rather than deriving one
+                            // from a subtraction - a skipped (no-longer-installed) package isn't a
+                            // failure, but it also was never restored, so it can't be folded into
+                            // "successes" either.
+                            var successes = 0
+                            var failures = 0
+                            var skipped = 0
                             modifiedApps.forEach { (t, _) ->
-                                val uid = getUidOrNull(t) ?: return@forEach
-                                controller.setAppOpMode(t, uid, AppOps.PLAY_AUDIO, 0)
-                                controller.setAppOpMode(t, uid, AppOps.TAKE_AUDIO_FOCUS, 0)
+                                val uid = getUidOrNull(t)
+                                if (uid == null) {
+                                    skipped++
+                                    return@forEach
+                                }
+                                val ok1 = try { controller.setAppOpMode(t, uid, AppOps.PLAY_AUDIO, 0) } catch (e: Exception) { false }
+                                val ok2 = try { controller.setAppOpMode(t, uid, AppOps.TAKE_AUDIO_FOCUS, 0) } catch (e: Exception) { false }
+                                if (ok1 && ok2) successes++ else failures++
                             }
-                            runOnUiThread { reloadApps() }
+                            runOnUiThread {
+                                if (failures > 0 || skipped > 0) {
+                                    val details = mutableListOf<String>()
+                                    if (failures > 0) details.add("$failures failed to apply")
+                                    if (skipped > 0) details.add("$skipped no longer installed")
+                                    showSnackbar("Restored $successes/${modifiedApps.size} apps (${details.joinToString(", ")}).", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                                }
+                                reloadApps()
+                            }
                         }
                     }
                 }
@@ -246,13 +276,21 @@ class MixedAudioActivity : AppCompatActivity() {
         setProgressText("Applying changes...")
         if (action == "MUTE_TOGGLE") {
             val mode = if (state.muted) 0 else 2 // 0=allow, 2=deny
-            com.legendsayantan.adbtools.lib.ShizuToolsController.execute { 
-                it.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, mode)
-                runOnUiThread { 
-                    state.muted = !state.muted
-                    showSnackbar(if (state.muted) "Muted ${state.name}" else "Unmuted ${state.name}", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
-                    findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.apps)?.adapter?.notifyItemChanged(position)
+            com.legendsayantan.adbtools.lib.ShizuToolsController.execute {
+                // setAppOpMode's return says whether the write actually took effect - some
+                // OEM builds silently no-op an appops write for another package while still
+                // reporting success at the shell level, so only flip the displayed state (and
+                // claim success) when it's confirmed.
+                val applied = try { it.setAppOpMode(pkg, uid, AppOps.PLAY_AUDIO, mode) } catch (e: Exception) { false }
+                runOnUiThread {
                     findViewById<View>(R.id.loading_container)?.visibility = View.GONE
+                    if (applied) {
+                        state.muted = !state.muted
+                        showSnackbar(if (state.muted) "Muted ${state.name}" else "Unmuted ${state.name}", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                        findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.apps)?.adapter?.notifyItemChanged(position)
+                    } else {
+                        showSnackbar("Couldn't change ${state.name}'s mute state - your Shizuku permission level may not allow this.", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                    }
                 }
             }
         } else if (action == "MIXED_TOGGLE") {
@@ -262,21 +300,25 @@ class MixedAudioActivity : AppCompatActivity() {
                 AudioState.Focus.DENIED -> 0 // 0=allow (default)
             }
             com.legendsayantan.adbtools.lib.ShizuToolsController.execute {
-                it.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, mode)
+                val applied = try { it.setAppOpMode(pkg, uid, AppOps.TAKE_AUDIO_FOCUS, mode) } catch (e: Exception) { false }
                 runOnUiThread {
-                    state.focus = when (state.focus) {
-                        AudioState.Focus.ALLOWED -> AudioState.Focus.IGNORED
-                        AudioState.Focus.IGNORED -> AudioState.Focus.DENIED
-                        AudioState.Focus.DENIED -> AudioState.Focus.ALLOWED
-                    }
-                    val stateText = when(state.focus) {
-                        AudioState.Focus.ALLOWED -> "Default"
-                        AudioState.Focus.IGNORED -> "On"
-                        AudioState.Focus.DENIED -> "Forced"
-                    }
-                    showSnackbar("MixedAudio for ${state.name} set to $stateText", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
-                    findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.apps)?.adapter?.notifyItemChanged(position)
                     findViewById<View>(R.id.loading_container)?.visibility = View.GONE
+                    if (applied) {
+                        state.focus = when (state.focus) {
+                            AudioState.Focus.ALLOWED -> AudioState.Focus.IGNORED
+                            AudioState.Focus.IGNORED -> AudioState.Focus.DENIED
+                            AudioState.Focus.DENIED -> AudioState.Focus.ALLOWED
+                        }
+                        val stateText = when(state.focus) {
+                            AudioState.Focus.ALLOWED -> "Default"
+                            AudioState.Focus.IGNORED -> "On"
+                            AudioState.Focus.DENIED -> "Forced"
+                        }
+                        showSnackbar("MixedAudio for ${state.name} set to $stateText", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                        findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.apps)?.adapter?.notifyItemChanged(position)
+                    } else {
+                        showSnackbar("Couldn't change ${state.name}'s mixing mode - your Shizuku permission level may not allow this.", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                    }
                 }
             }
         }

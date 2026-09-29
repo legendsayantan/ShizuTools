@@ -482,6 +482,12 @@ class DebloatActivity : AppCompatActivity() {
             runOnUiThread {
                 if (succeeded.isNotEmpty()) {
                     apps = apps.filterKeys { it !in succeeded } as HashMap<String, AppData>
+                    // cachedApps backs the search filter (afterTextChanged rebuilds `apps` from
+                    // it) and is a separate map object from `apps` once any search has run - prune
+                    // it too, or an uninstalled app reappears the next time the user searches.
+                    if (::cachedApps.isInitialized) {
+                        cachedApps = cachedApps.filterKeys { it !in succeeded } as HashMap<String, AppData>
+                    }
                 }
                 val msg = if (failed.isEmpty()) {
                     "Uninstalled ${succeeded.size} apps."
@@ -543,6 +549,11 @@ class DebloatActivity : AppCompatActivity() {
         val lm = list.layoutManager as LinearLayoutManager
         val currentItem = lm.findFirstVisibleItemPosition()
         apps = apps.filterKeys { it != id } as HashMap<String, AppData>
+        // Same staleness issue as processBatchUninstall's finishIfDone: cachedApps is what search
+        // rebuilds `apps` from, so it needs pruning too or this app reappears after a search.
+        if (::cachedApps.isInitialized) {
+            cachedApps = cachedApps.filterKeys { it != id } as HashMap<String, AppData>
+        }
         setupAdapter(apps)
         list.scrollToPosition(currentItem)
     }

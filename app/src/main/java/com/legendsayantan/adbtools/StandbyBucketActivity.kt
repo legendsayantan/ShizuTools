@@ -38,6 +38,10 @@ class StandbyBucketActivity : AppCompatActivity() {
     
     private val allAppList = mutableListOf<AppItem>()
     private val displayAppList = mutableListOf<AppItem>()
+    // Whether the user has already been warned this session that bucket-lock enforcement isn't
+    // active on this device - it's a device-wide condition, so we only say it once rather than
+    // re-showing it on every single lock toggle.
+    private var enforcementWarningShown = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -126,9 +130,14 @@ class StandbyBucketActivity : AppCompatActivity() {
             // Sync all locked buckets to service on load
             val allPrefs = prefs.all
             var lockSyncFailures = 0
+            var enforcementUnavailable = false
             for ((pkg, value) in allPrefs) {
                 if (value is Int) {
-                    try { service.setBucketLock(pkg, value, true) } catch (e: Exception) { lockSyncFailures++ }
+                    try {
+                        if (!service.setBucketLock(pkg, value, true)) enforcementUnavailable = true
+                    } catch (e: Exception) {
+                        lockSyncFailures++
+                    }
                 }
             }
 
@@ -164,8 +173,14 @@ class StandbyBucketActivity : AppCompatActivity() {
                 recyclerView.layoutAnimation = android.view.animation.AnimationUtils.loadLayoutAnimation(this@StandbyBucketActivity, R.anim.layout_animation_stagger)
                 recyclerView.scheduleLayoutAnimation()
 
-                if (lockSyncFailures > 0) {
-                    Snackbar.make(findViewById(R.id.root_layout), "Failed to sync $lockSyncFailures locked bucket(s).", Snackbar.LENGTH_LONG)
+                val message = when {
+                    enforcementUnavailable -> "Bucket locks can't be enforced on this device - locked apps may not stay locked."
+                    lockSyncFailures > 0 -> "Failed to sync $lockSyncFailures locked bucket(s)."
+                    else -> null
+                }
+                if (message != null) {
+                    enforcementWarningShown = enforcementWarningShown || enforcementUnavailable
+                    Snackbar.make(findViewById(R.id.root_layout), message, Snackbar.LENGTH_LONG)
                         .setBackgroundTint(getColor(R.color.colorError))
                         .setTextColor(getColor(R.color.colorOnPrimary))
                         .show()
@@ -177,7 +192,16 @@ class StandbyBucketActivity : AppCompatActivity() {
     private fun setBucketLockRemote(pkg: String, bucket: Int, locked: Boolean) {
         ShizuToolsController.execute { service ->
             try {
-                service.setBucketLock(pkg, bucket, locked)
+                val enforced = service.setBucketLock(pkg, bucket, locked)
+                if (locked && !enforced && !enforcementWarningShown) {
+                    enforcementWarningShown = true
+                    runOnUiThread {
+                        Snackbar.make(findViewById(R.id.root_layout), "Bucket locks can't be enforced on this device - locked apps may not stay locked.", Snackbar.LENGTH_LONG)
+                            .setBackgroundTint(getColor(R.color.colorError))
+                            .setTextColor(getColor(R.color.colorOnPrimary))
+                            .show()
+                    }
+                }
             } catch (e: Exception) {
                 runOnUiThread {
                     Snackbar.make(findViewById(R.id.root_layout), "Failed to ${if (locked) "lock" else "unlock"} $pkg: ${e.message}", Snackbar.LENGTH_LONG)

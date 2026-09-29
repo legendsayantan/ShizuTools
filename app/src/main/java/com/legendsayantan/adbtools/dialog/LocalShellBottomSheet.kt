@@ -22,7 +22,6 @@ import com.google.android.material.chip.Chip
 import com.legendsayantan.adbtools.R
 import com.legendsayantan.adbtools.lib.AppCommands
 import com.legendsayantan.adbtools.lib.Logger.Companion.log
-import com.legendsayantan.adbtools.lib.ShizukuRunner
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

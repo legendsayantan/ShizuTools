@@ -30,7 +30,9 @@ interface IShizuToolsService {
     void injectTap(int displayId, int x, int y);
     void setAppStandbyBucket(String packageName, int bucketIndex, int userId);
     int getAppStandbyBucket(String packageName, int userId);
-    void setBucketLock(String packageName, int bucket, boolean locked);
+    // Returns false when locking (locked=true) but the underlying foreground-change observer
+    // never registered with ActivityManager, meaning the lock is stored but won't be enforced.
+    boolean setBucketLock(String packageName, int bucket, boolean locked);
 
     // Virtual Mount Filesystem Operations
     ParcelFileDescriptor listDirectory(String absolutePath);
